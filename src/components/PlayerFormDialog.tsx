@@ -1,280 +1,299 @@
-import { useState, useEffect } from "react";
-import { Player, PlayerFormData, VipLevel, vipTierName } from "@/services/playerService";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { Player, PlayerFormData, VipLevel, vipConfig } from "@/services/playerService";
+
+const playerSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  firstname: z.string().min(1, "First name is required"),
+  lastname: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  phone_number: z.string().optional(),
+  dob: z.date().optional(),
+  gender: z.enum(["male", "female", "other"]).optional(),
+  casino: z.string().optional(),
+  vip_level: z.coerce.number().min(1).max(5) as z.ZodType<VipLevel>,
+  total_deposits: z.coerce.number().min(0).optional(),
+  last_email_sent: z.date().optional(),
+  preferences: z.string().optional(),
+  notes: z.string().optional(),
+});
 
 interface PlayerFormDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  isOpen: boolean;
+  onClose: () => void;
   onSubmit: (data: PlayerFormData) => void;
-  player?: Player | null;
+  player: Player | null;
 }
 
-export function PlayerFormDialog({ open, onOpenChange, onSubmit, player }: PlayerFormDialogProps) {
-  const [formData, setFormData] = useState<PlayerFormData>({
-    userId: "",
-    username: "",
-    firstname: "",
-    lastname: "",
-    dob: "",
-    gender: "Male",
-    email: "",
-    phone: "",
-    casino: "",
-    vipLevel: 1,
-    totalDeposits: 0,
-    lastEmailSent: null,
-    preferences: "",
-    notes: "",
+export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFormDialogProps) {
+  const form = useForm<PlayerFormData>({
+    resolver: zodResolver(playerSchema),
+    defaultValues: {
+      username: "",
+      firstname: "",
+      lastname: "",
+      email: "",
+      phone_number: "",
+      dob: undefined,
+      gender: "other",
+      casino: "",
+      vip_level: 1,
+      total_deposits: 0,
+      last_email_sent: undefined,
+      preferences: "",
+      notes: "",
+    },
   });
 
   useEffect(() => {
     if (player) {
-      setFormData({
-        userId: player.userId,
-        username: player.username,
-        firstname: player.firstname,
-        lastname: player.lastname,
-        dob: player.dob,
-        gender: player.gender,
-        email: player.email,
-        phone: player.phone,
-        casino: player.casino,
-        vipLevel: player.vipLevel,
-        totalDeposits: player.totalDeposits,
-        lastEmailSent: player.lastEmailSent,
-        preferences: player.preferences,
-        notes: player.notes,
+      form.reset({
+        ...player,
+        dob: player.dob ? new Date(player.dob) : undefined,
+        last_email_sent: player.last_email_sent ? new Date(player.last_email_sent) : undefined,
       });
     } else {
-      setFormData({
-        userId: `USR${String(Date.now()).slice(-6)}`,
+      form.reset({
         username: "",
         firstname: "",
         lastname: "",
-        dob: "",
-        gender: "Male",
         email: "",
-        phone: "",
+        phone_number: "",
+        dob: undefined,
+        gender: "other",
         casino: "",
-        vipLevel: 1,
-        totalDeposits: 0,
-        lastEmailSent: null,
+        vip_level: 1,
+        total_deposits: 0,
+        last_email_sent: undefined,
         preferences: "",
         notes: "",
       });
     }
-  }, [player, open]);
+  }, [player, isOpen, form]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
+  const handleFormSubmit = (data: PlayerFormData) => {
+    onSubmit({
+      ...data,
+      dob: data.dob ? data.dob.toISOString() : null,
+      last_email_sent: data.last_email_sent ? data.last_email_sent.toISOString() : null,
+    });
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{player ? "Edit Player" : "Add New Player"}</DialogTitle>
-          <DialogDescription>
-            {player ? "Update player information below" : "Fill in the details to add a new player"}
-          </DialogDescription>
+          <DialogTitle>{player ? "Edit Player" : "Create New Player"}</DialogTitle>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="userId">User ID</Label>
-              <Input
-                id="userId"
-                value={formData.userId}
-                onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
-                required
-                placeholder="USR123456"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl><Input type="email" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="firstname"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name</FormLabel>
+                    <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="lastname"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="dob"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date of Birth</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                  control={form.control}
+                  name="gender"
+                  render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>Gender</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                  <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                  <SelectItem value="male">Male</SelectItem>
+                                  <SelectItem value="female">Female</SelectItem>
+                                  <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                          </Select>
+                          <FormMessage />
+                      </FormItem>
+                  )}
+              />
+              <FormField
+                control={form.control}
+                name="casino"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Casino</FormLabel>
+                    <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                  control={form.control}
+                  name="vip_level"
+                  render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>VIP Level</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(Number(value))} defaultValue={String(field.value)}>
+                              <FormControl>
+                                  <SelectTrigger><SelectValue placeholder="Select VIP Level" /></SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                  {(Object.entries(vipConfig) as [string, any][]).map(([level, config]) => (
+                                    <SelectItem key={level} value={level}>{config.name}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                          </Select>
+                          <FormMessage />
+                      </FormItem>
+                  )}
+              />
+              <FormField
+                control={form.control}
+                name="total_deposits"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Total Deposits</FormLabel>
+                    <FormControl><Input type="number" {...field} value={field.value || 0} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="last_email_sent"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Last Email Sent</FormLabel>
+                     <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                required
-                placeholder="player123"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="firstname">First Name</Label>
-              <Input
-                id="firstname"
-                value={formData.firstname}
-                onChange={(e) => setFormData({ ...formData, firstname: e.target.value })}
-                required
-                placeholder="John"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="lastname">Last Name</Label>
-              <Input
-                id="lastname"
-                value={formData.lastname}
-                onChange={(e) => setFormData({ ...formData, lastname: e.target.value })}
-                required
-                placeholder="Smith"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dob">Date of Birth</Label>
-              <Input
-                id="dob"
-                type="date"
-                value={formData.dob}
-                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="gender">Gender</Label>
-              <Select
-                value={formData.gender}
-                onValueChange={(value: PlayerFormData["gender"]) => setFormData({ ...formData, gender: value })}
-              >
-                <SelectTrigger id="gender">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                  <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-                placeholder="player@example.com"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                required
-                placeholder="+1 (555) 123-4567"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="casino">Casino</Label>
-              <Input
-                id="casino"
-                value={formData.casino}
-                onChange={(e) => setFormData({ ...formData, casino: e.target.value })}
-                required
-                placeholder="Royal Palace"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="vipLevel">VIP Level</Label>
-              <Select
-                value={String(formData.vipLevel)}
-                onValueChange={(value: string) =>
-                  setFormData({ ...formData, vipLevel: Number(value) as VipLevel })
-                }
-              >
-                <SelectTrigger id="vipLevel">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1 — {vipTierName[1]}</SelectItem>
-                  <SelectItem value="2">2 — {vipTierName[2]}</SelectItem>
-                  <SelectItem value="3">3 — {vipTierName[3]}</SelectItem>
-                  <SelectItem value="4">4 — {vipTierName[4]}</SelectItem>
-                  <SelectItem value="5">5 — {vipTierName[5]}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="totalDeposits">Total Deposits ($)</Label>
-              <Input
-                id="totalDeposits"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.totalDeposits}
-                onChange={(e) => setFormData({ ...formData, totalDeposits: parseFloat(e.target.value) || 0 })}
-                required
-                placeholder="0.00"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="lastEmailSent">Last Email Sent</Label>
-              <Input
-                id="lastEmailSent"
-                type="datetime-local"
-                value={formData.lastEmailSent ? new Date(formData.lastEmailSent).toISOString().slice(0, 16) : ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    lastEmailSent: e.target.value ? new Date(e.target.value).toISOString() : null,
-                  })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="preferences">Preferences</Label>
-            <Textarea
-              id="preferences"
-              value={formData.preferences}
-              onChange={(e) => setFormData({ ...formData, preferences: e.target.value })}
-              placeholder="Email notifications, SMS alerts, etc."
-              rows={2}
+            
+            <FormField
+              control={form.control}
+              name="preferences"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Preferences</FormLabel>
+                  <FormControl><Textarea {...field} value={field.value || ""} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Additional notes about the player..."
-              rows={3}
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl><Textarea {...field} value={field.value || ""} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit">{player ? "Update Player" : "Add Player"}</Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+              <Button type="submit">{player ? "Save Changes" : "Create Player"}</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

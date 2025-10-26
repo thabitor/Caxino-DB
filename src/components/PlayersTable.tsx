@@ -88,11 +88,11 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableHeader field="username" {...{ sortField, sortDirection, onSort }}>Username</SortableHeader>
-              <SortableHeader field="firstname" {...{ sortField, sortDirection, onSort }}>Full Name</SortableHeader>
-              <SortableHeader field="email" {...{ sortField, sortDirection, onSort }}>Email</SortableHeader>
-              <SortableHeader field="vip_level" {...{ sortField, sortDirection, onSort }}>VIP Level</SortableHeader>
-              <SortableHeader field="task_count" {...{ sortField, sortDirection, onSort }}>Tasks</SortableHeader>
+              <SortableHeader field="username" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Username</SortableHeader>
+              <SortableHeader field="firstname" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Full Name</SortableHeader>
+              <SortableHeader field="email" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Email</SortableHeader>
+              <SortableHeader field="vip_level" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>VIP Level</SortableHeader>
+              <SortableHeader field="task_count" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Tasks</SortableHeader>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>

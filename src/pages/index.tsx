@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { playerService, PlayerWithTasks, PlayerInsert, PlayerUpdate } from "@/services/playerService";
 import { PlayersTable } from "@/components/PlayersTable";
 import { Button } from "@/components/ui/button";
-import PlayerFormDialog from "@/components/PlayerFormDialog";
+import { PlayerFormDialog } from "@/components/PlayerFormDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
