@@ -1,7 +1,6 @@
 import { useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,28 +12,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { Player, PlayerFormData, VipLevel, vipConfig } from "@/services/playerService";
-
-const playerSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  firstname: z.string().min(1, "First name is required"),
-  lastname: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
-  phone_number: z.string().optional(),
-  dob: z.date().optional(),
-  gender: z.enum(["male", "female", "other"]).optional(),
-  casino: z.string().optional(),
-  vip_level: z.coerce.number().min(1).max(5) as z.ZodType<VipLevel>,
-  total_deposits: z.coerce.number().min(0).optional(),
-  last_email_sent: z.date().optional(),
-  preferences: z.string().optional(),
-  notes: z.string().optional(),
-});
+import { Player, playerSchema, PlayerFormData, PlayerInsert, PlayerUpdate, vipConfig } from "@/services/playerService";
 
 interface PlayerFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: PlayerFormData) => void;
+  onSubmit: (data: PlayerInsert | PlayerUpdate) => void;
   player: Player | null;
 }
 

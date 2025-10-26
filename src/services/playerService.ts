@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import * as z from "zod";
 
 export type Player = Database["public"]["Tables"]["players"]["Row"];
 export type PlayerInsert = Database["public"]["Tables"]["players"]["Insert"];
@@ -8,7 +9,23 @@ export type PlayerWithTasks = Player & { tasks: { count: number }[] };
 
 export type VipLevel = 1 | 2 | 3 | 4 | 5;
 
-export type PlayerFormData = Omit<Player, "id" | "created_at" | "last_email_sent">;
+export const playerSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  firstname: z.string().min(1, "First name is required"),
+  lastname: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  phone_number: z.string().optional(),
+  dob: z.date().optional(),
+  gender: z.enum(["male", "female", "other"]).optional(),
+  casino: z.string().optional(),
+  vip_level: z.coerce.number().min(1).max(5) as z.ZodType<VipLevel>,
+  total_deposits: z.coerce.number().min(0).optional(),
+  last_email_sent: z.date().optional(),
+  preferences: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export type PlayerFormData = z.infer<typeof playerSchema>;
 
 export const vipTierName: Record<VipLevel, string> = {
   1: "Bronze",
@@ -75,12 +92,6 @@ export const playerService = {
   },
 
   async updatePlayer(id: string, playerData: PlayerUpdate): Promise<Player> {
-    if (playerData.last_email_sent && !isNaN(new Date(playerData.last_email_sent).getTime())) {
-        playerData.last_email_sent = new Date(playerData.last_email_sent).toISOString();
-    } else {
-        delete playerData.last_email_sent;
-    }
-
     const { data, error } = await supabase
       .from("players")
       .update(playerData)
