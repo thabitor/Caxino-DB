@@ -1,11 +1,12 @@
-
 import { useState } from "react";
+import Link from "next/link";
 import { Player, getFullName, VipLevel, vipTierName } from "@/types/player";
+import { taskService } from "@/services/taskService";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Search, ArrowUpDown } from "lucide-react";
+import { Pencil, Trash2, Search, ArrowUpDown, ExternalLink, AlertCircle } from "lucide-react";
 
 interface PlayersTableProps {
   players: Player[];
@@ -161,6 +162,9 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
                     <ArrowUpDown className="ml-2 h-3 w-3" />
                   </Button>
                 </TableHead>
+                <TableHead className="text-center">
+                  <span className="font-semibold">Tasks</span>
+                </TableHead>
                 <TableHead className="text-right w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -172,44 +176,70 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
                   </TableCell>
                 </TableRow>
               ) : (
-                sortedPlayers.map((player) => (
-                  <TableRow key={player.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                    <TableCell className="font-mono text-sm">{player.userId}</TableCell>
-                    <TableCell className="font-medium">{player.username}</TableCell>
-                    <TableCell>{getFullName(player)}</TableCell>
-                    <TableCell className="text-sm text-slate-600 dark:text-slate-400">{player.email}</TableCell>
-                    <TableCell>{player.casino}</TableCell>
-                    <TableCell>
-                      <Badge title={vipTierName[player.vipLevel]} className={getVipBadgeColor(player.vipLevel)}>
-                        {player.vipLevel}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {formatCurrency(player.totalDeposits)}
-                    </TableCell>
-                    <TableCell className="text-sm">{formatDate(player.lastEmailSent)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEdit(player)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onDelete(player.id)}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                sortedPlayers.map((player) => {
+                  const taskCount = taskService.getTaskCountByPlayerId(player.id);
+                  return (
+                    <TableRow key={player.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                      <TableCell className="font-mono text-sm">{player.userId}</TableCell>
+                      <TableCell className="font-medium">{player.username}</TableCell>
+                      <TableCell>
+                        <Link href={`/player/${player.id}`} className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:underline">
+                          {getFullName(player)}
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-600 dark:text-slate-400">{player.email}</TableCell>
+                      <TableCell>{player.casino}</TableCell>
+                      <TableCell>
+                        <Badge title={vipTierName[player.vipLevel]} className={getVipBadgeColor(player.vipLevel)}>
+                          {player.vipLevel}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {formatCurrency(player.totalDeposits)}
+                      </TableCell>
+                      <TableCell className="text-sm">{formatDate(player.lastEmailSent)}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {taskCount.pending > 0 && (
+                            <>
+                              <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                              <span className="font-semibold text-orange-600 dark:text-orange-400">
+                                {taskCount.pending}
+                              </span>
+                            </>
+                          )}
+                          {taskCount.pending === 0 && taskCount.total > 0 && (
+                            <span className="text-slate-400 dark:text-slate-600">✓</span>
+                          )}
+                          {taskCount.total === 0 && (
+                            <span className="text-slate-300 dark:text-slate-700">-</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onEdit(player)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onDelete(player.id)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -218,4 +248,3 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
     </div>
   );
 }
-  
