@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Head from "next/head";
 import { Player } from "@/types/player";
@@ -122,8 +121,9 @@ export default function HomePage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">VIP Players</p>
-                    <p className="text-3xl font-bold mt-2">{vipPlayers}</p>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">High-Tier VIPs</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500">(Level 4-5)</p>
+                    <p className="text-3xl font-bold mt-1">{vipPlayers}</p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
                     <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
