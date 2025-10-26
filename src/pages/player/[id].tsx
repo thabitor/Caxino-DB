@@ -173,7 +173,7 @@ export default function PlayerDetailPage() {
               <div className="flex items-center justify-between">
                 <CardTitle>Player Information</CardTitle>
                 <Badge className={`${vipInfo.bgColor} ${vipInfo.color}`}>
-                  {vipInfo.name}
+                  {player.vip_level} - {vipInfo.name}
                 </Badge>
               </div>
             </CardHeader>

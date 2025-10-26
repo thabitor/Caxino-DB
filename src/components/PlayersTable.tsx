@@ -107,7 +107,7 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
                   <TableCell>{player.email}</TableCell>
                   <TableCell>
                     <Badge className={`${vipConfig[player.vip_level as VipLevel].bgColor} ${vipConfig[player.vip_level as VipLevel].color} hover:${vipConfig[player.vip_level as VipLevel].bgColor}`}>
-                      {vipConfig[player.vip_level as VipLevel].name}
+                      {player.vip_level} - {vipConfig[player.vip_level as VipLevel].name}
                     </Badge>
                   </TableCell>
                   <TableCell><TaskCountBadge count={player.tasks[0]?.count ?? 0} /></TableCell>
