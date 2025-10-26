@@ -2,14 +2,15 @@
 // Types are generated from the Supabase database schema using the Supabase CLI.
  
 
-import type { Database as DB } from './database.types';
+import type { Database as DB, Json as DBJson } from "./database.types";
 
 export type Database = DB;
+export type Json = DBJson;
 
-// Re-export commonly used types for convenience
-export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
-export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T];
-export type Functions<T extends keyof Database['public']['Functions']> = Database['public']['Functions'][T];
+export type Tables<T extends keyof DB["public"]["Tables"]> =
+  DB["public"]["Tables"][T]["Row"];
+export type Enums<T extends keyof DB["public"]["Enums"]> =
+  DB["public"]["Enums"][T];
 
 // Project reference: vxghhiswchuhhdivwzyk
 // Last updated: 2025-10-26T20:14:26.105496
