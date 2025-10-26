@@ -248,25 +248,14 @@ export default function PlayerDetailPage() {
                 <ArrowLeft className="w-5 h-5" />
               </Link>
             </Button>
-            <div className="flex items-center gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold">{getFullName(player)}</h1>
-                  <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
-                    {player.vip_level} - {vipInfo.name}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">@{player.username}</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold">{getFullName(player)}</h1>
+                <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
+                  {player.vip_level} - {vipInfo.name}
+                </Badge>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsPlayerFormOpen(true)}
-                className="h-8 px-3 border-2 hover:bg-accent"
-              >
-                <Edit className="w-3 h-3 mr-1" />
-                Edit
-              </Button>
+              <p className="text-sm text-muted-foreground">@{player.username}</p>
             </div>
           </div>
           <ThemeSwitch />
@@ -277,7 +266,18 @@ export default function PlayerDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2 border-2 hover:shadow-xl transition-all hover:border-primary/20">
             <CardHeader className="border-b-2 border-border/40 bg-muted/30">
-              <CardTitle>Player Information</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Player Information</CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setIsPlayerFormOpen(true)}
+                  className="h-8 px-3 border-2 hover:bg-accent"
+                >
+                  <Edit className="w-3 h-3 mr-1" />
+                  Edit
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="grid gap-4 md:grid-cols-2">
