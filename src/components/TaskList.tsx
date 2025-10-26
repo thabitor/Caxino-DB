@@ -1,65 +1,92 @@
-import { Task, TaskPriority, TaskStatus } from "@/services/taskService";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ReactNode } from "react";
+import { format } from "date-fns";
+import { Task, TaskPriority, TaskStatus, priorityConfig, statusConfig } from "@/services/taskService";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, CheckCircle, Circle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Edit, Trash2, CheckCircle } from "lucide-react";
 
 interface TaskListProps {
   tasks: Task[];
   onEdit: (task: Task) => void;
-  onDelete: (taskId: string) => void;
-  onToggle: (taskId: string) => void;
+  onDelete: (id: string) => void;
+  onComplete: (id: string) => void;
 }
 
-const priorityConfig: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
-  low: { label: "Low", color: "text-green-700", bgColor: "bg-green-100 dark:bg-green-900" },
-  medium: { label: "Medium", color: "text-yellow-700", bgColor: "bg-yellow-100 dark:bg-yellow-900" },
-  high: { label: "High", color: "text-red-700", bgColor: "bg-red-100 dark:bg-red-900" },
+const statusIcons: Record<TaskStatus, ReactNode> = {
+  pending: <div className="w-3 h-3 rounded-full bg-yellow-500" />,
+  in_progress: <div className="w-3 h-3 rounded-full bg-blue-500" />,
+  completed: <div className="w-3 h-3 rounded-full bg-green-500" />,
+  cancelled: <div className="w-3 h-3 rounded-full bg-gray-500" />,
 };
 
-const statusConfig: Record<TaskStatus, { label: string; icon: React.ReactNode }> = {
-    pending: { label: "Pending", icon: <Circle className="h-4 w-4 text-muted-foreground" /> },
-    in_progress: { label: "In Progress", icon: <Circle className="h-4 w-4 text-blue-500 animate-pulse" /> },
-    completed: { label: "Completed", icon: <CheckCircle className="h-4 w-4 text-green-500" /> },
-};
-
-export default function TaskList({ tasks, onEdit, onDelete, onToggle }: TaskListProps) {
+export function TaskList({ tasks, onEdit, onDelete, onComplete }: TaskListProps) {
   if (tasks.length === 0) {
-    return <p className="text-center text-muted-foreground">No tasks for this player yet.</p>;
+    return (
+      <div className="text-center py-10">
+        <h3 className="text-lg font-semibold">No Tasks Yet</h3>
+        <p className="text-sm text-muted-foreground">Click "Add Task" to create the first one for this player.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      {tasks.map((task) => (
-        <Card key={task.id}>
-          <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => onToggle(task.id)} className="h-6 w-6">
-                  {statusConfig[task.status].icon}
-                </Button>
-                <h3 className={`font-semibold ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>{task.title}</h3>
-              </div>
-              
-              {task.description && <p className="text-sm text-muted-foreground">{task.description}</p>}
-              
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Badge className={`${priorityConfig[task.priority].bgColor} ${priorityConfig[task.priority].color} hover:${priorityConfig[task.priority].bgColor}`}>{priorityConfig[task.priority].label}</Badge>
-                {task.due_date && <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>}
-              </div>
-            </div>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {tasks.map((task) => {
+        const priority = priorityConfig[task.priority as TaskPriority];
+        const status = statusConfig[task.status as TaskStatus];
 
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => onEdit(task)}>
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => onDelete(task.id)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+        return (
+          <Card key={task.id} className="flex flex-col">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div className="space-y-1.5">
+                  <CardTitle className="text-lg">{task.title}</CardTitle>
+                  {task.due_date && (
+                    <CardDescription>
+                      Due: {format(new Date(task.due_date), "MMM d, yyyy")}
+                    </CardDescription>
+                  )}
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {task.status !== 'completed' && (
+                       <DropdownMenuItem onClick={() => onComplete(task.id)}>
+                         <CheckCircle className="mr-2 h-4 w-4" />
+                         <span>Mark as Complete</span>
+                       </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => onEdit(task)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      <span>Edit</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDelete(task.id)} className="text-destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      <span>Delete</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              {task.description && <p className="text-sm text-muted-foreground">{task.description}</p>}
+            </CardContent>
+            <CardFooter className="flex justify-between items-center">
+              <Badge className={`${priority.bgColor} ${priority.color} hover:${priority.bgColor}`}>{priority.label}</Badge>
+              <div className="flex items-center gap-2">
+                {statusIcons[task.status as TaskStatus]}
+                <span className="text-sm font-medium">{status.label}</span>
+              </div>
+            </CardFooter>
+          </Card>
+        );
+      })}
     </div>
   );
 }

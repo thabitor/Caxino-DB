@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,18 +22,19 @@ interface PlayerFormDialogProps {
   player: Player | null;
 }
 
-const getResetValues = (player: Player | null) => {
+const getResetValues = (player: Player | null): PlayerFormData => {
   if (!player) {
     return {
+      user_id: "",
       username: "",
       firstname: "",
       lastname: "",
       email: "",
       phone: "",
       dob: undefined,
-      gender: "other" as const,
+      gender: "other",
       casino: "",
-      vip_level: 1 as VipLevel,
+      vip_level: 1,
       total_deposits: 0,
       last_email_sent: undefined,
       preferences: "{}",
@@ -43,22 +43,31 @@ const getResetValues = (player: Player | null) => {
   }
 
   let preferencesStr = "{}";
-  if (player.preferences) {
+  if (player.preferences && typeof player.preferences === 'object') {
     try {
       preferencesStr = JSON.stringify(player.preferences, null, 2);
     } catch {
       preferencesStr = String(player.preferences);
     }
+  } else if (player.preferences) {
+    preferencesStr = String(player.preferences);
   }
 
   return {
-    ...player,
+    user_id: player.user_id,
+    username: player.username,
+    firstname: player.firstname,
+    lastname: player.lastname,
+    email: player.email,
     phone: player.phone ?? "",
     dob: player.dob ? new Date(player.dob) : undefined,
-    gender: (player.gender as "male" | "female" | "other") ?? "other",
+    gender: player.gender as "male" | "female" | "other" | undefined,
+    casino: player.casino ?? "",
+    vip_level: player.vip_level as VipLevel,
+    total_deposits: Number(player.total_deposits) || 0,
     last_email_sent: player.last_email_sent ? new Date(player.last_email_sent) : undefined,
     preferences: preferencesStr,
-    vip_level: player.vip_level as VipLevel,
+    notes: player.notes ?? "",
   };
 };
 
@@ -75,25 +84,24 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
   }, [player, isOpen, form]);
 
   const handleFormSubmit = (data: PlayerFormData) => {
-    let preferencesJson: Json = null;
-    try {
-      if (data.preferences) {
+    let preferencesJson: Json = {};
+    if (data.preferences) {
+      try {
         preferencesJson = JSON.parse(data.preferences);
+      } catch (e) {
+        form.setError("preferences", { type: "manual", message: "Invalid JSON format." });
+        return;
       }
-    } catch (e) {
-      // If parsing fails, we can either show an error or handle it.
-      // The zod schema already validates this, so this catch is a safeguard.
-      console.error("Invalid JSON in preferences", e);
-      form.setError("preferences", { type: "manual", message: "Invalid JSON format." });
-      return;
     }
 
-    onSubmit({
+    const submissionData = {
       ...data,
-      dob: data.dob ? data.dob.toISOString() : null,
+      dob: data.dob ? data.dob.toISOString().slice(0, 10) : null,
       last_email_sent: data.last_email_sent ? data.last_email_sent.toISOString() : null,
       preferences: preferencesJson,
-    });
+    };
+    
+    onSubmit(submissionData);
   };
 
   return (
@@ -103,14 +111,47 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
           <DialogTitle>{player ? "Edit Player" : "Create New Player"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 p-1">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="user_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>User ID</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="username"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Username</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="firstname"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="lastname"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -127,29 +168,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="firstname"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>First Name</FormLabel>
-                    <FormControl><Input {...field} value={field.value || ""} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="lastname"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Last Name</FormLabel>
-                    <FormControl><Input {...field} value={field.value || ""} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
+               <FormField
                 control={form.control}
                 name="phone"
                 render={({ field }) => (
@@ -164,7 +183,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                 control={form.control}
                 name="dob"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
+                  <FormItem className="flex flex-col pt-2">
                     <FormLabel>Date of Birth</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
@@ -187,7 +206,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   control={form.control}
                   name="gender"
                   render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="pt-2">
                           <FormLabel>Gender</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || "other"}>
                               <FormControl>
@@ -225,8 +244,8 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                                   <SelectTrigger><SelectValue placeholder="Select VIP Level" /></SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                  {(Object.entries(vipConfig) as [string, any][]).map(([level, config]) => (
-                                    <SelectItem key={level} value={level}>{config.name}</SelectItem>
+                                  {(Object.keys(vipConfig) as unknown as VipLevel[]).map((level) => (
+                                    <SelectItem key={level} value={String(level)}>{vipConfig[level].name}</SelectItem>
                                   ))}
                               </SelectContent>
                           </Select>
@@ -240,7 +259,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Total Deposits</FormLabel>
-                    <FormControl><Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(e.target.valueAsNumber)} /></FormControl>
+                    <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -249,7 +268,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                 control={form.control}
                 name="last_email_sent"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
+                  <FormItem className="flex flex-col pt-2">
                     <FormLabel>Last Email Sent</FormLabel>
                      <Popover>
                       <PopoverTrigger asChild>
@@ -276,7 +295,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Preferences (JSON format)</FormLabel>
-                  <FormControl><Textarea {...field} value={field.value || ""} rows={4} /></FormControl>
+                  <FormControl><Textarea {...field} rows={3} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -287,7 +306,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
-                  <FormControl><Textarea {...field} value={field.value || ""} /></FormControl>
+                  <FormControl><Textarea {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}

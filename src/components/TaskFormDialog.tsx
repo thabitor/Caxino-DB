@@ -1,65 +1,65 @@
 import { useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Task, TaskFormData, TaskPriority, TaskStatus } from "@/services/taskService";
-
-const taskSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  priority: z.enum(["low", "medium", "high"]),
-  status: z.enum(["pending", "in_progress", "completed"]),
-  due_date: z.string().optional(),
-});
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { Task, taskSchema, TaskFormData, TaskInsert, TaskUpdate, priorityConfig, statusConfig, TaskPriority, TaskStatus } from "@/services/taskService";
 
 interface TaskFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: TaskFormData) => void;
+  onSubmit: (data: TaskInsert | TaskUpdate) => void;
   task: Task | null;
+  playerId: string;
 }
 
-export default function TaskFormDialog({ isOpen, onClose, onSubmit, task }: TaskFormDialogProps) {
-  const form = useForm<TaskFormData>({
-    resolver: zodResolver(taskSchema),
-    defaultValues: {
+const getResetValues = (task: Task | null, playerId: string): TaskFormData => {
+  if (!task) {
+    return {
+      player_id: playerId,
       title: "",
       description: "",
       priority: "medium",
       status: "pending",
       due_date: undefined,
-    },
+    };
+  }
+  return {
+    ...task,
+    description: task.description ?? "",
+    due_date: task.due_date ? new Date(task.due_date) : undefined,
+    priority: task.priority as TaskPriority,
+    status: task.status as TaskStatus,
+  };
+};
+
+export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId }: TaskFormDialogProps) {
+  const form = useForm<TaskFormData>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: getResetValues(null, playerId),
   });
 
   useEffect(() => {
-    if (task) {
-      form.reset({
-        ...task,
-        due_date: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : undefined
-      });
-    } else {
-      form.reset({
-        title: "",
-        description: "",
-        priority: "medium",
-        status: "pending",
-        due_date: undefined,
-      });
+    if (isOpen) {
+      form.reset(getResetValues(task, playerId));
     }
-  }, [task, isOpen, form]);
+  }, [task, playerId, isOpen, form]);
 
   const handleFormSubmit = (data: TaskFormData) => {
-    onSubmit({
-        ...data,
-        due_date: data.due_date ? new Date(data.due_date).toISOString() : null,
-    });
+    const submissionData = {
+      ...data,
+      due_date: data.due_date ? data.due_date.toISOString() : null,
+    };
+    onSubmit(submissionData);
   };
 
   return (
@@ -76,9 +76,7 @@ export default function TaskFormDialog({ isOpen, onClose, onSubmit, task }: Task
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
+                  <FormControl><Input {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -89,69 +87,73 @@ export default function TaskFormDialog({ isOpen, onClose, onSubmit, task }: Task
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} value={field.value || ""} />
-                  </FormControl>
+                  <FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-             <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Priority</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                                <SelectTrigger><SelectValue placeholder="Select priority" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="low">Low</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="high">High</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )}
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Priority</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {Object.keys(priorityConfig).map((p) => (
+                        <SelectItem key={p} value={p}>{priorityConfig[p as TaskPriority].label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
             <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                                <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="in_progress">In Progress</SelectItem>
-                                <SelectItem value="completed">Completed</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )}
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {Object.keys(statusConfig).map((s) => (
+                        <SelectItem key={s} value={s}>{statusConfig[s as TaskStatus].label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
             <FormField
               control={form.control}
               name="due_date"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Due Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} value={field.value || ""} />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </Popover>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit">Save Task</Button>
+              <Button type="submit">{task ? "Save Changes" : "Create Task"}</Button>
             </DialogFooter>
           </form>
         </Form>
