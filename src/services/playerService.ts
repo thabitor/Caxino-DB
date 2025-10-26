@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Database, Json } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
+import type { Json } from "@/integrations/supabase/database.types";
 import * as z from "zod";
 
 export type Player = Database["public"]["Tables"]["players"]["Row"];

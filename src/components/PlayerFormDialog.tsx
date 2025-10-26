@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Player, playerSchema, PlayerFormData, PlayerInsert, PlayerUpdate, vipConfig, VipLevel } from "@/services/playerService";
-import { Json } from "@/integrations/supabase/types";
+import { Json } from "@/integrations/supabase/database.types";
 
 interface PlayerFormDialogProps {
   isOpen: boolean;
