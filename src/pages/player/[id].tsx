@@ -3,8 +3,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import Link from "next/link";
-import { Player } from "@/types/player";
-import { Task } from "@/types/task";
 import { playerService } from "@/services/playerService";
 import { taskService } from "@/services/taskService";
 import { Button } from "@/components/ui/button";
@@ -24,10 +22,13 @@ import {
   CheckCircle2,
   AlertCircle
 } from "lucide-react";
-import { vipConfig } from "@/types/player";
 import { TaskList } from "@/components/TaskList";
 import { TaskFormDialog } from "@/components/TaskFormDialog";
 import { useToast } from "@/hooks/use-toast";
+
+// Import types from the correct source
+import { Player, vipConfig } from "@/services/playerService";
+import { Task, TaskFormData } from "@/services/taskService";
 
 export default function PlayerDetailPage() {
   const router = useRouter();
@@ -51,7 +52,6 @@ export default function PlayerDetailPage() {
       const playerTasks = await taskService.getByPlayerId(playerId);
       setTasks(playerTasks);
     } else {
-      // Small delay to prevent flash of loading screen if player not found
       setTimeout(() => router.push("/"), 500);
     }
   };
@@ -66,17 +66,19 @@ export default function PlayerDetailPage() {
     setTaskDialogOpen(true);
   };
 
-  const handleTaskSubmit = async (data: any) => {
+  const handleTaskSubmit = async (data: Partial<TaskFormData>) => {
     if (!player) return;
 
+    const payload = { ...data, playerId: player.id };
+
     if (editingTask) {
-      await taskService.update(editingTask.id, data);
+      await taskService.update(editingTask.id, payload);
       toast({
         title: "Task Updated",
         description: "The reminder has been updated successfully.",
       });
     } else {
-      await taskService.create({ ...data, playerId: player.id });
+      await taskService.create(payload as TaskFormData);
       toast({
         title: "Task Created",
         description: "New reminder has been added successfully.",

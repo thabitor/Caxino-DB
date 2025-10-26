@@ -1,6 +1,29 @@
-import { Task, TaskFormData, priorityOrder, TaskPriority } from "@/types/task";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+
+// Define application-level types here
+export type TaskPriority = "low" | "medium" | "high" | "critical";
+
+export interface Task {
+  id: string;
+  playerId: string;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  dueDate: string | null;
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TaskFormData = Omit<Task, "id" | "createdAt" | "updatedAt">;
+
+export const priorityOrder: Record<TaskPriority, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
 
 type DbTask = Database["public"]["Tables"]["tasks"]["Row"];
 
@@ -87,6 +110,23 @@ export const taskService = {
       return undefined;
     }
     return updated ? mapDbTaskToTask(updated) : undefined;
+  },
+
+  toggleComplete: async (taskId: string): Promise<Task | undefined> => {
+    const { data: currentTask, error: fetchError } = await supabase
+      .from("tasks")
+      .select("status")
+      .eq("id", taskId)
+      .single();
+
+    if (fetchError) {
+      console.error("Error fetching task to toggle:", fetchError);
+      return undefined;
+    }
+
+    const newStatus = currentTask.status === "completed" ? "pending" : "completed";
+
+    return taskService.update(taskId, { completed: newStatus === "completed" });
   },
   
   delete: async (id: string): Promise<boolean> => {
