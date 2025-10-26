@@ -45,6 +45,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
     if (player) {
       form.reset({
         ...player,
+        gender: player.gender as "male" | "female" | "other" | undefined,
         dob: player.dob ? new Date(player.dob) : undefined,
         last_email_sent: player.last_email_sent ? new Date(player.last_email_sent) : undefined,
       });
