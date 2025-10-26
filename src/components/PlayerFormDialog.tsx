@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { Player, PlayerFormData, VipLevel, vipTierName } from "@/types/player";
+import { Player, PlayerFormData, VipLevel, vipTierName } from "@/services/playerService";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -280,4 +279,3 @@ export function PlayerFormDialog({ open, onOpenChange, onSubmit, player }: Playe
     </Dialog>
   );
 }
-  

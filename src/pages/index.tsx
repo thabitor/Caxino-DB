@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Head from "next/head";
-import { Player } from "@/types/player";
+import { Player } from "@/services/playerService";
 import { playerService } from "@/services/playerService";
 import { PlayersTable } from "@/components/PlayersTable";
 import { PlayerFormDialog } from "@/components/PlayerFormDialog";

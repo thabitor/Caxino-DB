@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Player, getFullName, VipLevel, vipTierName } from "@/types/player";
+import { Player, vipConfig } from "@/services/playerService";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

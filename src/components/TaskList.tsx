@@ -1,10 +1,32 @@
-
-import { Task, priorityConfig } from "@/types/task";
+import { Task, TaskPriority } from "@/services/taskService";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Edit, Trash2, Calendar, AlertCircle } from "lucide-react";
+
+const priorityConfig: Record<TaskPriority, { label: string; color: string; bgColor: string }> = {
+  critical: {
+    label: "Critical",
+    color: "text-red-700 dark:text-red-400",
+    bgColor: "bg-red-100 dark:bg-red-950 border-red-300 dark:border-red-800",
+  },
+  high: {
+    label: "High",
+    color: "text-orange-700 dark:text-orange-400",
+    bgColor: "bg-orange-100 dark:bg-orange-950 border-orange-300 dark:border-orange-800",
+  },
+  medium: {
+    label: "Medium",
+    color: "text-yellow-700 dark:text-yellow-400",
+    bgColor: "bg-yellow-100 dark:bg-yellow-950 border-yellow-300 dark:border-yellow-800",
+  },
+  low: {
+    label: "Low",
+    color: "text-blue-700 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-950 border-blue-300 dark:border-blue-800",
+  },
+};
 
 interface TaskListProps {
   tasks: Task[];
