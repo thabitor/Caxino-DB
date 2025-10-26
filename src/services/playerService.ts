@@ -1,13 +1,31 @@
 
-import { Player, PlayerFormData } from "@/types/player";
+import { Player, PlayerFormData, VipLevel } from "@/types/player";
 
 const STORAGE_KEY = "caxino_players";
 
+const tierToLevel: Record<string, VipLevel> = {
+  Bronze: 1,
+  Silver: 2,
+  Gold: 3,
+  Platinum: 4,
+  Diamond: 5,
+};
+
+const isVipLevelNumber = (v: unknown): v is VipLevel => {
+  return v === 1 || v === 2 || v === 3 || v === 4 || v === 5;
+};
+
+const normalizeVipLevel = (v: unknown): VipLevel => {
+  if (isVipLevelNumber(v)) return v;
+  if (typeof v === "string" && v in tierToLevel) return tierToLevel[v];
+  return 1;
+};
+
 const generateMockPlayers = (): Player[] => {
   const casinos = ["Royal Palace", "Golden Crown", "Diamond Club", "Emerald Bay", "Crystal Casino"];
-  const vipLevels: Player["vipLevel"][] = ["Bronze", "Silver", "Gold", "Platinum", "Diamond"];
+  const vipLevels: VipLevel[] = [1, 2, 3, 4, 5];
   const genders: Player["gender"][] = ["Male", "Female", "Other"];
-  
+
   return Array.from({ length: 15 }, (_, i) => ({
     id: crypto.randomUUID(),
     userId: `USR${String(i + 1000).padStart(6, "0")}`,
@@ -38,12 +56,21 @@ export const playerService = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(mockPlayers));
       return mockPlayers;
     }
-    return JSON.parse(stored);
+    const parsed = JSON.parse(stored) as Array<Record<string, unknown>>;
+    const normalized = parsed.map((p) => {
+      const vipLevel = normalizeVipLevel(p.vipLevel);
+      return {
+        ...p,
+        vipLevel,
+      } as Player;
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    return normalized;
   },
 
   getById: (id: string): Player | undefined => {
     const players = playerService.getAll();
-    return players.find(player => player.id === id);
+    return players.find((player) => player.id === id);
   },
 
   create: (data: PlayerFormData): Player => {
@@ -51,6 +78,7 @@ export const playerService = {
     const newPlayer: Player = {
       id: crypto.randomUUID(),
       ...data,
+      vipLevel: normalizeVipLevel(data.vipLevel),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -61,12 +89,13 @@ export const playerService = {
 
   update: (id: string, data: Partial<PlayerFormData>): Player | undefined => {
     const players = playerService.getAll();
-    const index = players.findIndex(player => player.id === id);
+    const index = players.findIndex((player) => player.id === id);
     if (index === -1) return undefined;
-    
+
     players[index] = {
       ...players[index],
       ...data,
+      vipLevel: data.vipLevel !== undefined ? normalizeVipLevel(data.vipLevel) : players[index].vipLevel,
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
@@ -75,9 +104,10 @@ export const playerService = {
 
   delete: (id: string): boolean => {
     const players = playerService.getAll();
-    const filtered = players.filter(player => player.id !== id);
+    const filtered = players.filter((player) => player.id !== id);
     if (filtered.length === players.length) return false;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
     return true;
   },
 };
+  

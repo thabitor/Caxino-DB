@@ -1,4 +1,6 @@
 
+export type VipLevel = 1 | 2 | 3 | 4 | 5;
+
 export interface Player {
   id: string;
   userId: string;
@@ -10,7 +12,7 @@ export interface Player {
   email: string;
   phone: string;
   casino: string;
-  vipLevel: "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond";
+  vipLevel: VipLevel;
   totalDeposits: number;
   lastEmailSent: string | null;
   preferences: string;
@@ -21,6 +23,15 @@ export interface Player {
 
 export type PlayerFormData = Omit<Player, "id" | "createdAt" | "updatedAt">;
 
+export const vipTierName: Record<VipLevel, string> = {
+  1: "Bronze",
+  2: "Silver",
+  3: "Gold",
+  4: "Platinum",
+  5: "Diamond",
+};
+
 export const getFullName = (player: Player): string => {
   return `${player.firstname} ${player.lastname}`.trim();
 };
+  

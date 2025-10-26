@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Player, getFullName } from "@/types/player";
+import { Player, getFullName, VipLevel, vipTierName } from "@/types/player";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
     }
   };
 
-  const filteredPlayers = players.filter(player => {
+  const filteredPlayers = players.filter((player) => {
     const searchLower = searchTerm.toLowerCase();
     return (
       player.userId.toLowerCase().includes(searchLower) ||
@@ -57,9 +57,7 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
     if (bValue === null) return -1;
 
     if (typeof aValue === "string") {
-      return sortDirection === "asc" 
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
+      return sortDirection === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
     }
 
     if (typeof aValue === "number") {
@@ -69,13 +67,13 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
     return 0;
   });
 
-  const getVipBadgeColor = (level: Player["vipLevel"]) => {
-    const colors = {
-      Bronze: "bg-amber-700 hover:bg-amber-700",
-      Silver: "bg-slate-400 hover:bg-slate-400",
-      Gold: "bg-yellow-500 hover:bg-yellow-500",
-      Platinum: "bg-slate-700 hover:bg-slate-700",
-      Diamond: "bg-cyan-500 hover:bg-cyan-500",
+  const getVipBadgeColor = (level: VipLevel) => {
+    const colors: Record<VipLevel, string> = {
+      1: "bg-amber-700 hover:bg-amber-700 text-white",
+      2: "bg-slate-400 hover:bg-slate-400 text-white",
+      3: "bg-yellow-500 hover:bg-yellow-500 text-slate-900",
+      4: "bg-slate-700 hover:bg-slate-700 text-white",
+      5: "bg-cyan-500 hover:bg-cyan-500 text-slate-900",
     };
     return colors[level];
   };
@@ -182,7 +180,7 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
                     <TableCell className="text-sm text-slate-600 dark:text-slate-400">{player.email}</TableCell>
                     <TableCell>{player.casino}</TableCell>
                     <TableCell>
-                      <Badge className={getVipBadgeColor(player.vipLevel)}>
+                      <Badge title={vipTierName[player.vipLevel]} className={getVipBadgeColor(player.vipLevel)}>
                         {player.vipLevel}
                       </Badge>
                     </TableCell>
@@ -220,3 +218,4 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
     </div>
   );
 }
+  

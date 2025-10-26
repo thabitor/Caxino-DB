@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Player, PlayerFormData } from "@/types/player";
+import { Player, PlayerFormData, VipLevel, vipTierName } from "@/types/player";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ export function PlayerFormDialog({ open, onOpenChange, onSubmit, player }: Playe
     email: "",
     phone: "",
     casino: "",
-    vipLevel: "Bronze",
+    vipLevel: 1,
     totalDeposits: 0,
     lastEmailSent: null,
     preferences: "",
@@ -62,7 +62,7 @@ export function PlayerFormDialog({ open, onOpenChange, onSubmit, player }: Playe
         email: "",
         phone: "",
         casino: "",
-        vipLevel: "Bronze",
+        vipLevel: 1,
         totalDeposits: 0,
         lastEmailSent: null,
         preferences: "",
@@ -199,18 +199,20 @@ export function PlayerFormDialog({ open, onOpenChange, onSubmit, player }: Playe
             <div className="space-y-2">
               <Label htmlFor="vipLevel">VIP Level</Label>
               <Select
-                value={formData.vipLevel}
-                onValueChange={(value: PlayerFormData["vipLevel"]) => setFormData({ ...formData, vipLevel: value })}
+                value={String(formData.vipLevel)}
+                onValueChange={(value: string) =>
+                  setFormData({ ...formData, vipLevel: Number(value) as VipLevel })
+                }
               >
                 <SelectTrigger id="vipLevel">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Bronze">Bronze</SelectItem>
-                  <SelectItem value="Silver">Silver</SelectItem>
-                  <SelectItem value="Gold">Gold</SelectItem>
-                  <SelectItem value="Platinum">Platinum</SelectItem>
-                  <SelectItem value="Diamond">Diamond</SelectItem>
+                  <SelectItem value="1">1 — {vipTierName[1]}</SelectItem>
+                  <SelectItem value="2">2 — {vipTierName[2]}</SelectItem>
+                  <SelectItem value="3">3 — {vipTierName[3]}</SelectItem>
+                  <SelectItem value="4">4 — {vipTierName[4]}</SelectItem>
+                  <SelectItem value="5">5 — {vipTierName[5]}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -235,7 +237,12 @@ export function PlayerFormDialog({ open, onOpenChange, onSubmit, player }: Playe
                 id="lastEmailSent"
                 type="datetime-local"
                 value={formData.lastEmailSent ? new Date(formData.lastEmailSent).toISOString().slice(0, 16) : ""}
-                onChange={(e) => setFormData({ ...formData, lastEmailSent: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    lastEmailSent: e.target.value ? new Date(e.target.value).toISOString() : null,
+                  })
+                }
               />
             </div>
           </div>
@@ -266,12 +273,11 @@ export function PlayerFormDialog({ open, onOpenChange, onSubmit, player }: Playe
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">
-              {player ? "Update Player" : "Add Player"}
-            </Button>
+            <Button type="submit">{player ? "Update Player" : "Add Player"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
+  

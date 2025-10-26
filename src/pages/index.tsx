@@ -72,7 +72,7 @@ export default function HomePage() {
   };
 
   const totalDeposits = players.reduce((sum, player) => sum + player.totalDeposits, 0);
-  const vipPlayers = players.filter(p => p.vipLevel === "Platinum" || p.vipLevel === "Diamond").length;
+  const vipPlayers = players.filter((p) => p.vipLevel >= 4).length;
 
   return (
     <>
