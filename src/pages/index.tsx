@@ -1,95 +1,183 @@
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Head from "next/head";
+import { Player } from "@/types/player";
+import { playerService } from "@/services/playerService";
+import { PlayersTable } from "@/components/PlayersTable";
+import { PlayerFormDialog } from "@/components/PlayerFormDialog";
+import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Button } from "@/components/ui/button";
-import { Plus, Users } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { UserPlus, Users, TrendingUp, DollarSign } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function HomePage() {
-  const [playerCount, setPlayerCount] = useState(0);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const stored = localStorage.getItem("caxino_players");
-    if (stored) {
-      const players = JSON.parse(stored);
-      setPlayerCount(players.length);
-    }
+    loadPlayers();
   }, []);
 
+  const loadPlayers = () => {
+    const loadedPlayers = playerService.getAll();
+    setPlayers(loadedPlayers);
+  };
+
+  const handleAddPlayer = () => {
+    setEditingPlayer(null);
+    setDialogOpen(true);
+  };
+
+  const handleEditPlayer = (player: Player) => {
+    setEditingPlayer(player);
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = (data: any) => {
+    if (editingPlayer) {
+      const updated = playerService.update(editingPlayer.id, data);
+      if (updated) {
+        toast({
+          title: "Player Updated",
+          description: `${data.firstname} ${data.lastname} has been updated successfully.`,
+        });
+      }
+    } else {
+      playerService.create(data);
+      toast({
+        title: "Player Added",
+        description: `${data.firstname} ${data.lastname} has been added successfully.`,
+      });
+    }
+    loadPlayers();
+    setDialogOpen(false);
+    setEditingPlayer(null);
+  };
+
+  const handleDeletePlayer = (id: string) => {
+    if (confirm("Are you sure you want to delete this player?")) {
+      const success = playerService.delete(id);
+      if (success) {
+        toast({
+          title: "Player Deleted",
+          description: "The player has been removed from the system.",
+          variant: "destructive",
+        });
+        loadPlayers();
+      }
+    }
+  };
+
+  const totalDeposits = players.reduce((sum, player) => sum + player.totalDeposits, 0);
+  const vipPlayers = players.filter(p => p.vipLevel === "Platinum" || p.vipLevel === "Diamond").length;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-indigo-600 rounded-lg">
-              <Users className="w-6 h-6 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold text-slate-900 dark:text-white">
-              Caxino CRM
-            </h1>
-          </div>
-          <p className="text-slate-600 dark:text-slate-400 text-lg">
-            Casino Player Management System
-          </p>
-        </div>
+    <>
+      <Head>
+        <title>Caxino CRM - Player Management</title>
+        <meta name="description" content="Casino player management system" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
 
-        {/* Stats Card */}
-        <div className="grid gap-6 mb-8 md:grid-cols-3">
-          <Card className="border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
-            <CardHeader className="pb-3">
-              <CardDescription>Total Players</CardDescription>
-              <CardTitle className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                {playerCount}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          
-          <Card className="border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
-            <CardHeader className="pb-3">
-              <CardDescription>Active Today</CardDescription>
-              <CardTitle className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                0
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          
-          <Card className="border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
-            <CardHeader className="pb-3">
-              <CardDescription>New This Week</CardDescription>
-              <CardTitle className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                0
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-
-        {/* Main Players Table Card */}
-        <Card className="border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
-          <CardHeader>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
+          <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl">Players Database</CardTitle>
-                <CardDescription>
-                  Manage your casino player information
-                </CardDescription>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    Caxino CRM
+                  </h1>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Player Management System</p>
+                </div>
               </div>
-              <Button className="bg-indigo-600 hover:bg-indigo-700">
-                <Plus className="w-4 h-4 mr-2" />
+              <ThemeSwitch />
+            </div>
+          </div>
+        </header>
+
+        <main className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card className="border-slate-200 dark:border-slate-800">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Players</p>
+                    <p className="text-3xl font-bold mt-2">{players.length}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+                    <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200 dark:border-slate-800">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">VIP Players</p>
+                    <p className="text-3xl font-bold mt-2">{vipPlayers}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200 dark:border-slate-800">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Deposits</p>
+                    <p className="text-3xl font-bold mt-2">
+                      ${totalDeposits.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">Players Database</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  Manage casino player information and statistics
+                </p>
+              </div>
+              <Button onClick={handleAddPlayer} className="gap-2">
+                <UserPlus className="w-4 h-4" />
                 Add Player
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-              <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg mb-2">No players yet</p>
-              <p className="text-sm">
-                Please share the column structure for the players table
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+
+            <PlayersTable
+              players={players}
+              onEdit={handleEditPlayer}
+              onDelete={handleDeletePlayer}
+            />
+          </div>
+        </main>
+
+        <PlayerFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onSubmit={handleSubmit}
+          player={editingPlayer}
+        />
       </div>
-    </div>
+    </>
   );
 }
