@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { playerService, PlayerWithTasks, PlayerInsert, PlayerUpdate } from "@/services/playerService";
+import { playerService, PlayerWithTasks, PlayerInsert, PlayerUpdate, vipConfig, VipLevel } from "@/services/playerService";
 import { taskService } from "@/services/taskService";
 import { PlayersTable } from "@/components/PlayersTable";
 import { Button } from "@/components/ui/button";
@@ -9,11 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, Crown, ListTodo } from "lucide-react";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
+import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
   const [players, setPlayers] = useState<PlayerWithTasks[]>([]);
   const [totalPlayers, setTotalPlayers] = useState(0);
-  const [vipPlayers, setVipPlayers] = useState(0);
+  const [vipDistribution, setVipDistribution] = useState<Record<VipLevel, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
   const [activeTasks, setActiveTasks] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<PlayerWithTasks | null>(null);
@@ -23,15 +25,15 @@ export default function Home() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [playersData, total, vip, tasks] = await Promise.all([
+      const [playersData, total, distribution, tasks] = await Promise.all([
         playerService.getPlayers(),
         playerService.getTotalPlayerCount(),
-        playerService.getVipPlayerCount(),
+        playerService.getVipLevelDistribution(),
         taskService.getActiveTaskCount(),
       ]);
       setPlayers(playersData);
       setTotalPlayers(total);
-      setVipPlayers(vip);
+      setVipDistribution(distribution);
       setActiveTasks(tasks);
     } catch (error) {
       console.error("Dashboard data fetch error:", error);
@@ -157,18 +159,30 @@ export default function Home() {
 
           <Card className="border-l-4 border-l-amber-500 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">VIP Players</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">VIP Level Distribution</CardTitle>
               <Crown className="w-5 h-5 text-amber-500" />
             </CardHeader>
             <CardContent>
               {loading ? (
-                <Skeleton className="h-10 w-20" />
+                <Skeleton className="h-20 w-full" />
               ) : (
-                <div>
-                  <p className="text-3xl font-bold">{vipPlayers}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {totalPlayers > 0 ? `${Math.round((vipPlayers / totalPlayers) * 100)}% of total` : "No players yet"}
-                  </p>
+                <div className="space-y-2">
+                  {([5, 4, 3, 2, 1] as VipLevel[]).map((level) => {
+                    const count = vipDistribution[level];
+                    const config = vipConfig[level];
+                    if (count === 0) return null;
+                    return (
+                      <div key={level} className="flex items-center justify-between">
+                        <Badge className={`${config.bgColor} ${config.color} border-0`}>
+                          Level {level}
+                        </Badge>
+                        <span className="text-sm font-semibold">{count} players</span>
+                      </div>
+                    );
+                  })}
+                  {totalPlayers === 0 && (
+                    <p className="text-sm text-muted-foreground">No players yet</p>
+                  )}
                 </div>
               )}
             </CardContent>

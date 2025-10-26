@@ -144,6 +144,28 @@ export const playerService = {
     return count || 0;
   },
 
+  async getVipLevelDistribution(): Promise<Record<VipLevel, number>> {
+    const distribution: Record<VipLevel, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    
+    const { data, error } = await supabase
+      .from("players")
+      .select("vip_level");
+
+    if (error) {
+      console.error("Error getting VIP level distribution:", error);
+      return distribution;
+    }
+
+    data?.forEach((player) => {
+      const level = player.vip_level as VipLevel;
+      if (level >= 1 && level <= 5) {
+        distribution[level]++;
+      }
+    });
+
+    return distribution;
+  },
+
   async getPlayersByVipLevel(vipLevel: VipLevel): Promise<Player[]> {
     const { data, error } = await supabase
       .from("players")
