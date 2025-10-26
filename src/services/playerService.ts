@@ -1,5 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 import * as z from "zod";
 
 export type Player = Database["public"]["Tables"]["players"]["Row"];
@@ -9,19 +10,29 @@ export type PlayerWithTasks = Player & { tasks: { count: number }[] };
 
 export type VipLevel = 1 | 2 | 3 | 4 | 5;
 
+// This schema is for form validation, so preferences is a string.
+// We'll handle JSON conversion in the component.
 export const playerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   firstname: z.string().min(1, "First name is required"),
   lastname: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
-  phone_number: z.string().optional(),
+  phone: z.string().optional(),
   dob: z.date().optional(),
   gender: z.enum(["male", "female", "other"]).optional(),
   casino: z.string().optional(),
   vip_level: z.coerce.number().min(1).max(5) as z.ZodType<VipLevel>,
   total_deposits: z.coerce.number().min(0).optional(),
   last_email_sent: z.date().optional(),
-  preferences: z.string().optional(),
+  preferences: z.string().optional().refine((val) => {
+    if (!val || val.trim() === "") return true;
+    try {
+      JSON.parse(val);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }, { message: "Invalid JSON format." }),
   notes: z.string().optional(),
 });
 

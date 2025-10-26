@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
@@ -10,6 +11,18 @@ import TaskList from "@/components/TaskList";
 import TaskFormDialog from "@/components/TaskFormDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Json } from "@/integrations/supabase/types";
+
+// Helper to format JSON for display
+const formatJson = (json: Json | null) => {
+  if (json === null || typeof json === "undefined") return "N/A";
+  try {
+    const jsonObj = typeof json === "string" ? JSON.parse(json) : json;
+    return JSON.stringify(jsonObj, null, 2);
+  } catch (e) {
+    return String(json); // Fallback for invalid JSON string
+  }
+};
 
 export default function PlayerDetailPage() {
   const router = useRouter();
@@ -133,15 +146,20 @@ export default function PlayerDetailPage() {
           <CardContent className="space-y-2">
             <p><strong>Username:</strong> {player.username}</p>
             <p><strong>Email:</strong> {player.email}</p>
-            <p><strong>Phone:</strong> {player.phone_number}</p>
+            <p><strong>Phone:</strong> {player.phone || 'N/A'}</p>
             <p><strong>DOB:</strong> {player.dob ? new Date(player.dob).toLocaleDateString() : 'N/A'}</p>
-            <p><strong>Gender:</strong> {player.gender}</p>
-            <p><strong>Casino:</strong> {player.casino}</p>
+            <p><strong>Gender:</strong> {player.gender || 'N/A'}</p>
+            <p><strong>Casino:</strong> {player.casino || 'N/A'}</p>
             <p><strong>VIP Level:</strong> {player.vip_level}</p>
             <p><strong>Total Deposits:</strong> ${player.total_deposits}</p>
             <p><strong>Last Email Sent:</strong> {player.last_email_sent ? new Date(player.last_email_sent).toLocaleString() : 'N/A'}</p>
-            <p><strong>Preferences:</strong> {player.preferences}</p>
-            <p><strong>Notes:</strong> {player.notes}</p>
+            <div>
+              <strong>Preferences:</strong>
+              <pre className="bg-slate-100 dark:bg-slate-800 p-2 rounded-md text-sm mt-1 whitespace-pre-wrap break-all">
+                <code>{formatJson(player.preferences)}</code>
+              </pre>
+            </div>
+            <p><strong>Notes:</strong> {player.notes || 'N/A'}</p>
           </CardContent>
         </Card>
 

@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Player, playerSchema, PlayerFormData, PlayerInsert, PlayerUpdate, vipConfig, VipLevel } from "@/services/playerService";
+import { Json } from "@/integrations/supabase/types";
 
 interface PlayerFormDialogProps {
   isOpen: boolean;
@@ -21,59 +23,76 @@ interface PlayerFormDialogProps {
   player: Player | null;
 }
 
-export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFormDialogProps) {
-  const form = useForm<PlayerFormData>({
-    resolver: zodResolver(playerSchema),
-    defaultValues: {
+const getResetValues = (player: Player | null) => {
+  if (!player) {
+    return {
       username: "",
       firstname: "",
       lastname: "",
       email: "",
-      phone_number: "",
+      phone: "",
       dob: undefined,
-      gender: "other",
+      gender: "other" as const,
       casino: "",
-      vip_level: 1,
+      vip_level: 1 as VipLevel,
       total_deposits: 0,
       last_email_sent: undefined,
-      preferences: "",
+      preferences: "{}",
       notes: "",
-    },
+    };
+  }
+
+  let preferencesStr = "{}";
+  if (player.preferences) {
+    try {
+      preferencesStr = JSON.stringify(player.preferences, null, 2);
+    } catch {
+      preferencesStr = String(player.preferences);
+    }
+  }
+
+  return {
+    ...player,
+    phone: player.phone ?? "",
+    dob: player.dob ? new Date(player.dob) : undefined,
+    gender: (player.gender as "male" | "female" | "other") ?? "other",
+    last_email_sent: player.last_email_sent ? new Date(player.last_email_sent) : undefined,
+    preferences: preferencesStr,
+    vip_level: player.vip_level as VipLevel,
+  };
+};
+
+export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFormDialogProps) {
+  const form = useForm<PlayerFormData>({
+    resolver: zodResolver(playerSchema),
+    defaultValues: getResetValues(null),
   });
 
   useEffect(() => {
-    if (player) {
-      form.reset({
-        ...player,
-        vip_level: player.vip_level as VipLevel,
-        gender: player.gender as "male" | "female" | "other" | undefined,
-        dob: player.dob ? new Date(player.dob) : undefined,
-        last_email_sent: player.last_email_sent ? new Date(player.last_email_sent) : undefined,
-      });
-    } else {
-      form.reset({
-        username: "",
-        firstname: "",
-        lastname: "",
-        email: "",
-        phone_number: "",
-        dob: undefined,
-        gender: "other",
-        casino: "",
-        vip_level: 1,
-        total_deposits: 0,
-        last_email_sent: undefined,
-        preferences: "",
-        notes: "",
-      });
+    if (isOpen) {
+      form.reset(getResetValues(player));
     }
   }, [player, isOpen, form]);
 
   const handleFormSubmit = (data: PlayerFormData) => {
+    let preferencesJson: Json = null;
+    try {
+      if (data.preferences) {
+        preferencesJson = JSON.parse(data.preferences);
+      }
+    } catch (e) {
+      // If parsing fails, we can either show an error or handle it.
+      // The zod schema already validates this, so this catch is a safeguard.
+      console.error("Invalid JSON in preferences", e);
+      form.setError("preferences", { type: "manual", message: "Invalid JSON format." });
+      return;
+    }
+
     onSubmit({
       ...data,
       dob: data.dob ? data.dob.toISOString() : null,
       last_email_sent: data.last_email_sent ? data.last_email_sent.toISOString() : null,
+      preferences: preferencesJson,
     });
   };
 
@@ -132,7 +151,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
               />
               <FormField
                 control={form.control}
-                name="phone_number"
+                name="phone"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
@@ -170,7 +189,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   render={({ field }) => (
                       <FormItem>
                           <FormLabel>Gender</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value || "other"}>
                               <FormControl>
                                   <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                               </FormControl>
@@ -201,7 +220,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   render={({ field }) => (
                       <FormItem>
                           <FormLabel>VIP Level</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(Number(value))} defaultValue={String(field.value)}>
+                          <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value || 1)}>
                               <FormControl>
                                   <SelectTrigger><SelectValue placeholder="Select VIP Level" /></SelectTrigger>
                               </FormControl>
@@ -221,7 +240,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Total Deposits</FormLabel>
-                    <FormControl><Input type="number" {...field} value={field.value || 0} /></FormControl>
+                    <FormControl><Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(e.target.valueAsNumber)} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -256,8 +275,8 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
               name="preferences"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Preferences</FormLabel>
-                  <FormControl><Textarea {...field} value={field.value || ""} /></FormControl>
+                  <FormLabel>Preferences (JSON format)</FormLabel>
+                  <FormControl><Textarea {...field} value={field.value || ""} rows={4} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
