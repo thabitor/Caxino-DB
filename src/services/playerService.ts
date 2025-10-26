@@ -90,7 +90,7 @@ export const playerService = {
 
     const { data: created, error } = await supabase
       .from("players")
-      .insert(insertData)
+      .insert([insertData])
       .select()
       .single();
 

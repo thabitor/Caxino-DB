@@ -94,7 +94,7 @@ export const taskService = {
 
     const { data: created, error } = await supabase
       .from("tasks")
-      .insert(insertData)
+      .insert([insertData])
       .select()
       .single();
 
@@ -163,7 +163,7 @@ export const taskService = {
     }
 
     const total = data?.length || 0;
-    const pending = data?.filter((t: any) => t.status === "pending").length || 0;
+    const pending = data?.filter((t) => t.status === "pending").length || 0;
 
     return { total, pending };
   },
