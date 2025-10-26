@@ -245,7 +245,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                               </FormControl>
                               <SelectContent>
                                   {(Object.keys(vipConfig) as unknown as VipLevel[]).map((level) => (
-                                    <SelectItem key={level} value={String(level)}>{vipConfig[level].name}</SelectItem>
+                                    <SelectItem key={level} value={String(level)}>{level} - {vipConfig[level].name}</SelectItem>
                                   ))}
                               </SelectContent>
                           </Select>
