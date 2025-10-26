@@ -217,7 +217,7 @@ export default function PlayerDetailPage() {
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <header className="sticky top-0 z-10 backdrop-blur-lg bg-background/80 border-b">
+        <header className="sticky top-0 z-10 backdrop-blur-lg bg-background/80 border-b-2">
           <div className="flex items-center justify-between h-16 px-6">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-10 w-10 rounded-full" />
@@ -240,27 +240,33 @@ export default function PlayerDetailPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <header className="sticky top-0 z-10 backdrop-blur-lg bg-background/80 border-b shadow-sm">
+      <header className="sticky top-0 z-10 backdrop-blur-lg bg-background/80 border-b-2 border-border/60 shadow-md">
         <div className="flex items-center justify-between h-16 px-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
+            <Button variant="ghost" size="icon" asChild className="hover:bg-muted/50">
               <Link href="/">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
             </Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold">{getFullName(player)}</h1>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setIsPlayerFormOpen(true)}
-                  className="h-7 px-2"
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+            <div className="flex items-center gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold">{getFullName(player)}</h1>
+                  <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
+                    {player.vip_level} - {vipInfo.name}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">@{player.username}</p>
               </div>
-              <p className="text-sm text-muted-foreground">@{player.username}</p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsPlayerFormOpen(true)}
+                className="h-8 px-3 border-2 hover:bg-accent"
+              >
+                <Edit className="w-3 h-3 mr-1" />
+                Edit
+              </Button>
             </div>
           </div>
           <ThemeSwitch />
@@ -269,88 +275,83 @@ export default function PlayerDetailPage() {
 
       <main className="flex-1 p-6 space-y-6">
         <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-2 hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Player Information</CardTitle>
-                <Badge className={`${vipInfo.bgColor} ${vipInfo.color}`}>
-                  {player.vip_level} - {vipInfo.name}
-                </Badge>
-              </div>
+          <Card className="lg:col-span-2 border-2 hover:shadow-xl transition-all hover:border-primary/20">
+            <CardHeader className="border-b-2 border-border/40 bg-muted/30">
+              <CardTitle>Player Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1">
+                <div className="space-y-1 p-3 rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="w-4 h-4" />
-                    <span>Email</span>
+                    <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="font-semibold">Email</span>
                   </div>
-                  <p className="font-medium">{player.email}</p>
+                  <p className="font-medium text-sm">{player.email}</p>
                 </div>
 
                 {player.phone && (
-                  <div className="space-y-1">
+                  <div className="space-y-1 p-3 rounded-lg border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Phone className="w-4 h-4" />
-                      <span>Phone</span>
+                      <Phone className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      <span className="font-semibold">Phone</span>
                     </div>
-                    <p className="font-medium">{player.phone}</p>
+                    <p className="font-medium text-sm">{player.phone}</p>
                   </div>
                 )}
 
                 {player.dob && (
-                  <div className="space-y-1">
+                  <div className="space-y-1 p-3 rounded-lg border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4" />
-                      <span>Date of Birth</span>
+                      <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                      <span className="font-semibold">Date of Birth</span>
                     </div>
-                    <p className="font-medium">{format(new Date(player.dob), "PPP")}</p>
+                    <p className="font-medium text-sm">{format(new Date(player.dob), "PPP")}</p>
                   </div>
                 )}
 
-                <div className="space-y-1">
+                <div className="space-y-1 p-3 rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <DollarSign className="w-4 h-4" />
-                    <span>Total Deposits</span>
+                    <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-semibold">Total Deposits</span>
                   </div>
-                  <p className="font-medium">${Number(player.total_deposits || 0).toLocaleString()}</p>
+                  <p className="font-medium text-sm">${Number(player.total_deposits || 0).toLocaleString()}</p>
                 </div>
 
                 {player.casino && (
-                  <div className="space-y-1">
+                  <div className="space-y-1 p-3 rounded-lg border-2 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Crown className="w-4 h-4" />
-                      <span>Casino</span>
+                      <Crown className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span className="font-semibold">Casino</span>
                     </div>
-                    <p className="font-medium">{player.casino}</p>
+                    <p className="font-medium text-sm">{player.casino}</p>
                   </div>
                 )}
 
                 {player.last_email_sent && (
-                  <div className="space-y-1">
+                  <div className="space-y-1 p-3 rounded-lg border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Mail className="w-4 h-4" />
-                      <span>Last Email Sent</span>
+                      <Mail className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span className="font-semibold">Last Email Sent</span>
                     </div>
-                    <p className="font-medium">{format(new Date(player.last_email_sent), "PPP")}</p>
+                    <p className="font-medium text-sm">{format(new Date(player.last_email_sent), "PPP")}</p>
                   </div>
                 )}
               </div>
 
-              <Separator />
+              <Separator className="my-4" />
               
-              <div className="space-y-2">
+              <div className="space-y-3 p-4 rounded-lg border-2 border-border/60 bg-muted/30">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                     <FileText className="w-4 h-4" />
                     <span>Notes</span>
                   </div>
                   {!isEditingNotes && (
                     <Button 
-                      variant="ghost" 
+                      variant="outline" 
                       size="sm"
                       onClick={() => setIsEditingNotes(true)}
-                      className="h-8 px-2"
+                      className="h-8 px-3 border-2"
                     >
                       <Edit className="w-3 h-3 mr-1" />
                       Edit
@@ -363,15 +364,16 @@ export default function PlayerDetailPage() {
                       value={notesValue}
                       onChange={(e) => setNotesValue(e.target.value)}
                       rows={4}
-                      className="resize-none"
+                      className="resize-none border-2"
                       placeholder="Add notes about this player..."
                     />
                     <div className="flex gap-2 justify-end">
                       <Button 
-                        variant="ghost" 
+                        variant="outline" 
                         size="sm"
                         onClick={handleCancelNotesEdit}
                         disabled={isSavingNotes}
+                        className="border-2"
                       >
                         <X className="w-4 h-4 mr-1" />
                         Cancel
@@ -380,6 +382,7 @@ export default function PlayerDetailPage() {
                         size="sm"
                         onClick={handleSaveNotes}
                         disabled={isSavingNotes}
+                        className="border-2 border-primary"
                       >
                         <Save className="w-4 h-4 mr-1" />
                         {isSavingNotes ? "Saving..." : "Save"}
@@ -387,7 +390,7 @@ export default function PlayerDetailPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded-lg">
+                  <p className="text-sm whitespace-pre-wrap bg-background p-3 rounded-lg border-2 border-border/40">
                     {player.notes || "No notes added yet."}
                   </p>
                 )}
@@ -396,56 +399,59 @@ export default function PlayerDetailPage() {
           </Card>
 
           <div className="space-y-6">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
+            <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
+              <CardHeader className="border-b-2 border-border/40 bg-muted/30">
                 <CardTitle className="text-lg">Quick Stats</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-                  <span className="text-sm text-muted-foreground">User ID</span>
-                  <span className="font-mono text-sm">{player.user_id}</span>
+              <CardContent className="space-y-3 pt-4">
+                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                  <span className="text-sm font-semibold text-muted-foreground">User ID</span>
+                  <span className="font-mono text-sm font-bold">{player.user_id}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Gender</span>
-                  <span className="font-medium capitalize">{player.gender || "Not specified"}</span>
+                <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border-2 border-purple-200 dark:border-purple-800">
+                  <span className="text-sm font-semibold text-muted-foreground">Gender</span>
+                  <span className="font-bold capitalize">{player.gender || "Not specified"}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Active Tasks</span>
-                  <span className="font-bold text-lg">{tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length}</span>
+                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border-2 border-green-200 dark:border-green-800">
+                  <span className="text-sm font-semibold text-muted-foreground">Active Tasks</span>
+                  <span className="font-bold text-xl">{tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length}</span>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
+            <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
+              <CardHeader className="border-b-2 border-border/40 bg-muted/30">
                 <CardTitle className="text-lg">Preferences</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">Communication</h4>
+              <CardContent className="space-y-4 pt-4">
+                <div className="p-3 rounded-lg border-2 border-border/40 bg-muted/20">
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    Communication
+                  </h4>
                   <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Email</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
+                      <span className="text-muted-foreground font-medium">Email</span>
                       {preferences.communication?.email !== false ? (
-                        <Check className="w-4 h-4 text-green-600" />
+                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                       ) : (
-                        <X className="w-4 h-4 text-red-600" />
+                        <X className="w-4 h-4 text-red-600 dark:text-red-400" />
                       )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">SMS</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
+                      <span className="text-muted-foreground font-medium">SMS</span>
                       {preferences.communication?.sms !== false ? (
-                        <Check className="w-4 h-4 text-green-600" />
+                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                       ) : (
-                        <X className="w-4 h-4 text-red-600" />
+                        <X className="w-4 h-4 text-red-600 dark:text-red-400" />
                       )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Phone</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
+                      <span className="text-muted-foreground font-medium">Phone</span>
                       {preferences.communication?.phone !== false ? (
-                        <Check className="w-4 h-4 text-green-600" />
+                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                       ) : (
-                        <X className="w-4 h-4 text-red-600" />
+                        <X className="w-4 h-4 text-red-600 dark:text-red-400" />
                       )}
                     </div>
                   </div>
@@ -453,56 +459,59 @@ export default function PlayerDetailPage() {
 
                 <Separator />
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Contact Time</span>
-                    <span className="font-medium text-xs">
+                <div className="space-y-2 text-sm p-3 rounded-lg border-2 border-border/40 bg-muted/20">
+                  <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
+                    <span className="text-muted-foreground font-medium">Contact Time</span>
+                    <span className="font-semibold text-xs">
                       {contactTimeLabels[preferences.contact_time || "any"]}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Language</span>
-                    <span className="font-medium">
+                  <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
+                    <span className="text-muted-foreground font-medium">Language</span>
+                    <span className="font-semibold">
                       {languageLabels[preferences.language || "en"]}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Marketing</span>
+                  <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
+                    <span className="text-muted-foreground font-medium">Marketing</span>
                     {preferences.marketing_consent ? (
-                      <Check className="w-4 h-4 text-green-600" />
+                      <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                     ) : (
-                      <X className="w-4 h-4 text-red-600" />
+                      <X className="w-4 h-4 text-red-600 dark:text-red-400" />
                     )}
                   </div>
                 </div>
 
                 <Separator />
 
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">Notifications</h4>
+                <div className="p-3 rounded-lg border-2 border-border/40 bg-muted/20">
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Notifications
+                  </h4>
                   <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Promotions</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
+                      <span className="text-muted-foreground font-medium">Promotions</span>
                       {preferences.notifications?.promotions !== false ? (
-                        <Check className="w-4 h-4 text-green-600" />
+                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                       ) : (
-                        <X className="w-4 h-4 text-red-600" />
+                        <X className="w-4 h-4 text-red-600 dark:text-red-400" />
                       )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Account Updates</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
+                      <span className="text-muted-foreground font-medium">Account Updates</span>
                       {preferences.notifications?.account_updates !== false ? (
-                        <Check className="w-4 h-4 text-green-600" />
+                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                       ) : (
-                        <X className="w-4 h-4 text-red-600" />
+                        <X className="w-4 h-4 text-red-600 dark:text-red-400" />
                       )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Game Results</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
+                      <span className="text-muted-foreground font-medium">Game Results</span>
                       {preferences.notifications?.game_results !== false ? (
-                        <Check className="w-4 h-4 text-green-600" />
+                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                       ) : (
-                        <X className="w-4 h-4 text-red-600" />
+                        <X className="w-4 h-4 text-red-600 dark:text-red-400" />
                       )}
                     </div>
                   </div>
@@ -512,8 +521,8 @@ export default function PlayerDetailPage() {
           </div>
         </div>
 
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
+        <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
+          <CardHeader className="border-b-2 border-border/40 bg-muted/30">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Tasks & Reminders</CardTitle>
@@ -521,13 +530,13 @@ export default function PlayerDetailPage() {
                   Manage player-related tasks and follow-ups
                 </p>
               </div>
-              <Button onClick={() => setIsTaskFormOpen(true)} size="sm">
+              <Button onClick={() => setIsTaskFormOpen(true)} size="sm" className="border-2 border-primary">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Task
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <TaskList
               tasks={tasks}
               onEdit={handleEditTask}
