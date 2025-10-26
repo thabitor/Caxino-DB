@@ -4,12 +4,9 @@ import type { Database } from "@/integrations/supabase/types";
 export type Player = Database["public"]["Tables"]["players"]["Row"];
 export type PlayerInsert = Database["public"]["Tables"]["players"]["Insert"];
 export type PlayerUpdate = Database["public"]["Tables"]["players"]["Update"];
+export type PlayerWithTasks = Player & { tasks: { count: number }[] };
 
 export type VipLevel = 1 | 2 | 3 | 4 | 5;
-
-export interface PlayerWithTasks extends Player {
-  tasks: { count: number }[];
-}
 
 export type PlayerFormData = Omit<Player, "id" | "created_at" | "last_email_sent">;
 
@@ -29,8 +26,8 @@ export const vipConfig: Record<VipLevel, { name: string; color: string; bgColor:
     5: { name: "Diamond", color: "text-indigo-700 dark:text-indigo-300", bgColor: "bg-indigo-100 dark:bg-indigo-900" },
 };
 
-export const getFullName = (player: { firstname: string; lastname: string }): string => {
-  return `${player.firstname} ${player.lastname}`.trim();
+export const getFullName = (player: { firstname: string | null; lastname: string | null }): string => {
+  return `${player.firstname || ""} ${player.lastname || ""}`.trim();
 };
 
 
@@ -45,7 +42,7 @@ export const playerService = {
       console.error("Error fetching players:", error);
       throw error;
     }
-    return data || [];
+    return (data as PlayerWithTasks[]) || [];
   },
 
   async getPlayerById(id: string): Promise<Player | null> {
@@ -56,11 +53,8 @@ export const playerService = {
       .single();
 
     if (error) {
+      if (error.code === "PGRST116") return null; // Not found
       console.error(`Error fetching player with id ${id}:`, error);
-      // Don't throw for 404s, just return null
-      if (error.code === "PGRST116") {
-        return null;
-      }
       throw error;
     }
     return data;
@@ -81,12 +75,9 @@ export const playerService = {
   },
 
   async updatePlayer(id: string, playerData: PlayerUpdate): Promise<Player> {
-    // Make sure last_email_sent is either a valid ISO string or null
     if (playerData.last_email_sent && !isNaN(new Date(playerData.last_email_sent).getTime())) {
         playerData.last_email_sent = new Date(playerData.last_email_sent).toISOString();
     } else {
-        // If it's invalid, don't send it. Supabase might reject it.
-        // Or set to null if that's the desired behavior for empty/invalid dates.
         delete playerData.last_email_sent;
     }
 

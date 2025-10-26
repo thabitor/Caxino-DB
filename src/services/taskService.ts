@@ -5,6 +5,8 @@ export type Task = Database["public"]["Tables"]["tasks"]["Row"];
 export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
 export type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"];
 export type TaskPriority = "low" | "medium" | "high";
+export type TaskStatus = "pending" | "in_progress" | "completed";
+export type TaskFormData = Omit<Task, "id" | "created_at" | "player_id">;
 
 export const taskService = {
   async getTasksForPlayer(playerId: string): Promise<Task[]> {
@@ -51,7 +53,6 @@ export const taskService = {
   },
 
   async toggleTaskStatus(taskId: string): Promise<Task | undefined> {
-    // First, fetch the current task to get its status
     const { data: currentTask, error: fetchError } = await supabase
       .from("tasks")
       .select("status")
@@ -63,15 +64,12 @@ export const taskService = {
       return undefined;
     }
 
-    const newStatus = currentTask.status === "completed" ? "pending" : "completed";
-
-    // Now, update the task with the new status
+    const newStatus: TaskStatus = currentTask.status === "completed" ? "pending" : "completed";
     return this.updateTask(taskId, { status: newStatus });
   },
 
   async deleteTask(id: string): Promise<void> {
     const { error } = await supabase.from("tasks").delete().eq("id", id);
-
     if (error) {
       console.error(`Error deleting task ${id}:`, error);
       throw error;

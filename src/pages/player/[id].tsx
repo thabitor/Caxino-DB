@@ -1,317 +1,172 @@
-
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import Head from "next/head";
 import Link from "next/link";
-import { playerService } from "@/services/playerService";
-import { taskService } from "@/services/taskService";
+import { Player, playerService } from "@/services/playerService";
+import { Task, TaskInsert, TaskUpdate, taskService } from "@/services/taskService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { ThemeSwitch } from "@/components/ThemeSwitch";
-import { 
-  ArrowLeft, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  DollarSign, 
-  Star,
-  Plus,
-  Clock,
-  CheckCircle2,
-  AlertCircle
-} from "lucide-react";
-import { TaskList } from "@/components/TaskList";
-import { TaskFormDialog } from "@/components/TaskFormDialog";
+import { ArrowLeft } from "lucide-react";
+import TaskList from "@/components/TaskList";
+import TaskFormDialog from "@/components/TaskFormDialog";
 import { useToast } from "@/hooks/use-toast";
-
-// Import types from the correct source
-import { Player, vipConfig } from "@/services/playerService";
-import { Task, TaskFormData } from "@/services/taskService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PlayerDetailPage() {
   const router = useRouter();
   const { id } = router.query;
-  const [player, setPlayer] = useState<Player | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (id && typeof id === "string") {
-      loadPlayerData(id);
-    }
-  }, [id]);
+  const [player, setPlayer] = useState<Player | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  const loadPlayerData = async (playerId: string) => {
-    const playerData = await playerService.getById(playerId);
-    if (playerData) {
+  const playerId = typeof id === "string" ? id : "";
+
+  const fetchData = async () => {
+    if (!playerId) return;
+    try {
+      setLoading(true);
+      const [playerData, tasksData] = await Promise.all([
+        playerService.getPlayerById(playerId),
+        taskService.getTasksForPlayer(playerId),
+      ]);
       setPlayer(playerData);
-      const playerTasks = await taskService.getByPlayerId(playerId);
-      setTasks(playerTasks);
-    } else {
-      setTimeout(() => router.push("/"), 500);
+      setTasks(tasksData);
+    } catch (error) {
+      toast({ title: "Error", description: "Could not fetch player details.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddTask = () => {
-    setEditingTask(null);
-    setTaskDialogOpen(true);
+  useEffect(() => {
+    fetchData();
+  }, [playerId]);
+
+  const handleTaskFormSubmit = async (formData: Omit<Task, "id" | "created_at" | "player_id">) => {
+    try {
+      if (editingTask) {
+        await taskService.updateTask(editingTask.id, formData as TaskUpdate);
+        toast({ title: "Task Updated", description: "The task has been successfully updated." });
+      } else {
+        await taskService.createTask({ ...formData, player_id: playerId } as TaskInsert);
+        toast({ title: "Task Created", description: "The new task has been added." });
+      }
+      setIsTaskFormOpen(false);
+      setEditingTask(null);
+      fetchData(); // Refresh data
+    } catch (error) {
+      toast({ title: "Error", description: "Could not save the task.", variant: "destructive" });
+    }
   };
 
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
-    setTaskDialogOpen(true);
+    setIsTaskFormOpen(true);
+  };
+  
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await taskService.deleteTask(taskId);
+      toast({ title: "Task Deleted", description: "The task has been removed." });
+      fetchData(); // Refresh data
+    } catch (error) {
+      toast({ title: "Error", description: "Could not delete the task.", variant: "destructive" });
+    }
   };
 
-  const handleTaskSubmit = async (data: Partial<TaskFormData>) => {
-    if (!player) return;
-
-    const payload = { ...data, playerId: player.id };
-
-    if (editingTask) {
-      await taskService.update(editingTask.id, payload);
-      toast({
-        title: "Task Updated",
-        description: "The reminder has been updated successfully.",
-      });
-    } else {
-      await taskService.create(payload as TaskFormData);
-      toast({
-        title: "Task Created",
-        description: "New reminder has been added successfully.",
-      });
+  const handleToggleTask = async (taskId: string) => {
+    try {
+      await taskService.toggleTaskStatus(taskId);
+      toast({ title: "Task Status Updated", description: "The task status has been changed." });
+      fetchData(); // Refresh data
+    } catch (error) {
+      toast({ title: "Error", description: "Could not update task status.", variant: "destructive" });
     }
-    
-    await loadPlayerData(player.id);
-    setTaskDialogOpen(false);
+  };
+
+  const handleFormClose = () => {
+    setIsTaskFormOpen(false);
     setEditingTask(null);
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!player) return;
-    
-    if (confirm("Are you sure you want to delete this task?")) {
-      await taskService.delete(taskId);
-      toast({
-        title: "Task Deleted",
-        description: "The reminder has been removed.",
-        variant: "destructive",
-      });
-      await loadPlayerData(player.id);
-    }
-  };
-
-  const handleToggleComplete = async (taskId: string) => {
-    if (!player) return;
-    
-    await taskService.toggleComplete(taskId);
-    await loadPlayerData(player.id);
-  };
+  if (loading) {
+    return (
+        <div className="p-6 space-y-6">
+            <Skeleton className="h-8 w-48" />
+            <div className="grid md:grid-cols-2 gap-6">
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+            </div>
+        </div>
+    );
+  }
 
   if (!player) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-slate-600 dark:text-slate-400">Loading player data...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center h-screen">
+        <p className="text-2xl mb-4">Player not found</p>
+        <Link href="/">
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+          </Button>
+        </Link>
       </div>
     );
   }
 
-  const vipInfo = vipConfig[player.vipLevel];
-  const pendingTasks = tasks.filter(t => !t.completed).length;
-  const completedTasks = tasks.filter(t => t.completed).length;
-
   return (
-    <>
-      <Head>
-        <title>{player.firstname} {player.lastname} - Caxino CRM</title>
-        <meta name="description" content={`Player profile for ${player.firstname} ${player.lastname}`} />
-      </Head>
+    <div className="p-6">
+      <Link href="/">
+        <Button variant="outline" className="mb-6">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+        </Button>
+      </Link>
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-        <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Link href="/">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Players
-                  </Button>
-                </Link>
-                <Separator orientation="vertical" className="h-6" />
-                <div>
-                  <h1 className="text-xl font-bold">{player.firstname} {player.lastname}</h1>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">@{player.username}</p>
-                </div>
-              </div>
-              <ThemeSwitch />
-            </div>
-          </div>
-        </header>
+      <div className="grid md:grid-cols-3 gap-6">
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>{player.firstname} {player.lastname}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p><strong>Username:</strong> {player.username}</p>
+            <p><strong>Email:</strong> {player.email}</p>
+            <p><strong>Phone:</strong> {player.phone_number}</p>
+            <p><strong>DOB:</strong> {player.dob ? new Date(player.dob).toLocaleDateString() : 'N/A'}</p>
+            <p><strong>Gender:</strong> {player.gender}</p>
+            <p><strong>Casino:</strong> {player.casino}</p>
+            <p><strong>VIP Level:</strong> {player.vip_level}</p>
+            <p><strong>Total Deposits:</strong> ${player.total_deposits}</p>
+            <p><strong>Last Email Sent:</strong> {player.last_email_sent ? new Date(player.last_email_sent).toLocaleString() : 'N/A'}</p>
+            <p><strong>Preferences:</strong> {player.preferences}</p>
+            <p><strong>Notes:</strong> {player.notes}</p>
+          </CardContent>
+        </Card>
 
-        <main className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <Card className="border-slate-200 dark:border-slate-800">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Player Overview</span>
-                    <Badge className={vipInfo.bgColor}>
-                      <Star className="w-3 h-3 mr-1" />
-                      VIP Level {player.vipLevel}
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">User ID</p>
-                        <p className="font-mono text-sm bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">{player.userId}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Date of Birth</p>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-slate-500" />
-                          <p>{new Date(player.dob).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Gender</p>
-                        <p className="capitalize">{player.gender}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Casino</p>
-                        <p>{player.casino}</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Email</p>
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-slate-500" />
-                          <a href={`mailto:${player.email}`} className="text-blue-600 dark:text-blue-400 hover:underline">
-                            {player.email}
-                          </a>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Phone</p>
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-slate-500" />
-                          <a href={`tel:${player.phone}`} className="hover:underline">
-                            {player.phone}
-                          </a>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Total Deposits</p>
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
-                          <p className="text-lg font-bold">${player.totalDeposits.toLocaleString()}</p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Last Email Sent</p>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-slate-500" />
-                          <p className="text-sm">
-                            {player.lastEmailSent ? new Date(player.lastEmailSent).toLocaleString() : "Never"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {player.preferences && (
-                    <>
-                      <Separator />
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Preferences</p>
-                        <p className="text-sm bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">{player.preferences}</p>
-                      </div>
-                    </>
-                  )}
-
-                  {player.notes && (
-                    <>
-                      <Separator />
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Notes</p>
-                        <p className="text-sm bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">{player.notes}</p>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="border-slate-200 dark:border-slate-800">
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <AlertCircle className="w-8 h-8 text-orange-600 dark:text-orange-400 mx-auto mb-2" />
-                      <p className="text-2xl font-bold">{pendingTasks}</p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Pending Tasks</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-slate-200 dark:border-slate-800">
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
-                      <p className="text-2xl font-bold">{completedTasks}</p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Completed</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card className="border-slate-200 dark:border-slate-800">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Tasks & Reminders</CardTitle>
-                    <Button onClick={handleAddTask} size="sm" className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      Add Task
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <TaskList
-                    tasks={tasks}
-                    onEdit={handleEditTask}
-                    onDelete={handleDeleteTask}
-                    onToggleComplete={handleToggleComplete}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </main>
-
-        <TaskFormDialog
-          open={taskDialogOpen}
-          onOpenChange={setTaskDialogOpen}
-          onSubmit={handleTaskSubmit}
-          task={editingTask}
-          playerId={player.id}
-        />
+        <Card className="md:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Tasks & Reminders</CardTitle>
+            <Button onClick={() => setIsTaskFormOpen(true)}>Add Task</Button>
+          </CardHeader>
+          <CardContent>
+            <TaskList
+              tasks={tasks}
+              onEdit={handleEditTask}
+              onDelete={handleDeleteTask}
+              onToggle={handleToggleTask}
+            />
+          </CardContent>
+        </Card>
       </div>
-    </>
+      
+      <TaskFormDialog
+        isOpen={isTaskFormOpen}
+        onClose={handleFormClose}
+        onSubmit={handleTaskFormSubmit}
+        task={editingTask}
+      />
+    </div>
   );
 }
