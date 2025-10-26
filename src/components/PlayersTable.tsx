@@ -1,6 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Player, vipConfig } from "@/services/playerService";
+import { Player, VipLevel, getFullName, vipTierName, vipConfig } from "@/services/playerService";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -237,3 +244,5 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
     </div>
   );
 }
+</body>
+</html>

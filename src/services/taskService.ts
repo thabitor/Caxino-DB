@@ -119,7 +119,7 @@ export const taskService = {
       .eq("id", taskId)
       .single();
 
-    if (fetchError) {
+    if (fetchError || !currentTask) {
       console.error("Error fetching task to toggle:", fetchError);
       return undefined;
     }
