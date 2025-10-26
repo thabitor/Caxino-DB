@@ -20,8 +20,8 @@ export default function HomePage() {
     loadPlayers();
   }, []);
 
-  const loadPlayers = () => {
-    const loadedPlayers = playerService.getAll();
+  const loadPlayers = async () => {
+    const loadedPlayers = await playerService.getAll();
     setPlayers(loadedPlayers);
   };
 
@@ -35,9 +35,9 @@ export default function HomePage() {
     setDialogOpen(true);
   };
 
-  const handleSubmit = (data: any) => {
+  const handleSubmit = async (data: any) => {
     if (editingPlayer) {
-      const updated = playerService.update(editingPlayer.id, data);
+      const updated = await playerService.update(editingPlayer.id, data);
       if (updated) {
         toast({
           title: "Player Updated",
@@ -45,27 +45,27 @@ export default function HomePage() {
         });
       }
     } else {
-      playerService.create(data);
+      await playerService.create(data);
       toast({
         title: "Player Added",
         description: `${data.firstname} ${data.lastname} has been added successfully.`,
       });
     }
-    loadPlayers();
+    await loadPlayers();
     setDialogOpen(false);
     setEditingPlayer(null);
   };
 
-  const handleDeletePlayer = (id: string) => {
+  const handleDeletePlayer = async (id: string) => {
     if (confirm("Are you sure you want to delete this player?")) {
-      const success = playerService.delete(id);
+      const success = await playerService.delete(id);
       if (success) {
         toast({
           title: "Player Deleted",
           description: "The player has been removed from the system.",
           variant: "destructive",
         });
-        loadPlayers();
+        await loadPlayers();
       }
     }
   };

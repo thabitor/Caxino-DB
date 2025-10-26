@@ -1,5 +1,9 @@
 import { Player, PlayerFormData, VipLevel } from "@/types/player";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+
+type PlayerInsert = Database["public"]["Tables"]["players"]["Insert"];
+type PlayerUpdate = Database["public"]["Tables"]["players"]["Update"];
 
 const isVipLevelNumber = (v: unknown): v is VipLevel => {
   return v === 1 || v === 2 || v === 3 || v === 4 || v === 5;
@@ -32,7 +36,7 @@ const mapDbPlayerToPlayer = (dbPlayer: any): Player => {
   };
 };
 
-const mapPlayerToDbInsert = (data: PlayerFormData) => {
+const mapPlayerToDbInsert = (data: PlayerFormData): PlayerInsert => {
   return {
     user_id: data.userId,
     username: data.username,
@@ -99,7 +103,7 @@ export const playerService = {
   },
 
   update: async (id: string, data: Partial<PlayerFormData>): Promise<Player | undefined> => {
-    const updateData: any = {};
+    const updateData: PlayerUpdate = {};
 
     if (data.userId !== undefined) updateData.user_id = data.userId;
     if (data.username !== undefined) updateData.username = data.username;

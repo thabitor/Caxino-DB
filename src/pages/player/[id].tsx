@@ -44,14 +44,15 @@ export default function PlayerDetailPage() {
     }
   }, [id]);
 
-  const loadPlayerData = (playerId: string) => {
-    const playerData = playerService.getById(playerId);
+  const loadPlayerData = async (playerId: string) => {
+    const playerData = await playerService.getById(playerId);
     if (playerData) {
       setPlayer(playerData);
-      const playerTasks = taskService.getByPlayerId(playerId);
+      const playerTasks = await taskService.getByPlayerId(playerId);
       setTasks(playerTasks);
     } else {
-      router.push("/");
+      // Small delay to prevent flash of loading screen if player not found
+      setTimeout(() => router.push("/"), 500);
     }
   };
 
@@ -65,47 +66,47 @@ export default function PlayerDetailPage() {
     setTaskDialogOpen(true);
   };
 
-  const handleTaskSubmit = (data: any) => {
+  const handleTaskSubmit = async (data: any) => {
     if (!player) return;
 
     if (editingTask) {
-      taskService.update(editingTask.id, data);
+      await taskService.update(editingTask.id, data);
       toast({
         title: "Task Updated",
         description: "The reminder has been updated successfully.",
       });
     } else {
-      taskService.create({ ...data, playerId: player.id });
+      await taskService.create({ ...data, playerId: player.id });
       toast({
         title: "Task Created",
         description: "New reminder has been added successfully.",
       });
     }
     
-    loadPlayerData(player.id);
+    await loadPlayerData(player.id);
     setTaskDialogOpen(false);
     setEditingTask(null);
   };
 
-  const handleDeleteTask = (taskId: string) => {
+  const handleDeleteTask = async (taskId: string) => {
     if (!player) return;
     
     if (confirm("Are you sure you want to delete this task?")) {
-      taskService.delete(taskId);
+      await taskService.delete(taskId);
       toast({
         title: "Task Deleted",
         description: "The reminder has been removed.",
         variant: "destructive",
       });
-      loadPlayerData(player.id);
+      await loadPlayerData(player.id);
     }
   };
 
-  const handleToggleComplete = (taskId: string) => {
+  const handleToggleComplete = async (taskId: string) => {
     if (!player) return;
     
-    taskService.toggleComplete(taskId);
-    loadPlayerData(player.id);
+    await taskService.toggleComplete(taskId);
+    await loadPlayerData(player.id);
   };
 
   if (!player) {

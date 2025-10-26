@@ -1,5 +1,9 @@
-import { Task, TaskFormData, priorityOrder } from "@/types/task";
+import { Task, TaskFormData, priorityOrder, TaskPriority } from "@/types/task";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+
+type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
+type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"];
 
 const mapDbTaskToTask = (dbTask: any): Task => {
   return {
@@ -7,7 +11,7 @@ const mapDbTaskToTask = (dbTask: any): Task => {
     playerId: dbTask.player_id,
     title: dbTask.title,
     description: dbTask.description || "",
-    priority: dbTask.priority as Task["priority"],
+    priority: dbTask.priority as TaskPriority,
     completed: dbTask.status === "completed",
     dueDate: dbTask.due_date,
     createdAt: dbTask.created_at,
@@ -15,7 +19,7 @@ const mapDbTaskToTask = (dbTask: any): Task => {
   };
 };
 
-const mapTaskToDbInsert = (data: TaskFormData) => {
+const mapTaskToDbInsert = (data: TaskFormData): TaskInsert => {
   return {
     player_id: data.playerId || null,
     title: data.title,
@@ -103,7 +107,7 @@ export const taskService = {
   },
 
   update: async (id: string, data: Partial<TaskFormData>): Promise<Task | undefined> => {
-    const updateData: any = {};
+    const updateData: TaskUpdate = {};
 
     if (data.playerId !== undefined) updateData.player_id = data.playerId || null;
     if (data.title !== undefined) updateData.title = data.title;
@@ -159,7 +163,7 @@ export const taskService = {
     }
 
     const total = data?.length || 0;
-    const pending = data?.filter((t) => t.status === "pending").length || 0;
+    const pending = data?.filter((t: any) => t.status === "pending").length || 0;
 
     return { total, pending };
   },
