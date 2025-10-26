@@ -1,86 +1,166 @@
-
 import { Task, TaskFormData, priorityOrder } from "@/types/task";
+import { supabase } from "@/integrations/supabase/client";
 
-const STORAGE_KEY = "caxino_tasks";
+const mapDbTaskToTask = (dbTask: any): Task => {
+  return {
+    id: dbTask.id,
+    playerId: dbTask.player_id,
+    title: dbTask.title,
+    description: dbTask.description || "",
+    priority: dbTask.priority as Task["priority"],
+    completed: dbTask.status === "completed",
+    dueDate: dbTask.due_date,
+    createdAt: dbTask.created_at,
+    updatedAt: dbTask.updated_at,
+  };
+};
+
+const mapTaskToDbInsert = (data: TaskFormData) => {
+  return {
+    player_id: data.playerId || null,
+    title: data.title,
+    description: data.description || null,
+    priority: data.priority,
+    status: data.completed ? "completed" : "pending",
+    due_date: data.dueDate || null,
+  };
+};
 
 export const taskService = {
-  getAll: (): Task[] => {
-    if (typeof window === "undefined") return [];
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-    return JSON.parse(stored) as Task[];
+  getAll: async (): Promise<Task[]> => {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching tasks:", error);
+      return [];
+    }
+
+    return (data || []).map(mapDbTaskToTask);
   },
 
-  getByPlayerId: (playerId: string): Task[] => {
-    const tasks = taskService.getAll();
-    return tasks
-      .filter((task) => task.playerId === playerId)
-      .sort((a, b) => {
-        if (a.completed !== b.completed) {
-          return a.completed ? 1 : -1;
-        }
-        const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-        if (priorityDiff !== 0) return priorityDiff;
-        if (a.dueDate && b.dueDate) {
-          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        }
-        if (a.dueDate) return -1;
-        if (b.dueDate) return 1;
-        return 0;
-      });
+  getByPlayerId: async (playerId: string): Promise<Task[]> => {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching tasks for player:", error);
+      return [];
+    }
+
+    const tasks = (data || []).map(mapDbTaskToTask);
+
+    return tasks.sort((a, b) => {
+      if (a.completed !== b.completed) {
+        return a.completed ? 1 : -1;
+      }
+      const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+      if (a.dueDate && b.dueDate) {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      }
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      return 0;
+    });
   },
 
-  getById: (id: string): Task | undefined => {
-    const tasks = taskService.getAll();
-    return tasks.find((task) => task.id === id);
+  getById: async (id: string): Promise<Task | undefined> => {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      console.error("Error fetching task:", error);
+      return undefined;
+    }
+
+    return data ? mapDbTaskToTask(data) : undefined;
   },
 
-  create: (data: TaskFormData): Task => {
-    const tasks = taskService.getAll();
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      ...data,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    tasks.push(newTask);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    return newTask;
+  create: async (data: TaskFormData): Promise<Task | undefined> => {
+    const insertData = mapTaskToDbInsert(data);
+
+    const { data: created, error } = await supabase
+      .from("tasks")
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating task:", error);
+      return undefined;
+    }
+
+    return created ? mapDbTaskToTask(created) : undefined;
   },
 
-  update: (id: string, data: Partial<TaskFormData>): Task | undefined => {
-    const tasks = taskService.getAll();
-    const index = tasks.findIndex((task) => task.id === id);
-    if (index === -1) return undefined;
+  update: async (id: string, data: Partial<TaskFormData>): Promise<Task | undefined> => {
+    const updateData: any = {};
 
-    tasks[index] = {
-      ...tasks[index],
-      ...data,
-      updatedAt: new Date().toISOString(),
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    return tasks[index];
+    if (data.playerId !== undefined) updateData.player_id = data.playerId || null;
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.description !== undefined) updateData.description = data.description || null;
+    if (data.priority !== undefined) updateData.priority = data.priority;
+    if (data.completed !== undefined) updateData.status = data.completed ? "completed" : "pending";
+    if (data.dueDate !== undefined) updateData.due_date = data.dueDate || null;
+
+    const { data: updated, error } = await supabase
+      .from("tasks")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating task:", error);
+      return undefined;
+    }
+
+    return updated ? mapDbTaskToTask(updated) : undefined;
   },
 
-  delete: (id: string): boolean => {
-    const tasks = taskService.getAll();
-    const filtered = tasks.filter((task) => task.id !== id);
-    if (filtered.length === tasks.length) return false;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  delete: async (id: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from("tasks")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error deleting task:", error);
+      return false;
+    }
+
     return true;
   },
 
-  toggleComplete: (id: string): Task | undefined => {
-    const task = taskService.getById(id);
+  toggleComplete: async (id: string): Promise<Task | undefined> => {
+    const task = await taskService.getById(id);
     if (!task) return undefined;
     return taskService.update(id, { completed: !task.completed });
   },
 
-  getTaskCountByPlayerId: (playerId: string): { total: number; pending: number } => {
-    const tasks = taskService.getByPlayerId(playerId);
-    return {
-      total: tasks.length,
-      pending: tasks.filter((t) => !t.completed).length,
-    };
+  getTaskCountByPlayerId: async (playerId: string): Promise<{ total: number; pending: number }> => {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("status")
+      .eq("player_id", playerId);
+
+    if (error) {
+      console.error("Error fetching task count:", error);
+      return { total: 0, pending: 0 };
+    }
+
+    const total = data?.length || 0;
+    const pending = data?.filter((t) => t.status === "pending").length || 0;
+
+    return { total, pending };
   },
 };

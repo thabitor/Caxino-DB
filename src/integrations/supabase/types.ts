@@ -13,22 +13,106 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      // Add your tables here
+      players: {
+        Row: {
+          id: string
+          user_id: string
+          username: string
+          firstname: string
+          lastname: string
+          dob: string | null
+          gender: string | null
+          email: string
+          phone: string | null
+          casino: string | null
+          vip_level: number
+          total_deposits: number
+          last_email_sent: string | null
+          preferences: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          username: string
+          firstname: string
+          lastname: string
+          dob?: string | null
+          gender?: string | null
+          email: string
+          phone?: string | null
+          casino?: string | null
+          vip_level?: number
+          total_deposits?: number
+          last_email_sent?: string | null
+          preferences?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          username?: string
+          firstname?: string
+          lastname?: string
+          dob?: string | null
+          gender?: string | null
+          email?: string
+          phone?: string | null
+          casino?: string | null
+          vip_level?: number
+          total_deposits?: number
+          last_email_sent?: string | null
+          preferences?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      tasks: {
+        Row: {
+          id: string
+          player_id: string | null
+          title: string
+          description: string | null
+          priority: string
+          status: string
+          due_date: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          player_id?: string | null
+          title: string
+          description?: string | null
+          priority?: string
+          status?: string
+          due_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          player_id?: string | null
+          title?: string
+          description?: string | null
+          priority?: string
+          status?: string
+          due_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
-    Views: {
-      // Add your views here
-    }
-    Functions: {
-      // Add your functions here
-    }
-    Enums: {
-      // Add your enums here
-    }
-    CompositeTypes: {
-      // Add your composite types here
-    }
+    Views: {}
+    Functions: {}
+    Enums: {}
+    CompositeTypes: {}
   }
 }
 
 // Project reference: ccd972dd-2033-400a-bfb4-4562f0419650
-// Last updated: 2025-10-26T16:24:48.575610
