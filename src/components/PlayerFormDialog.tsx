@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { Player, playerSchema, PlayerFormData, PlayerInsert, PlayerUpdate, vipConfig } from "@/services/playerService";
+import { Player, playerSchema, PlayerFormData, PlayerInsert, PlayerUpdate, vipConfig, VipLevel } from "@/services/playerService";
 
 interface PlayerFormDialogProps {
   isOpen: boolean;
