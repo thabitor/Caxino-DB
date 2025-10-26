@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, CheckCircle } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, CheckCircle, AlertOctagon, Timer, XCircle, Check, Loader } from "lucide-react";
 
 interface TaskListProps {
   tasks: Task[];
@@ -15,10 +15,10 @@ interface TaskListProps {
 }
 
 const statusIcons: Record<TaskStatus, ReactNode> = {
-  pending: <div className="w-3 h-3 rounded-full bg-yellow-500" />,
-  in_progress: <div className="w-3 h-3 rounded-full bg-blue-500" />,
-  completed: <div className="w-3 h-3 rounded-full bg-green-500" />,
-  cancelled: <div className="w-3 h-3 rounded-full bg-gray-500" />,
+  pending: <Timer className="w-4 h-4 text-yellow-500" />,
+  in_progress: <Loader className="w-4 h-4 text-blue-500 animate-spin" />,
+  completed: <CheckCircle className="w-4 h-4 text-green-500" />,
+  cancelled: <XCircle className="w-4 h-4 text-gray-500" />,
 };
 
 export function TaskList({ tasks, onEdit, onDelete, onComplete }: TaskListProps) {
@@ -58,7 +58,7 @@ export function TaskList({ tasks, onEdit, onDelete, onComplete }: TaskListProps)
                   <DropdownMenuContent align="end">
                     {task.status !== 'completed' && (
                        <DropdownMenuItem onClick={() => onComplete(task.id)}>
-                         <CheckCircle className="mr-2 h-4 w-4" />
+                         <Check className="mr-2 h-4 w-4" />
                          <span>Mark as Complete</span>
                        </DropdownMenuItem>
                     )}
