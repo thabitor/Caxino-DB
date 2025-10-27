@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { playerService, PlayerWithTasks, PlayerInsert, PlayerUpdate, vipConfig, VipLevel } from "@/services/playerService";
 import { taskService } from "@/services/taskService";
@@ -8,9 +7,11 @@ import { PlayerFormDialog } from "@/components/PlayerFormDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Crown, ListTodo } from "lucide-react";
+import { Users, Crown, ListTodo, LogOut } from "lucide-react";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Badge } from "@/components/ui/badge";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
   const [players, setPlayers] = useState<PlayerWithTasks[]>([]);
@@ -21,6 +22,7 @@ export default function Home() {
   const [editingPlayer, setEditingPlayer] = useState<PlayerWithTasks | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { signOut, user } = useAuth();
 
   const fetchDashboardData = async () => {
     try {
@@ -111,137 +113,173 @@ export default function Home() {
     setEditingPlayer(null);
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({ 
+        title: "Signed out", 
+        description: "You have been successfully signed out." 
+      });
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast({ 
+        title: "Error", 
+        description: "Could not sign out. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <header className="sticky top-0 z-10 backdrop-blur-lg bg-background/80 border-b shadow-sm">
-        <div className="flex items-center justify-between h-16 px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
-              <Crown className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-                Caxino CRM
-              </h1>
-              <p className="text-xs text-muted-foreground">Player Management System</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <ThemeSwitch />
-            <Button 
-              onClick={() => setIsFormOpen(true)}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-            >
-              Add New Player
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 p-6 space-y-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Players</CardTitle>
-              <Users className="w-5 h-5 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <Skeleton className="h-10 w-20" />
-              ) : (
-                <div>
-                  <p className="text-3xl font-bold">{totalPlayers}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Active in database</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-amber-500 hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">VIP Level Distribution</CardTitle>
-              <Crown className="w-5 h-5 text-amber-500" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <Skeleton className="h-20 w-full" />
-              ) : (
-                <div className="space-y-2">
-                  {([5, 4, 3, 2, 1] as VipLevel[]).map((level) => {
-                    const count = vipDistribution[level];
-                    const config = vipConfig[level];
-                    if (count === 0) return null;
-                    return (
-                      <div key={level} className="flex items-center justify-between">
-                        <Badge className={`${config.bgColor} ${config.color} border-0`}>
-                          Level {level}
-                        </Badge>
-                        <span className="text-sm font-semibold">{count} players</span>
-                      </div>
-                    );
-                  })}
-                  {totalPlayers === 0 && (
-                    <p className="text-sm text-muted-foreground">No players yet</p>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Tasks</CardTitle>
-              <ListTodo className="w-5 h-5 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <Skeleton className="h-10 w-20" />
-              ) : (
-                <div>
-                  <p className="text-3xl font-bold">{activeTasks}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Pending & in progress</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-center justify-between">
+    <ProtectedRoute>
+      <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <header className="sticky top-0 z-10 backdrop-blur-lg bg-background/80 border-b shadow-sm">
+          <div className="flex items-center justify-between h-16 px-6">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+                <Crown className="w-6 h-6 text-white" />
+              </div>
               <div>
-                <CardTitle>Players Directory</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Manage and view all casino players
-                </p>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+                  Caxino CRM
+                </h1>
+                <p className="text-xs text-muted-foreground">Player Management System</p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : (
-              <PlayersTable 
-                players={players} 
-                onEdit={handleEdit} 
-                onDelete={handleDelete} 
-              />
-            )}
-          </CardContent>
-        </Card>
-      </main>
+            <div className="flex items-center gap-3">
+              {user && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border">
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Signed in as</p>
+                    <p className="text-sm font-medium">{user.email}</p>
+                  </div>
+                </div>
+              )}
+              <ThemeSwitch />
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                className="gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </Button>
+              <Button 
+                onClick={() => setIsFormOpen(true)}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              >
+                Add New Player
+              </Button>
+            </div>
+          </div>
+        </header>
 
-      <PlayerFormDialog
-        isOpen={isFormOpen}
-        onClose={handleFormClose}
-        onSubmit={handleFormSubmit}
-        player={editingPlayer}
-      />
-    </div>
+        <main className="flex-1 p-6 space-y-6">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Players</CardTitle>
+                <Users className="w-5 h-5 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <Skeleton className="h-10 w-20" />
+                ) : (
+                  <div>
+                    <p className="text-3xl font-bold">{totalPlayers}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Active in database</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-amber-500 hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">VIP Level Distribution</CardTitle>
+                <Crown className="w-5 h-5 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <Skeleton className="h-20 w-full" />
+                ) : (
+                  <div className="space-y-2">
+                    {([5, 4, 3, 2, 1] as VipLevel[]).map((level) => {
+                      const count = vipDistribution[level];
+                      const config = vipConfig[level];
+                      if (count === 0) return null;
+                      return (
+                        <div key={level} className="flex items-center justify-between">
+                          <Badge className={`${config.bgColor} ${config.color} border-0`}>
+                            Level {level}
+                          </Badge>
+                          <span className="text-sm font-semibold">{count} players</span>
+                        </div>
+                      );
+                    })}
+                    {totalPlayers === 0 && (
+                      <p className="text-sm text-muted-foreground">No players yet</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Active Tasks</CardTitle>
+                <ListTodo className="w-5 h-5 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <Skeleton className="h-10 w-20" />
+                ) : (
+                  <div>
+                    <p className="text-3xl font-bold">{activeTasks}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Pending & in progress</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Players Directory</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Manage and view all casino players
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : (
+                <PlayersTable 
+                  players={players} 
+                  onEdit={handleEdit} 
+                  onDelete={handleDelete} 
+                />
+              )}
+            </CardContent>
+          </Card>
+        </main>
+
+        <PlayerFormDialog
+          isOpen={isFormOpen}
+          onClose={handleFormClose}
+          onSubmit={handleFormSubmit}
+          player={editingPlayer}
+        />
+      </div>
+    </ProtectedRoute>
   );
 }
