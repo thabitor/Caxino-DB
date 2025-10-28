@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -110,17 +111,39 @@ export const authService = {
     }
   },
 
-  // Sign out
+  // Sign out with improved session cleanup
   async signOut(): Promise<{ error: AuthError | null }> {
     try {
-      const { error } = await supabase.auth.signOut();
+      // Sign out with scope: 'global' to clear all sessions across devices/tabs
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
       
       if (error) {
+        console.error("Supabase signOut error:", error);
         return { error: { message: error.message } };
+      }
+
+      // Additional cleanup: clear any cached session data
+      if (typeof window !== 'undefined') {
+        // Clear localStorage items related to auth
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.startsWith('sb-') || key.includes('auth-token')) {
+            localStorage.removeItem(key);
+          }
+        });
+        
+        // Clear sessionStorage items related to auth
+        const sessionKeys = Object.keys(sessionStorage);
+        sessionKeys.forEach(key => {
+          if (key.startsWith('sb-') || key.includes('auth-token')) {
+            sessionStorage.removeItem(key);
+          }
+        });
       }
 
       return { error: null };
     } catch (error) {
+      console.error("Sign out exception:", error);
       return { 
         error: { message: "An unexpected error occurred during sign out" } 
       };
