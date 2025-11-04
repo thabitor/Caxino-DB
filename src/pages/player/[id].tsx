@@ -13,12 +13,13 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Phone, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { CopyButton } from "@/components/CopyButton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface PlayerPreferences {
   communication?: {
@@ -284,6 +285,9 @@ export default function PlayerDetailPage() {
   const vipInfo = vipConfig[player.vip_level as VipLevel];
   const preferences = parsePreferences(player.preferences);
 
+  const pendingTasks = tasks.filter(t => t.status !== "completed" && t.status !== "cancelled" && !t.is_call);
+  const pendingCalls = tasks.filter(t => t.status !== "completed" && t.status !== "cancelled" && t.is_call);
+
   return (
     <ProtectedRoute>
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -343,6 +347,85 @@ export default function PlayerDetailPage() {
         </header>
 
         <main className="flex-1 p-6 space-y-6">
+          {(pendingTasks.length > 0 || pendingCalls.length > 0) && (
+            <div className="space-y-3">
+              {pendingCalls.length > 0 && (
+                <Alert className="border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/30">
+                  <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <AlertTitle className="text-blue-900 dark:text-blue-100 font-bold text-lg">
+                    Scheduled Calls ({pendingCalls.length})
+                  </AlertTitle>
+                  <AlertDescription className="text-blue-800 dark:text-blue-200 mt-2">
+                    <div className="space-y-2">
+                      {pendingCalls.slice(0, 3).map(call => (
+                        <div key={call.id} className="flex items-center justify-between p-2 rounded bg-white dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                          <div>
+                            <p className="font-semibold">{call.title}</p>
+                            {call.phone_number && (
+                              <p className="text-sm flex items-center gap-1">
+                                <Phone className="w-3 h-3" />
+                                {call.phone_number}
+                              </p>
+                            )}
+                            {call.due_date && (
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(call.due_date), "PPp")}
+                              </p>
+                            )}
+                          </div>
+                          <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                            {call.priority}
+                          </Badge>
+                        </div>
+                      ))}
+                      {pendingCalls.length > 3 && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                          +{pendingCalls.length - 3} more scheduled calls
+                        </p>
+                      )}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {pendingTasks.length > 0 && (
+                <Alert className="border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+                  <Bell className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <AlertTitle className="text-amber-900 dark:text-amber-100 font-bold text-lg">
+                    Pending Tasks ({pendingTasks.length})
+                  </AlertTitle>
+                  <AlertDescription className="text-amber-800 dark:text-amber-200 mt-2">
+                    <div className="space-y-2">
+                      {pendingTasks.slice(0, 3).map(task => (
+                        <div key={task.id} className="flex items-center justify-between p-2 rounded bg-white dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                          <div>
+                            <p className="font-semibold">{task.title}</p>
+                            {task.description && (
+                              <p className="text-sm line-clamp-1">{task.description}</p>
+                            )}
+                            {task.due_date && (
+                              <p className="text-xs text-muted-foreground">
+                                Due: {format(new Date(task.due_date), "PPp")}
+                              </p>
+                            )}
+                          </div>
+                          <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">
+                            {task.priority}
+                          </Badge>
+                        </div>
+                      ))}
+                      {pendingTasks.length > 3 && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                          +{pendingTasks.length - 3} more pending tasks
+                        </p>
+                      )}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-6 lg:grid-cols-3">
             <Card className="lg:col-span-2 border-2 hover:shadow-xl transition-all hover:border-primary/20">
               <CardHeader className="border-b-2 border-border/40 bg-muted/30">
