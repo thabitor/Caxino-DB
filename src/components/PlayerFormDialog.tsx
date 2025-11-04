@@ -74,7 +74,8 @@ const getResetValues = (player: Player | null): PlayerFormData => {
 };
 
 export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFormDialogProps) {
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [dobOpen, setDobOpen] = useState(false);
+  const [emailDateOpen, setEmailDateOpen] = useState(false);
   
   const form = useForm<PlayerFormData>({
     resolver: zodResolver(playerSchema),
@@ -84,7 +85,8 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
   useEffect(() => {
     if (isOpen) {
       form.reset(getResetValues(player));
-      setIsDatePickerOpen(false);
+      setDobOpen(false);
+      setEmailDateOpen(false);
     }
   }, [player, isOpen, form]);
 
@@ -109,14 +111,8 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
     onSubmit(submissionData);
   };
 
-  const handleDialogOpenChange = (open: boolean) => {
-    if (!open && !isDatePickerOpen) {
-      onClose();
-    }
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{player ? "Edit Player" : "Create New Player"}</DialogTitle>
@@ -197,29 +193,37 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   render={({ field }) => (
                     <FormItem className="flex flex-col pt-2">
                       <FormLabel>Date of Birth</FormLabel>
-                      <Popover 
-                        modal={false}
-                        onOpenChange={(open) => setIsDatePickerOpen(open)}
-                      >
+                      <Popover open={dobOpen} onOpenChange={setDobOpen}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button 
-                              variant={"outline"} 
+                              variant="outline" 
                               className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                               type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDobOpen(true);
+                              }}
                             >
                               {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 z-[100]" align="start" sideOffset={4}>
+                        <PopoverContent 
+                          className="w-auto p-0" 
+                          align="start"
+                          onInteractOutside={(e) => {
+                            e.preventDefault();
+                          }}
+                        >
                           <Calendar 
                             mode="single" 
                             selected={field.value} 
                             onSelect={(date) => {
                               field.onChange(date);
-                              setIsDatePickerOpen(false);
+                              setDobOpen(false);
                             }} 
                             disabled={(date) => date > new Date() || date < new Date("1900-01-01")} 
                             initialFocus 
@@ -298,29 +302,37 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   render={({ field }) => (
                     <FormItem className="flex flex-col pt-2">
                       <FormLabel>Last Email Sent</FormLabel>
-                      <Popover 
-                        modal={false}
-                        onOpenChange={(open) => setIsDatePickerOpen(open)}
-                      >
+                      <Popover open={emailDateOpen} onOpenChange={setEmailDateOpen}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button 
-                              variant={"outline"} 
+                              variant="outline" 
                               className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                               type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEmailDateOpen(true);
+                              }}
                             >
                               {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 z-[100]" align="start" sideOffset={4}>
+                        <PopoverContent 
+                          className="w-auto p-0" 
+                          align="start"
+                          onInteractOutside={(e) => {
+                            e.preventDefault();
+                          }}
+                        >
                           <Calendar 
                             mode="single" 
                             selected={field.value} 
                             onSelect={(date) => {
                               field.onChange(date);
-                              setIsDatePickerOpen(false);
+                              setEmailDateOpen(false);
                             }} 
                             initialFocus 
                           />
