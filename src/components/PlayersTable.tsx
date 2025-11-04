@@ -92,6 +92,7 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
               <SortableHeader field="username" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Username</SortableHeader>
               <SortableHeader field="firstname" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Full Name</SortableHeader>
               <SortableHeader field="email" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Email</SortableHeader>
+              <SortableHeader field="phone" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Phone</SortableHeader>
               <SortableHeader field="vip_level" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>VIP Level</SortableHeader>
               <SortableHeader field="task_count" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Tasks</SortableHeader>
               <TableHead>Actions</TableHead>
@@ -120,6 +121,16 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
                     </div>
                   </TableCell>
                   <TableCell>
+                    {player.phone ? (
+                      <div className="flex items-center gap-2">
+                        <span>{player.phone}</span>
+                        <CopyButton text={player.phone} label="Phone" />
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground italic text-sm">Not provided</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <Badge className={`${vipConfig[player.vip_level as VipLevel].bgColor} ${vipConfig[player.vip_level as VipLevel].color} hover:${vipConfig[player.vip_level as VipLevel].bgColor}`}>
                       {player.vip_level} - {vipConfig[player.vip_level as VipLevel].name}
                     </Badge>
@@ -134,7 +145,7 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
                 </TableRow>
               ))
             ) : (
-              <TableRow><TableCell colSpan={6} className="h-24 text-center">No players found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="h-24 text-center">No players found.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
