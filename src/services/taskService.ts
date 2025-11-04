@@ -35,6 +35,19 @@ export const statusConfig: Record<TaskStatus, { label: string; color: string; bg
 };
 
 export const taskService = {
+  async getAllTasks(): Promise<Task[]> {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .order("due_date", { ascending: true, nullsFirst: false });
+
+    if (error) {
+      console.error("Error fetching all tasks:", error);
+      throw error;
+    }
+    return data || [];
+  },
+
   async getTasksByPlayerId(playerId: string): Promise<Task[]> {
     const { data, error } = await supabase
       .from("tasks")
