@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -38,6 +38,63 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      call_logs: {
+        Row: {
+          call_time: string
+          call_topic: string | null
+          completed_at: string | null
+          created_at: string | null
+          duration_minutes: number | null
+          id: string
+          notes: string | null
+          phone_number: string
+          player_id: string
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          call_time: string
+          call_topic?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          phone_number: string
+          player_id: string
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          call_time?: string
+          call_topic?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          phone_number?: string
+          player_id?: string
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       players: {
         Row: {
@@ -101,11 +158,14 @@ export type Database = {
       }
       tasks: {
         Row: {
+          call_topic: string | null
           completed_at: string | null
           created_at: string | null
           description: string | null
           due_date: string | null
           id: string
+          is_call: boolean | null
+          phone_number: string | null
           player_id: string
           priority: string | null
           status: string | null
@@ -113,11 +173,14 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          call_topic?: string | null
           completed_at?: string | null
           created_at?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
+          is_call?: boolean | null
+          phone_number?: string | null
           player_id: string
           priority?: string | null
           status?: string | null
@@ -125,11 +188,14 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          call_topic?: string | null
           completed_at?: string | null
           created_at?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
+          is_call?: boolean | null
+          phone_number?: string | null
           player_id?: string
           priority?: string | null
           status?: string | null
