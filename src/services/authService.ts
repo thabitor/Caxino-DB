@@ -114,31 +114,12 @@ export const authService = {
   // Sign out with improved session cleanup
   async signOut(): Promise<{ error: AuthError | null }> {
     try {
-      // Sign out with scope: 'global' to clear all sessions across devices/tabs
+      // Sign out with scope: 'local' for faster performance
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       
       if (error) {
         console.error("Supabase signOut error:", error);
         return { error: { message: error.message } };
-      }
-
-      // Additional cleanup: clear any cached session data
-      if (typeof window !== 'undefined') {
-        // Clear localStorage items related to auth
-        const keys = Object.keys(localStorage);
-        keys.forEach(key => {
-          if (key.startsWith('sb-') || key.includes('auth-token')) {
-            localStorage.removeItem(key);
-          }
-        });
-        
-        // Clear sessionStorage items related to auth
-        const sessionKeys = Object.keys(sessionStorage);
-        sessionKeys.forEach(key => {
-          if (key.startsWith('sb-') || key.includes('auth-token')) {
-            sessionStorage.removeItem(key);
-          }
-        });
       }
 
       return { error: null };

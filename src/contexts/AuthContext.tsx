@@ -1,5 +1,4 @@
-
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { authService, type AuthUser } from "@/services/authService";
 import type { Session } from "@supabase/supabase-js";
 import { useRouter } from "next/router";
@@ -15,27 +14,58 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function to add timeout to promises
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), timeoutMs)
+    ),
+  ]);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const isInitializing = useRef(false);
+  const isFetchingUser = useRef(false);
 
   useEffect(() => {
     // Check active sessions and subscribe to auth changes
     const initAuth = async () => {
+      // Prevent duplicate initialization
+      if (isInitializing.current) return;
+      isInitializing.current = true;
+
       try {
-        const currentSession = await authService.getCurrentSession();
+        // Fetch session with timeout protection
+        const currentSession = await withTimeout(
+          authService.getCurrentSession(),
+          5000 // 5 second timeout
+        );
+        
         setSession(currentSession);
         
-        if (currentSession) {
-          const currentUser = await authService.getCurrentUser();
-          setUser(currentUser);
+        // Only fetch user if we have a session
+        if (currentSession?.user) {
+          // Use session user data directly instead of extra API call
+          setUser({
+            id: currentSession.user.id,
+            email: currentSession.user.email || "",
+            user_metadata: currentSession.user.user_metadata,
+            created_at: currentSession.user.created_at
+          });
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
+        // On timeout or error, set empty state and continue
+        setSession(null);
+        setUser(null);
       } finally {
         setLoading(false);
+        isInitializing.current = false;
       }
     };
 
@@ -47,15 +77,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log("Auth state change:", event, session ? "Session exists" : "No session");
         
         setSession(session);
-        if (session) {
-          const currentUser = await authService.getCurrentUser();
-          setUser(currentUser);
+        
+        if (session?.user) {
+          // Use session user data directly - no extra API call needed
+          setUser({
+            id: session.user.id,
+            email: session.user.email || "",
+            user_metadata: session.user.user_metadata,
+            created_at: session.user.created_at
+          });
         } else {
           setUser(null);
           
           // Handle sign out event - redirect to login
           if (event === 'SIGNED_OUT') {
-            // Use replace to prevent back navigation to protected pages
             router.replace('/auth/login');
           }
         }
@@ -69,29 +104,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { user: authUser, error } = await authService.signIn(email, password);
+      // Prevent duplicate fetches
+      if (isFetchingUser.current) {
+        return { error: "Sign in already in progress" };
+      }
+      isFetchingUser.current = true;
+
+      // Add timeout protection to sign-in
+      const { user: authUser, error } = await withTimeout(
+        authService.signIn(email, password),
+        10000 // 10 second timeout for sign-in
+      );
+      
       if (error) {
         return { error: error.message };
       }
-      setUser(authUser);
+      
+      // User will be set by the auth state change listener
+      // No need to set it here to avoid duplicate operations
+      
       return { error: null };
     } catch (error) {
       console.error("Sign in error:", error);
-      return { error: "Failed to sign in. Please try again." };
+      return { error: "Sign in timeout or network error. Please try again." };
+    } finally {
+      isFetchingUser.current = false;
     }
   };
 
   const signUp = async (email: string, password: string) => {
     try {
-      const { user: authUser, error } = await authService.signUp(email, password);
+      // Prevent duplicate fetches
+      if (isFetchingUser.current) {
+        return { error: "Sign up already in progress" };
+      }
+      isFetchingUser.current = true;
+
+      // Add timeout protection to sign-up
+      const { user: authUser, error } = await withTimeout(
+        authService.signUp(email, password),
+        10000 // 10 second timeout for sign-up
+      );
+      
       if (error) {
         return { error: error.message };
       }
-      setUser(authUser);
+      
+      // User will be set by the auth state change listener
+      
       return { error: null };
     } catch (error) {
       console.error("Sign up error:", error);
-      return { error: "Failed to sign up. Please try again." };
+      return { error: "Sign up timeout or network error. Please try again." };
+    } finally {
+      isFetchingUser.current = false;
     }
   };
 
@@ -101,13 +167,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setSession(null);
       
-      // Perform actual sign out
-      const { error } = await authService.signOut();
-      
-      if (error) {
-        console.error("Sign out error:", error);
-        throw new Error(error.message);
-      }
+      // Perform actual sign out with timeout
+      await withTimeout(authService.signOut(), 5000);
       
       // Force redirect to login page
       await router.replace('/auth/login');
