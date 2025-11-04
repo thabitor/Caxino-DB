@@ -132,9 +132,9 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
     return (
       <div className="flex items-center gap-2">
         {birthdayBadge && (
-          <div className={`flex items-center gap-1 px-2 py-1 rounded-full border ${birthdayBadge.className}`}>
-            <span>{birthdayBadge.emoji}</span>
-            <span className="text-xs font-semibold">{birthdayBadge.text}</span>
+          <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full border text-[10px] ${birthdayBadge.className}`}>
+            <span className="text-xs leading-none">{birthdayBadge.emoji}</span>
+            <span className="font-semibold leading-none">{birthdayBadge.text}</span>
           </div>
         )}
         {taskCount > 0 && (
