@@ -11,7 +11,7 @@ export type PlayerWithTasks = Player & {
   earliest_task_due_date?: string | null;
 };
 
-export type VipLevel = 1 | 2 | 3 | 4 | 5;
+export type VipLevel = 3 | 4 | 5;
 
 export const playerSchema = z.object({
   user_id: z.string().min(1, "User ID is required"),
@@ -23,7 +23,7 @@ export const playerSchema = z.object({
   dob: z.date().optional(),
   gender: z.enum(["male", "female", "other"]).optional(),
   casino: z.string().optional(),
-  vip_level: z.coerce.number().min(1).max(5) as z.ZodType<VipLevel>,
+  vip_level: z.coerce.number().min(3).max(5) as z.ZodType<VipLevel>,
   total_deposits: z.coerce.number().min(0).optional(),
   last_email_sent: z.date().optional(),
   preferences: z.string().optional().refine((val) => {
@@ -41,8 +41,6 @@ export const playerSchema = z.object({
 export type PlayerFormData = z.infer<typeof playerSchema>;
 
 export const vipConfig: Record<VipLevel, { name: string; color: string; bgColor: string }> = {
-  1: { name: "Bronze", color: "text-amber-700 dark:text-amber-300", bgColor: "bg-amber-100 dark:bg-amber-900/30" },
-  2: { name: "Silver", color: "text-slate-700 dark:text-slate-300", bgColor: "bg-slate-100 dark:bg-slate-900/30" },
   3: { name: "Gold", color: "text-yellow-700 dark:text-yellow-300", bgColor: "bg-yellow-100 dark:bg-yellow-900/30" },
   4: { name: "Platinum", color: "text-cyan-700 dark:text-cyan-300", bgColor: "bg-cyan-100 dark:bg-cyan-900/30" },
   5: { name: "Diamond", color: "text-indigo-700 dark:text-indigo-300", bgColor: "bg-indigo-100 dark:bg-indigo-900/30" },
@@ -188,7 +186,7 @@ export const playerService = {
   },
 
   async getVipLevelDistribution(): Promise<Record<VipLevel, number>> {
-    const distribution: Record<VipLevel, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const distribution: Record<VipLevel, number> = { 3: 0, 4: 0, 5: 0 };
     
     const { data, error } = await supabase
       .from("players")
@@ -201,7 +199,7 @@ export const playerService = {
 
     data?.forEach((player) => {
       const level = player.vip_level as VipLevel;
-      if (level >= 1 && level <= 5) {
+      if (level >= 3 && level <= 5) {
         distribution[level]++;
       }
     });

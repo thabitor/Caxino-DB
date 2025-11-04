@@ -31,7 +31,7 @@ const getResetValues = (player: Player | null): PlayerFormData => {
       dob: undefined,
       gender: "other",
       casino: "",
-      vip_level: 1,
+      vip_level: 3,
       total_deposits: 0,
       last_email_sent: undefined,
       preferences: "{}",
@@ -236,7 +236,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>VIP Level</FormLabel>
-                            <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value || 1)}>
+                            <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value || 3)}>
                                 <FormControl>
                                     <SelectTrigger><SelectValue placeholder="Select VIP Level" /></SelectTrigger>
                                 </FormControl>
