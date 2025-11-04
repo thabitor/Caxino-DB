@@ -266,9 +266,15 @@ export default function PlayerDetailPage() {
         <header className="sticky top-0 z-10 backdrop-blur-lg bg-background/80 border-b-2 border-border/60 shadow-md">
           <div className="flex items-center justify-between h-16 px-6">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" asChild className="hover:bg-muted/50">
+              <Button 
+                variant="outline" 
+                size="default" 
+                asChild 
+                className="hover:bg-muted/50 border-2 gap-2 font-semibold"
+              >
                 <Link href="/">
-                  <ArrowLeft className="w-5 h-5" />
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Players
                 </Link>
               </Button>
               <div>
