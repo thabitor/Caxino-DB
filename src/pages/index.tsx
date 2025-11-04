@@ -246,10 +246,10 @@ export default function Home() {
                   <Skeleton className="h-20 w-full" />
                 ) : (
                   <div className="space-y-2">
-                    {([5, 4, 3, 2, 1] as VipLevel[]).map((level) => {
+                    {(Object.keys(vipDistribution).map(Number) as VipLevel[]).sort((a, b) => b - a).map((level) => {
                       const count = vipDistribution[level];
                       const config = vipConfig[level];
-                      if (count === 0) return null;
+                      if (!config || count === 0) return null;
                       return (
                         <div key={level} className="flex items-center justify-between">
                           <Badge className={`${config.bgColor} ${config.color} border-0`}>
@@ -259,6 +259,9 @@ export default function Home() {
                         </div>
                       );
                     })}
+                    {totalPlayers > 0 && Object.values(vipDistribution).every(c => c === 0) && (
+                      <p className="text-sm text-muted-foreground">No VIP players in levels 3-5.</p>
+                    )}
                     {totalPlayers === 0 && (
                       <p className="text-sm text-muted-foreground">No players yet</p>
                     )}
