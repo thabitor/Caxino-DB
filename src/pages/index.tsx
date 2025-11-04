@@ -20,7 +20,7 @@ import { BirthdayReminders } from "@/components/BirthdayReminders";
 export default function Home() {
   const [players, setPlayers] = useState<PlayerWithTasks[]>([]);
   const [totalPlayers, setTotalPlayers] = useState(0);
-  const [vipDistribution, setVipDistribution] = useState<Record<VipLevel, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+  const [vipDistribution, setVipDistribution] = useState<Record<VipLevel, number>>({ 3: 0, 4: 0, 5: 0 });
   const [activeTasks, setActiveTasks] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<PlayerWithTasks | null>(null);
