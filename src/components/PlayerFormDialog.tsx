@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -74,6 +74,8 @@ const getResetValues = (player: Player | null): PlayerFormData => {
 };
 
 export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFormDialogProps) {
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  
   const form = useForm<PlayerFormData>({
     resolver: zodResolver(playerSchema),
     defaultValues: getResetValues(null),
@@ -82,6 +84,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
   useEffect(() => {
     if (isOpen) {
       form.reset(getResetValues(player));
+      setIsDatePickerOpen(false);
     }
   }, [player, isOpen, form]);
 
@@ -106,8 +109,14 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
     onSubmit(submissionData);
   };
 
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open && !isDatePickerOpen) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{player ? "Edit Player" : "Create New Player"}</DialogTitle>
@@ -188,17 +197,33 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   render={({ field }) => (
                     <FormItem className="flex flex-col pt-2">
                       <FormLabel>Date of Birth</FormLabel>
-                      <Popover modal={false}>
+                      <Popover 
+                        modal={false}
+                        onOpenChange={(open) => setIsDatePickerOpen(open)}
+                      >
                         <PopoverTrigger asChild>
                           <FormControl>
-                            <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                            <Button 
+                              variant={"outline"} 
+                              className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                              type="button"
+                            >
                               {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
+                        <PopoverContent className="w-auto p-0 z-[100]" align="start" sideOffset={4}>
+                          <Calendar 
+                            mode="single" 
+                            selected={field.value} 
+                            onSelect={(date) => {
+                              field.onChange(date);
+                              setIsDatePickerOpen(false);
+                            }} 
+                            disabled={(date) => date > new Date() || date < new Date("1900-01-01")} 
+                            initialFocus 
+                          />
                         </PopoverContent>
                       </Popover>
                       <FormMessage />
@@ -273,17 +298,32 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   render={({ field }) => (
                     <FormItem className="flex flex-col pt-2">
                       <FormLabel>Last Email Sent</FormLabel>
-                      <Popover modal={false}>
+                      <Popover 
+                        modal={false}
+                        onOpenChange={(open) => setIsDatePickerOpen(open)}
+                      >
                         <PopoverTrigger asChild>
                           <FormControl>
-                            <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                            <Button 
+                              variant={"outline"} 
+                              className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                              type="button"
+                            >
                               {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        <PopoverContent className="w-auto p-0 z-[100]" align="start" sideOffset={4}>
+                          <Calendar 
+                            mode="single" 
+                            selected={field.value} 
+                            onSelect={(date) => {
+                              field.onChange(date);
+                              setIsDatePickerOpen(false);
+                            }} 
+                            initialFocus 
+                          />
                         </PopoverContent>
                       </Popover>
                       <FormMessage />
