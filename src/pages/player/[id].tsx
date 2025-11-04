@@ -404,6 +404,9 @@ export default function PlayerDetailPage() {
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                       <FileText className="w-4 h-4" />
                       <span>Notes</span>
+                      {player.notes && !isEditingNotes && (
+                        <CopyButton text={player.notes} label="Notes" size="sm" />
+                      )}
                     </div>
                     {!isEditingNotes && (
                       <Button 

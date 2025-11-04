@@ -12,6 +12,7 @@ import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Badge } from "@/components/ui/badge";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
+import { TaskAlertsPanel } from "@/components/TaskAlertsPanel";
 
 export default function Home() {
   const [players, setPlayers] = useState<PlayerWithTasks[]>([]);
@@ -176,6 +177,8 @@ export default function Home() {
         </header>
 
         <main className="flex-1 p-6 space-y-6">
+          <TaskAlertsPanel />
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
