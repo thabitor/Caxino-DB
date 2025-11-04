@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpDown, Trash2, Edit } from "lucide-react";
 import { TaskCountBadge } from "./TaskCountBadge";
+import { CopyButton } from "./CopyButton";
 
 type SortField = keyof PlayerWithTasks | "task_count";
 type SortDirection = "asc" | "desc";
@@ -101,10 +102,23 @@ export function PlayersTable({ players, onEdit, onDelete }: PlayersTableProps) {
               filteredAndSortedPlayers.map((player) => (
                 <TableRow key={player.id}>
                   <TableCell className="font-medium">
-                    <Link href={`/player/${player.id}`} className="hover:underline text-blue-600 dark:text-blue-400">{player.username}</Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/player/${player.id}`} className="hover:underline text-blue-600 dark:text-blue-400">{player.username}</Link>
+                      <CopyButton text={player.username} label="Username" />
+                    </div>
                   </TableCell>
-                  <TableCell>{getFullName(player)}</TableCell>
-                  <TableCell>{player.email}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span>{getFullName(player)}</span>
+                      <CopyButton text={getFullName(player)} label="Name" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span>{player.email}</span>
+                      <CopyButton text={player.email} label="Email" />
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge className={`${vipConfig[player.vip_level as VipLevel].bgColor} ${vipConfig[player.vip_level as VipLevel].color} hover:${vipConfig[player.vip_level as VipLevel].bgColor}`}>
                       {player.vip_level} - {vipConfig[player.vip_level as VipLevel].name}

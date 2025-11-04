@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
+import { CopyButton } from "@/components/CopyButton";
 
 interface PlayerPreferences {
   communication?: {
@@ -272,12 +273,20 @@ export default function PlayerDetailPage() {
               </Button>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold">{getFullName(player)}</h1>
-                  <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
-                    {player.vip_level} - {vipInfo.name}
-                  </Badge>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-xl font-bold">{getFullName(player)}</h1>
+                      <CopyButton text={getFullName(player)} label="Name" size="sm" />
+                      <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
+                        {player.vip_level} - {vipInfo.name}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-muted-foreground">@{player.username}</p>
+                      <CopyButton text={player.username} label="Username" size="sm" />
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">@{player.username}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -323,9 +332,12 @@ export default function PlayerDetailPage() {
               <CardContent className="space-y-6 pt-6">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-1 p-3 rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      <span className="font-semibold">Email</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span className="font-semibold">Email</span>
+                      </div>
+                      <CopyButton text={player.email} label="Email" />
                     </div>
                     <p className="font-medium text-sm">{player.email}</p>
                   </div>
