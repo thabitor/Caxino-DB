@@ -13,7 +13,7 @@ import { getBirthdayStatus, getBirthdayBadge } from "@/lib/utils";
 
 type SortField = keyof PlayerWithTasks | "task_count";
 type SortDirection = "asc" | "desc";
-type TaskFilter = "all" | "with_tasks" | "with_calls" | "with_both";
+type TaskFilter = "all" | "with_tasks" | "with_calls" | "with_both" | "with_birthdays";
 
 interface PlayersTableProps {
   players: PlayerWithTasks[];
@@ -53,15 +53,20 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
       
       const taskCount = player.tasks[0]?.count ?? 0;
       const callCount = player.tasks[0]?.call_count ?? 0;
+      const hasBirthday = getBirthdayStatus(player.dob) !== null;
       
       // Apply task filter
       let taskFilterMatch = true;
       if (taskFilter === "with_tasks") {
-        taskFilterMatch = taskCount > 0 || callCount > 0;
+        // Only non-call tasks
+        taskFilterMatch = taskCount > 0;
       } else if (taskFilter === "with_calls") {
         taskFilterMatch = callCount > 0;
       } else if (taskFilter === "with_both") {
-        taskFilterMatch = taskCount > 0 && callCount > 0;
+        // All tasks (calls + non-call tasks)
+        taskFilterMatch = taskCount > 0 || callCount > 0;
+      } else if (taskFilter === "with_birthdays") {
+        taskFilterMatch = hasBirthday;
       }
 
       return taskFilterMatch && vipLevelMatch && (
@@ -71,25 +76,39 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
       );
     });
 
-    // Sort players: those with tasks first (by earliest due date), then by selected field
+    // Sort players with multi-level priority
     return filtered.sort((a, b) => {
-      const aHasTasks = (a.tasks[0]?.count ?? 0) > 0 || (a.tasks[0]?.call_count ?? 0) > 0;
-      const bHasTasks = (b.tasks[0]?.count ?? 0) > 0 || (b.tasks[0]?.call_count ?? 0) > 0;
+      const aTaskCount = a.tasks[0]?.count ?? 0;
+      const bTaskCount = b.tasks[0]?.count ?? 0;
+      const aCallCount = a.tasks[0]?.call_count ?? 0;
+      const bCallCount = b.tasks[0]?.call_count ?? 0;
+      const aBirthday = getBirthdayStatus(a.dob);
+      const bBirthday = getBirthdayStatus(b.dob);
       
-      // Priority 1: Players with tasks come first
-      if (aHasTasks && !bHasTasks) return -1;
-      if (!aHasTasks && bHasTasks) return 1;
+      // Priority 1: Players with calls come first
+      if (aCallCount > 0 && bCallCount === 0) return -1;
+      if (aCallCount === 0 && bCallCount > 0) return 1;
       
-      // Priority 2: Among players with tasks, sort by earliest due date
-      if (aHasTasks && bHasTasks) {
+      // Priority 2: Among players with calls OR both have no calls, check for tasks
+      if (aTaskCount > 0 && bTaskCount === 0 && aCallCount === bCallCount) return -1;
+      if (aTaskCount === 0 && bTaskCount > 0 && aCallCount === bCallCount) return 1;
+      
+      // Priority 3: Sort by earliest due date if both have tasks or calls
+      if ((aCallCount > 0 || aTaskCount > 0) && (bCallCount > 0 || bTaskCount > 0)) {
         const aDate = a.earliest_task_due_date ? new Date(a.earliest_task_due_date).getTime() : Infinity;
         const bDate = b.earliest_task_due_date ? new Date(b.earliest_task_due_date).getTime() : Infinity;
         if (aDate !== bDate) return aDate - bDate;
       }
       
-      // Priority 3: Apply user-selected sort
-      const aVal = sortField === 'task_count' ? a.tasks[0]?.count ?? 0 : a[sortField as keyof PlayerWithTasks] as any;
-      const bVal = sortField === 'task_count' ? b.tasks[0]?.count ?? 0 : b[sortField as keyof PlayerWithTasks] as any;
+      // Priority 4: Players with birthdays come next (after those with tasks/calls)
+      if (aBirthday !== null && bBirthday === null && aCallCount === 0 && bCallCount === 0 && aTaskCount === 0 && bTaskCount === 0) return -1;
+      if (aBirthday === null && bBirthday !== null && aCallCount === 0 && bCallCount === 0 && aTaskCount === 0 && bTaskCount === 0) return 1;
+      
+      // If both have birthdays and tasks, already sorted by tasks above
+      
+      // Priority 5: Apply user-selected sort
+      const aVal = sortField === 'task_count' ? aTaskCount : a[sortField as keyof PlayerWithTasks] as any;
+      const bVal = sortField === 'task_count' ? bTaskCount : b[sortField as keyof PlayerWithTasks] as any;
       
       const order = sortDirection === "asc" ? 1 : -1;
 
@@ -181,7 +200,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
             className="gap-1.5"
           >
             <Bell className="w-4 h-4" />
-            With Tasks
+            Tasks Only
           </Button>
           <Button
             variant={taskFilter === "with_calls" ? "secondary" : "ghost"}
@@ -190,7 +209,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
             className="gap-1.5"
           >
             <Phone className="w-4 h-4" />
-            With Calls
+            Calls Only
           </Button>
           <Button
             variant={taskFilter === "with_both" ? "secondary" : "ghost"}
@@ -200,7 +219,16 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
           >
             <Bell className="w-3.5 h-3.5" />
             <Phone className="w-3.5 h-3.5" />
-            Both
+            All Reminders
+          </Button>
+          <Button
+            variant={taskFilter === "with_birthdays" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setTaskFilter("with_birthdays")}
+            className="gap-1.5 text-pink-700 dark:text-pink-300"
+          >
+            🎂
+            Birthdays
           </Button>
         </div>
       </div>
