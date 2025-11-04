@@ -188,7 +188,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   render={({ field }) => (
                     <FormItem className="flex flex-col pt-2">
                       <FormLabel>Date of Birth</FormLabel>
-                      <Popover>
+                      <Popover modal={false}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
@@ -273,7 +273,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   render={({ field }) => (
                     <FormItem className="flex flex-col pt-2">
                       <FormLabel>Last Email Sent</FormLabel>
-                      <Popover>
+                      <Popover modal={false}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
