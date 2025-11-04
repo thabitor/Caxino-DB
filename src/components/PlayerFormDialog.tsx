@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -6,14 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { PreferencesEditor } from "@/components/PreferencesEditor";
-import { cn } from "@/lib/utils";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
 import { Player, playerSchema, PlayerFormData, PlayerInsert, PlayerUpdate, vipConfig, VipLevel } from "@/services/playerService";
 import { Json } from "@/integrations/supabase/database.types";
 
@@ -74,9 +69,6 @@ const getResetValues = (player: Player | null): PlayerFormData => {
 };
 
 export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFormDialogProps) {
-  const [dobOpen, setDobOpen] = useState(false);
-  const [emailDateOpen, setEmailDateOpen] = useState(false);
-  
   const form = useForm<PlayerFormData>({
     resolver: zodResolver(playerSchema),
     defaultValues: getResetValues(null),
@@ -85,8 +77,6 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
   useEffect(() => {
     if (isOpen) {
       form.reset(getResetValues(player));
-      setDobOpen(false);
-      setEmailDateOpen(false);
     }
   }, [player, isOpen, form]);
 
@@ -191,45 +181,20 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   control={form.control}
                   name="dob"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col pt-2">
+                    <FormItem>
                       <FormLabel>Date of Birth</FormLabel>
-                      <Popover open={dobOpen} onOpenChange={setDobOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button 
-                              variant="outline" 
-                              className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setDobOpen(true);
-                              }}
-                            >
-                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent 
-                          className="w-auto p-0" 
-                          align="start"
-                          onInteractOutside={(e) => {
-                            e.preventDefault();
+                      <FormControl>
+                        <Input 
+                          type="date"
+                          value={field.value ? field.value.toISOString().split('T')[0] : ''}
+                          onChange={(e) => {
+                            const dateValue = e.target.value;
+                            field.onChange(dateValue ? new Date(dateValue) : undefined);
                           }}
-                        >
-                          <Calendar 
-                            mode="single" 
-                            selected={field.value} 
-                            onSelect={(date) => {
-                              field.onChange(date);
-                              setDobOpen(false);
-                            }} 
-                            disabled={(date) => date > new Date() || date < new Date("1900-01-01")} 
-                            initialFocus 
-                          />
-                        </PopoverContent>
-                      </Popover>
+                          max={new Date().toISOString().split('T')[0]}
+                          min="1900-01-01"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -238,7 +203,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                     control={form.control}
                     name="gender"
                     render={({ field }) => (
-                        <FormItem className="pt-2">
+                        <FormItem>
                             <FormLabel>Gender</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value || "other"}>
                                 <FormControl>
@@ -300,44 +265,18 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   control={form.control}
                   name="last_email_sent"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col pt-2">
+                    <FormItem>
                       <FormLabel>Last Email Sent</FormLabel>
-                      <Popover open={emailDateOpen} onOpenChange={setEmailDateOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button 
-                              variant="outline" 
-                              className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setEmailDateOpen(true);
-                              }}
-                            >
-                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent 
-                          className="w-auto p-0" 
-                          align="start"
-                          onInteractOutside={(e) => {
-                            e.preventDefault();
+                      <FormControl>
+                        <Input 
+                          type="date"
+                          value={field.value ? field.value.toISOString().split('T')[0] : ''}
+                          onChange={(e) => {
+                            const dateValue = e.target.value;
+                            field.onChange(dateValue ? new Date(dateValue) : undefined);
                           }}
-                        >
-                          <Calendar 
-                            mode="single" 
-                            selected={field.value} 
-                            onSelect={(date) => {
-                              field.onChange(date);
-                              setEmailDateOpen(false);
-                            }} 
-                            initialFocus 
-                          />
-                        </PopoverContent>
-                      </Popover>
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
