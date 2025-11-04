@@ -21,8 +21,8 @@ interface TaskFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: TaskInsert | TaskUpdate) => void;
-  task: Task | null;
-  playerId: string;
+  task?: Task | null;
+  playerId?: string;
 }
 
 const extendedTaskSchema = taskSchema.extend({
@@ -34,10 +34,10 @@ const extendedTaskSchema = taskSchema.extend({
 
 type ExtendedTaskFormData = z.infer<typeof extendedTaskSchema>;
 
-const getResetValues = (task: Task | null, playerId: string): ExtendedTaskFormData => {
+const getResetValues = (task: Task | null | undefined, playerId?: string): ExtendedTaskFormData => {
   if (!task) {
     return {
-      player_id: playerId,
+      player_id: playerId || "",
       title: "",
       description: "",
       priority: "medium",

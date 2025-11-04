@@ -324,6 +324,7 @@ export default function Home() {
           onClose={handleTaskFormClose}
           onSubmit={handleTaskCreate}
           playerId={selectedPlayerId || undefined}
+          task={null}
         />
       </div>
     </ProtectedRoute>
