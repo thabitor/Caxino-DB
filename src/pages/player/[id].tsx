@@ -160,6 +160,30 @@ export default function PlayerDetailPage() {
     }
   };
 
+  const handleCallComplete = async (taskId: string, notes?: string, durationMinutes?: number) => {
+    if (!user) {
+      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const result = await taskService.completeCallTask(taskId, user.id, notes, durationMinutes);
+      toast({ 
+        title: "Call completed", 
+        description: "Call task marked as completed and logged successfully.",
+        duration: 3000
+      });
+      fetchPlayerData();
+    } catch (error) {
+      console.error("Error completing call task:", error);
+      toast({ 
+        title: "Error", 
+        description: "Could not complete call task. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
     setIsTaskFormOpen(true);
@@ -604,6 +628,7 @@ export default function PlayerDetailPage() {
                 onEdit={handleEditTask}
                 onDelete={handleTaskDelete}
                 onComplete={handleTaskComplete}
+                onCompleteCall={handleCallComplete}
               />
             </CardContent>
           </Card>
