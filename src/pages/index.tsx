@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { TaskAlertsPanel } from "@/components/TaskAlertsPanel";
+import { TaskFormDialog } from "@/components/TaskFormDialog";
 
 export default function Home() {
   const [players, setPlayers] = useState<PlayerWithTasks[]>([]);
@@ -24,6 +25,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { signOut, user } = useAuth();
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   const fetchDashboardData = async () => {
     try {
@@ -129,6 +132,38 @@ export default function Home() {
         variant: "destructive" 
       });
     }
+  };
+
+  const handleAddTask = (playerId: string) => {
+    setSelectedPlayerId(playerId);
+    setIsTaskFormOpen(true);
+  };
+
+  const handleTaskCreate = async (taskData: any) => {
+    if (!selectedPlayerId) return;
+
+    try {
+      await taskService.createTask({ ...taskData, player_id: selectedPlayerId });
+      toast({ 
+        title: "Task created", 
+        description: "New task has been added successfully." 
+      });
+      setIsTaskFormOpen(false);
+      setSelectedPlayerId(null);
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast({ 
+        title: "Error", 
+        description: "Could not create task.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleTaskFormClose = () => {
+    setIsTaskFormOpen(false);
+    setSelectedPlayerId(null);
   };
 
   return (
@@ -269,7 +304,8 @@ export default function Home() {
                 <PlayersTable 
                   players={players} 
                   onEdit={handleEdit} 
-                  onDelete={handleDelete} 
+                  onDelete={handleDelete}
+                  onAddTask={handleAddTask}
                 />
               )}
             </CardContent>
@@ -281,6 +317,13 @@ export default function Home() {
           onClose={handleFormClose}
           onSubmit={handleFormSubmit}
           player={editingPlayer}
+        />
+
+        <TaskFormDialog
+          isOpen={isTaskFormOpen}
+          onClose={handleTaskFormClose}
+          onSubmit={handleTaskCreate}
+          playerId={selectedPlayerId || undefined}
         />
       </div>
     </ProtectedRoute>
