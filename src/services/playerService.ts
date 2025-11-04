@@ -6,7 +6,10 @@ import * as z from "zod";
 export type Player = Database["public"]["Tables"]["players"]["Row"];
 export type PlayerInsert = Database["public"]["Tables"]["players"]["Insert"];
 export type PlayerUpdate = Database["public"]["Tables"]["players"]["Update"];
-export type PlayerWithTasks = Player & { tasks: { count: number; call_count: number }[] };
+export type PlayerWithTasks = Player & { 
+  tasks: { count: number; call_count: number }[];
+  earliest_task_due_date?: string | null;
+};
 
 export type VipLevel = 1 | 2 | 3 | 4 | 5;
 
@@ -57,7 +60,9 @@ export const playerService = {
         *,
         tasks!tasks_player_id_fkey(
           id,
-          is_call
+          is_call,
+          due_date,
+          status
         )
       `)
       .order("created_at", { ascending: false });
@@ -70,15 +75,31 @@ export const playerService = {
     const playersWithCounts = (data || []).map((player: any) => {
       const tasks = player.tasks || [];
       
+      // Filter only active tasks (not completed or cancelled)
+      const activeTasks = tasks.filter((task: any) => 
+        task.status !== "completed" && task.status !== "cancelled"
+      );
+      
       // Count normal tasks (is_call is false or null)
-      const taskCount = tasks.filter((task: any) => !task.is_call).length;
+      const taskCount = activeTasks.filter((task: any) => !task.is_call).length;
       
       // Count call tasks (is_call is true)
-      const callCount = tasks.filter((task: any) => task.is_call === true).length;
+      const callCount = activeTasks.filter((task: any) => task.is_call === true).length;
+
+      // Find earliest due date among active tasks
+      const tasksWithDates = activeTasks.filter((task: any) => task.due_date);
+      const earliestDueDate = tasksWithDates.length > 0
+        ? tasksWithDates.reduce((earliest: any, task: any) => {
+            const taskDate = new Date(task.due_date);
+            const earliestDate = new Date(earliest.due_date);
+            return taskDate < earliestDate ? task : earliest;
+          }).due_date
+        : null;
 
       return {
         ...player,
         tasks: [{ count: taskCount, call_count: callCount }],
+        earliest_task_due_date: earliestDueDate,
       };
     });
 

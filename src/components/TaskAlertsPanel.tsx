@@ -61,12 +61,19 @@ export function TaskAlertsPanel() {
         return dueDate > now && dueDate <= threeDaysFromNow && !urgent.includes(task);
       });
 
-      setUrgentTasks(urgent.sort((a, b) => 
-        new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime()
-      ));
-      setUpcomingTasks(upcoming.sort((a, b) => 
-        new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime()
-      ));
+      // Sort: calls first, then by due date
+      const sortTasksWithCallsFirst = (tasks: TaskWithPlayer[]) => {
+        return tasks.sort((a, b) => {
+          // First, sort by is_call (calls first)
+          if (a.is_call && !b.is_call) return -1;
+          if (!a.is_call && b.is_call) return 1;
+          // Then by due date
+          return new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime();
+        });
+      };
+
+      setUrgentTasks(sortTasksWithCallsFirst(urgent));
+      setUpcomingTasks(sortTasksWithCallsFirst(upcoming));
     } catch (error) {
       console.error("Error fetching alerts:", error);
     } finally {

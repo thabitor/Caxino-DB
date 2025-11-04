@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpDown, Trash2, Edit, Plus, Bell, Phone } from "lucide-react";
+import { ArrowUpDown, Trash2, Edit, Plus, Bell, Phone, Users } from "lucide-react";
 import { TaskCountBadge } from "./TaskCountBadge";
 import { CopyButton } from "./CopyButton";
 
 type SortField = keyof PlayerWithTasks | "task_count";
 type SortDirection = "asc" | "desc";
+type TaskFilter = "all" | "with_tasks" | "with_calls" | "with_both";
 
 interface PlayersTableProps {
   players: PlayerWithTasks[];
@@ -37,6 +38,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [filter, setFilter] = useState("");
   const [vipFilter, setVipFilter] = useState<string>("all");
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>("all");
 
   const handleSort = (field: SortField) => {
     setSortDirection(sortField === field && sortDirection === "asc" ? "desc" : "asc");
@@ -47,15 +49,44 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
     const filtered = players.filter((player) => {
       const lowerCaseFilter = filter.toLowerCase();
       const vipLevelMatch = vipFilter === "all" || String(player.vip_level) === vipFilter;
+      
+      const taskCount = player.tasks[0]?.count ?? 0;
+      const callCount = player.tasks[0]?.call_count ?? 0;
+      
+      // Apply task filter
+      let taskFilterMatch = true;
+      if (taskFilter === "with_tasks") {
+        taskFilterMatch = taskCount > 0 || callCount > 0;
+      } else if (taskFilter === "with_calls") {
+        taskFilterMatch = callCount > 0;
+      } else if (taskFilter === "with_both") {
+        taskFilterMatch = taskCount > 0 && callCount > 0;
+      }
 
-      return vipLevelMatch && (
+      return taskFilterMatch && vipLevelMatch && (
         getFullName(player).toLowerCase().includes(lowerCaseFilter) ||
         player.username.toLowerCase().includes(lowerCaseFilter) ||
         (player.email || "").toLowerCase().includes(lowerCaseFilter)
       );
     });
 
+    // Sort players: those with tasks first (by earliest due date), then by selected field
     return filtered.sort((a, b) => {
+      const aHasTasks = (a.tasks[0]?.count ?? 0) > 0 || (a.tasks[0]?.call_count ?? 0) > 0;
+      const bHasTasks = (b.tasks[0]?.count ?? 0) > 0 || (b.tasks[0]?.call_count ?? 0) > 0;
+      
+      // Priority 1: Players with tasks come first
+      if (aHasTasks && !bHasTasks) return -1;
+      if (!aHasTasks && bHasTasks) return 1;
+      
+      // Priority 2: Among players with tasks, sort by earliest due date
+      if (aHasTasks && bHasTasks) {
+        const aDate = a.earliest_task_due_date ? new Date(a.earliest_task_due_date).getTime() : Infinity;
+        const bDate = b.earliest_task_due_date ? new Date(b.earliest_task_due_date).getTime() : Infinity;
+        if (aDate !== bDate) return aDate - bDate;
+      }
+      
+      // Priority 3: Apply user-selected sort
       const aVal = sortField === 'task_count' ? a.tasks[0]?.count ?? 0 : a[sortField as keyof PlayerWithTasks] as any;
       const bVal = sortField === 'task_count' ? b.tasks[0]?.count ?? 0 : b[sortField as keyof PlayerWithTasks] as any;
       
@@ -70,7 +101,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
       
       return 0;
     });
-  }, [players, filter, vipFilter, sortField, sortDirection]);
+  }, [players, filter, vipFilter, taskFilter, sortField, sortDirection]);
 
   const getTaskIndicators = (player: PlayerWithTasks) => {
     const taskCount = player.tasks[0]?.count ?? 0;
@@ -112,7 +143,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4 gap-4">
+      <div className="flex items-center py-4 gap-4 flex-wrap">
         <Input placeholder="Filter players..." value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-sm" />
         <Select value={vipFilter} onValueChange={setVipFilter}>
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by VIP" /></SelectTrigger>
@@ -123,6 +154,46 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
             ))}
           </SelectContent>
         </Select>
+        
+        <div className="flex items-center gap-2 border rounded-lg p-1 bg-muted/30">
+          <Button
+            variant={taskFilter === "all" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setTaskFilter("all")}
+            className="gap-1.5"
+          >
+            <Users className="w-4 h-4" />
+            All
+          </Button>
+          <Button
+            variant={taskFilter === "with_tasks" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setTaskFilter("with_tasks")}
+            className="gap-1.5"
+          >
+            <Bell className="w-4 h-4" />
+            With Tasks
+          </Button>
+          <Button
+            variant={taskFilter === "with_calls" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setTaskFilter("with_calls")}
+            className="gap-1.5"
+          >
+            <Phone className="w-4 h-4" />
+            With Calls
+          </Button>
+          <Button
+            variant={taskFilter === "with_both" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setTaskFilter("with_both")}
+            className="gap-1.5 text-purple-700 dark:text-purple-300"
+          >
+            <Bell className="w-3.5 h-3.5" />
+            <Phone className="w-3.5 h-3.5" />
+            Both
+          </Button>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>
