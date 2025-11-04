@@ -55,8 +55,10 @@ export const playerService = {
       .from("players")
       .select(`
         *,
-        tasks:tasks(count),
-        call_tasks:tasks!tasks_player_id_fkey(count)
+        tasks!tasks_player_id_fkey(
+          id,
+          is_call
+        )
       `)
       .order("created_at", { ascending: false });
 
@@ -66,17 +68,17 @@ export const playerService = {
     }
 
     const playersWithCounts = (data || []).map((player: any) => {
-      const taskCount = player.tasks?.[0]?.count ?? 0;
-      const callTasksData = player.call_tasks || [];
+      const tasks = player.tasks || [];
       
-      const callCount = callTasksData.reduce((sum: number, item: any) => {
-        return sum + (item.count ?? 0);
-      }, 0);
+      // Count normal tasks (is_call is false or null)
+      const taskCount = tasks.filter((task: any) => !task.is_call).length;
+      
+      // Count call tasks (is_call is true)
+      const callCount = tasks.filter((task: any) => task.is_call === true).length;
 
       return {
         ...player,
         tasks: [{ count: taskCount, call_count: callCount }],
-        call_tasks: undefined,
       };
     });
 
