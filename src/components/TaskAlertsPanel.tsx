@@ -6,10 +6,11 @@ import { playerService, getFullName } from "@/services/playerService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Clock, ChevronDown, ChevronUp, ExternalLink, Calendar, User } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { AlertCircle, Clock, ChevronDown, ChevronUp, ExternalLink, Calendar, User, Phone } from "lucide-react";
+import { formatDistanceToNow, format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CopyButton } from "@/components/CopyButton";
 
 interface TaskWithPlayer extends Task {
   player_name: string;
@@ -94,6 +95,101 @@ export function TaskAlertsPanel() {
     return new Date(dueDate) < new Date();
   };
 
+  const renderTaskCard = (task: TaskWithPlayer, isUrgent: boolean) => {
+    const isCallTask = task.is_call;
+    const cardBorderColor = isCallTask 
+      ? "border-blue-400 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" 
+      : isUrgent 
+        ? getPriorityColor(task.priority)
+        : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20";
+
+    return (
+      <div
+        key={task.id}
+        className={`p-4 rounded-lg border-2 ${cardBorderColor} transition-all hover:shadow-md`}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {isCallTask && (
+                <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0 gap-1">
+                  <Phone className="w-3 h-3" />
+                  Call Scheduled
+                </Badge>
+              )}
+              <Badge className={getStatusColor(task.status)}>
+                {task.status.replace("_", " ")}
+              </Badge>
+              <Badge variant="outline" className="capitalize border-2">
+                {task.priority} priority
+              </Badge>
+              {isOverdue(task.due_date!) && (
+                <Badge className="bg-red-600 dark:bg-red-700 text-white border-0 animate-pulse">
+                  OVERDUE
+                </Badge>
+              )}
+            </div>
+
+            <h4 className="font-semibold text-base flex items-center gap-2">
+              {isCallTask && <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+              {task.title}
+            </h4>
+
+            {isCallTask && task.phone_number && (
+              <div className="flex items-center gap-2 p-2 rounded bg-blue-100/50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="font-mono text-sm font-medium">{task.phone_number}</span>
+                <CopyButton text={task.phone_number} label="Phone" />
+              </div>
+            )}
+
+            {isCallTask && task.call_topic && (
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium">Topic:</span> {task.call_topic}
+              </div>
+            )}
+
+            {!isCallTask && task.description && (
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {task.description}
+              </p>
+            )}
+
+            <div className="flex items-center gap-4 text-sm flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <User className="w-4 h-4" />
+                <span className="font-medium">{task.player_name}</span>
+                <span className="text-muted-foreground">(@{task.player_username})</span>
+              </div>
+              <div className={`flex items-center gap-1.5 font-semibold ${isOverdue(task.due_date!) ? "text-red-600 dark:text-red-400" : isCallTask ? "text-blue-600 dark:text-blue-400" : "text-amber-600 dark:text-amber-400"}`}>
+                <Calendar className="w-4 h-4" />
+                <span>
+                  {isCallTask && !isOverdue(task.due_date!) 
+                    ? `Call at ${format(new Date(task.due_date!), "PPp")}`
+                    : isOverdue(task.due_date!) 
+                      ? `Overdue by ${formatDistanceToNow(new Date(task.due_date!))}` 
+                      : `Due ${formatDistanceToNow(new Date(task.due_date!))} from now`
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            asChild
+            className="border-2 gap-1.5 shrink-0"
+          >
+            <Link href={`/player/${task.player_id}`}>
+              View Player
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <Card className="border-2">
@@ -163,63 +259,7 @@ export function TaskAlertsPanel() {
                 </h3>
               </div>
               <div className="space-y-2">
-                {urgentTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className={`p-4 rounded-lg border-2 ${getPriorityColor(task.priority)} transition-all hover:shadow-md`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className={getStatusColor(task.status)}>
-                            {task.status.replace("_", " ")}
-                          </Badge>
-                          <Badge variant="outline" className="capitalize border-2">
-                            {task.priority} priority
-                          </Badge>
-                          {isOverdue(task.due_date!) && (
-                            <Badge className="bg-red-600 dark:bg-red-700 text-white border-0 animate-pulse">
-                              OVERDUE
-                            </Badge>
-                          )}
-                        </div>
-                        <h4 className="font-semibold text-base">{task.title}</h4>
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {task.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 text-sm">
-                          <div className="flex items-center gap-1.5">
-                            <User className="w-4 h-4" />
-                            <span className="font-medium">{task.player_name}</span>
-                            <span className="text-muted-foreground">(@{task.player_username})</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-semibold">
-                            <Calendar className="w-4 h-4" />
-                            <span>
-                              {isOverdue(task.due_date!) 
-                                ? `Overdue by ${formatDistanceToNow(new Date(task.due_date!))}` 
-                                : `Due ${formatDistanceToNow(new Date(task.due_date!))} from now`
-                              }
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        asChild
-                        className="border-2 gap-1.5 shrink-0"
-                      >
-                        <Link href={`/player/${task.player_id}`}>
-                          View Player
-                          <ExternalLink className="w-3 h-3" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                {urgentTasks.map((task) => renderTaskCard(task, true))}
               </div>
             </div>
           )}
@@ -233,53 +273,7 @@ export function TaskAlertsPanel() {
                 </h3>
               </div>
               <div className="space-y-2">
-                {upcomingTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="p-4 rounded-lg border-2 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 transition-all hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className={getStatusColor(task.status)}>
-                            {task.status.replace("_", " ")}
-                          </Badge>
-                          <Badge variant="outline" className="capitalize border-2">
-                            {task.priority} priority
-                          </Badge>
-                        </div>
-                        <h4 className="font-semibold text-base">{task.title}</h4>
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-1">
-                            {task.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 text-sm">
-                          <div className="flex items-center gap-1.5">
-                            <User className="w-4 h-4" />
-                            <span className="font-medium">{task.player_name}</span>
-                            <span className="text-muted-foreground">(@{task.player_username})</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
-                            <Calendar className="w-4 h-4" />
-                            <span>Due {formatDistanceToNow(new Date(task.due_date!))} from now</span>
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        asChild
-                        className="border-2 gap-1.5 shrink-0"
-                      >
-                        <Link href={`/player/${task.player_id}`}>
-                          View Player
-                          <ExternalLink className="w-3 h-3" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                {upcomingTasks.map((task) => renderTaskCard(task, false))}
               </div>
             </div>
           )}

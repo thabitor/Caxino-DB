@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import * as z from "zod";
+import { callLogService } from "./callLogService";
 
 export type Task = Database["public"]["Tables"]["tasks"]["Row"];
 export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
@@ -163,5 +164,31 @@ export const taskService = {
       throw error;
     }
     return data;
+  },
+
+  async completeCallTask(id: string, userId: string, notes?: string, durationMinutes?: number): Promise<{ task: Task; callLog: any }> {
+    const task = await this.getTaskById(id);
+    if (!task) {
+      throw new Error("Task not found");
+    }
+
+    if (!task.is_call) {
+      throw new Error("This task is not a call task");
+    }
+
+    const completedTask = await this.completeTask(id);
+
+    const callLog = await callLogService.createCallLog({
+      user_id: userId,
+      player_id: task.player_id,
+      task_id: id,
+      phone_number: task.phone_number || "",
+      call_topic: task.call_topic || null,
+      call_time: task.due_date || new Date().toISOString(),
+      notes: notes || task.description || null,
+      duration_minutes: durationMinutes || null,
+    });
+
+    return { task: completedTask, callLog };
   },
 };
