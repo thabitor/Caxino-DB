@@ -94,6 +94,22 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
     );
   };
 
+  const getRowHighlight = (player: PlayerWithTasks) => {
+    const taskCount = player.tasks[0]?.count ?? 0;
+    const callCount = player.tasks[0]?.call_count ?? 0;
+    
+    if (taskCount > 0 && callCount > 0) {
+      return "bg-purple-50/50 dark:bg-purple-950/20 hover:bg-purple-100/50 dark:hover:bg-purple-950/30";
+    }
+    if (callCount > 0) {
+      return "bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-100/50 dark:hover:bg-blue-950/30";
+    }
+    if (taskCount > 0) {
+      return "bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/50 dark:hover:bg-amber-950/30";
+    }
+    return "hover:bg-muted/50";
+  };
+
   return (
     <div className="w-full">
       <div className="flex items-center py-4 gap-4">
@@ -125,7 +141,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
           <TableBody>
             {filteredAndSortedPlayers.length > 0 ? (
               filteredAndSortedPlayers.map((player) => (
-                <TableRow key={player.id}>
+                <TableRow key={player.id} className={getRowHighlight(player)}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <Link href={`/player/${player.id}`} className="hover:underline text-blue-600 dark:text-blue-400">{player.username}</Link>
