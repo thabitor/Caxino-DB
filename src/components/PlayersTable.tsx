@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowUpDown, Trash2, Edit, Plus, Bell, Phone, Users } from "lucide-react";
 import { TaskCountBadge } from "./TaskCountBadge";
 import { CopyButton } from "./CopyButton";
+import { getBirthdayStatus, getBirthdayBadge } from "@/lib/utils";
 
 type SortField = keyof PlayerWithTasks | "task_count";
 type SortDirection = "asc" | "desc";
@@ -106,9 +107,17 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
   const getTaskIndicators = (player: PlayerWithTasks) => {
     const taskCount = player.tasks[0]?.count ?? 0;
     const callCount = player.tasks[0]?.call_count ?? 0;
+    const birthdayStatus = getBirthdayStatus(player.dob);
+    const birthdayBadge = getBirthdayBadge(birthdayStatus);
     
     return (
       <div className="flex items-center gap-2">
+        {birthdayBadge && (
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-full border ${birthdayBadge.className}`}>
+            <span>{birthdayBadge.emoji}</span>
+            <span className="text-xs font-semibold">{birthdayBadge.text}</span>
+          </div>
+        )}
         {taskCount > 0 && (
           <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700">
             <Bell className="w-3 h-3 text-amber-700 dark:text-amber-300" />

@@ -20,6 +20,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { CopyButton } from "@/components/CopyButton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getBirthdayStatus, getBirthdayBadge } from "@/lib/utils";
 
 interface PlayerPreferences {
   communication?: {
@@ -347,6 +348,29 @@ export default function PlayerDetailPage() {
         </header>
 
         <main className="flex-1 p-6 space-y-6">
+          {(() => {
+            const birthdayStatus = getBirthdayStatus(player.dob);
+            const birthdayBadge = getBirthdayBadge(birthdayStatus);
+            
+            return birthdayBadge && (
+              <Alert className={`border-2 ${birthdayBadge.className.replace('bg-', 'bg-').replace('text-', 'border-').replace('dark:bg-', 'dark:border-')}`}>
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl">{birthdayBadge.emoji}</span>
+                  <div>
+                    <AlertTitle className="font-bold text-2xl mb-1">
+                      {birthdayBadge.text}
+                    </AlertTitle>
+                    <AlertDescription className="text-base">
+                      {birthdayStatus === "today" && `${getFullName(player)} is celebrating their birthday today! 🎉`}
+                      {birthdayStatus === "tomorrow" && `${getFullName(player)}'s birthday is tomorrow. Don't forget to send wishes!`}
+                      {birthdayStatus === "yesterday" && `${getFullName(player)}'s birthday was yesterday. Hope they had a great day!`}
+                    </AlertDescription>
+                  </div>
+                </div>
+              </Alert>
+            );
+          })()}
+
           {(pendingTasks.length > 0 || pendingCalls.length > 0) && (
             <div className="space-y-3">
               {pendingCalls.length > 0 && (
