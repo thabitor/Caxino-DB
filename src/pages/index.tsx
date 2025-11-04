@@ -14,6 +14,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { TaskAlertsPanel } from "@/components/TaskAlertsPanel";
 import { TaskFormDialog } from "@/components/TaskFormDialog";
+import { CallReminderNotification } from "@/components/CallReminderNotification";
+import { BirthdayReminders } from "@/components/BirthdayReminders";
 
 export default function Home() {
   const [players, setPlayers] = useState<PlayerWithTasks[]>([]);
@@ -168,6 +170,7 @@ export default function Home() {
 
   return (
     <ProtectedRoute>
+      <CallReminderNotification />
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
         <header className="sticky top-0 z-10 backdrop-blur-lg bg-background/80 border-b shadow-sm">
           <div className="flex items-center justify-between h-16 px-6">
@@ -213,6 +216,7 @@ export default function Home() {
 
         <main className="flex-1 p-6 space-y-6">
           <TaskAlertsPanel />
+          <BirthdayReminders />
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
