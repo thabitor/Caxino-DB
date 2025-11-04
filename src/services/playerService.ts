@@ -6,7 +6,7 @@ import * as z from "zod";
 export type Player = Database["public"]["Tables"]["players"]["Row"];
 export type PlayerInsert = Database["public"]["Tables"]["players"]["Insert"];
 export type PlayerUpdate = Database["public"]["Tables"]["players"]["Update"];
-export type PlayerWithTasks = Player & { tasks: { count: number }[] };
+export type PlayerWithTasks = Player & { tasks: { count: number; call_count: number }[] };
 
 export type VipLevel = 1 | 2 | 3 | 4 | 5;
 
@@ -53,14 +53,34 @@ export const playerService = {
   async getPlayers(): Promise<PlayerWithTasks[]> {
     const { data, error } = await supabase
       .from("players")
-      .select("*, tasks(count)")
+      .select(`
+        *,
+        tasks:tasks(count),
+        call_tasks:tasks!tasks_player_id_fkey(count)
+      `)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching players:", error);
       throw error;
     }
-    return (data as PlayerWithTasks[]) || [];
+
+    const playersWithCounts = (data || []).map((player: any) => {
+      const taskCount = player.tasks?.[0]?.count ?? 0;
+      const callTasksData = player.call_tasks || [];
+      
+      const callCount = callTasksData.reduce((sum: number, item: any) => {
+        return sum + (item.count ?? 0);
+      }, 0);
+
+      return {
+        ...player,
+        tasks: [{ count: taskCount, call_count: callCount }],
+        call_tasks: undefined,
+      };
+    });
+
+    return playersWithCounts as PlayerWithTasks[];
   },
 
   async getPlayerById(id: string): Promise<Player | null> {
