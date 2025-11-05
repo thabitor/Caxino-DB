@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Mail, Phone, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
@@ -22,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CopyButton } from "@/components/CopyButton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getBirthdayStatus, getBirthdayBadge } from "@/lib/utils";
+import { CallCompletionDialog } from "@/components/CallCompletionDialog";
 
 interface PlayerPreferences {
   communication?: {
@@ -71,6 +73,7 @@ export default function PlayerDetailPage() {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [completingCallId, setCompletingCallId] = useState<string | null>(null);
   const { toast } = useToast();
   const { signOut, user } = useAuth();
 
@@ -173,12 +176,15 @@ export default function PlayerDetailPage() {
     }
 
     try {
-      const result = await taskService.completeCallTask(taskId, user.id, notes, durationMinutes);
+      await taskService.completeCallTask(taskId, user.id, notes, durationMinutes);
       toast({ 
         title: "Call completed", 
         description: "Call task marked as completed and logged successfully.",
         duration: 3000
       });
+      if (completingCallId) {
+        setCompletingCallId(null);
+      }
       fetchPlayerData();
     } catch (error) {
       console.error("Error completing call task:", error);
@@ -187,6 +193,19 @@ export default function PlayerDetailPage() {
         description: "Could not complete call task. Please try again.", 
         variant: "destructive" 
       });
+    }
+  };
+
+  const handleDialogCallComplete = async (notes?: string, durationMinutes?: number) => {
+    if (!completingCallId) return;
+    await handleCallComplete(completingCallId, notes, durationMinutes);
+  };
+  
+  const handleMarkAsDone = (task: Task) => {
+    if (task.is_call) {
+      setCompletingCallId(task.id);
+    } else {
+      handleTaskComplete(task.id);
     }
   };
 
@@ -386,24 +405,35 @@ export default function PlayerDetailPage() {
                   <AlertDescription className="text-blue-800 dark:text-blue-200 mt-2">
                     <div className="space-y-2">
                       {pendingCalls.slice(0, 3).map(call => (
-                        <div key={call.id} className="flex items-center justify-between p-2 rounded bg-white dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                          <div>
-                            <p className="font-semibold">{call.title}</p>
-                            {call.phone_number && (
-                              <p className="text-sm flex items-center gap-1">
-                                <Phone className="w-3 h-3" />
-                                {call.phone_number}
-                              </p>
-                            )}
-                            {call.due_date && (
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(call.due_date), "PPp")}
-                              </p>
-                            )}
+                        <div key={call.id} className="p-2 rounded bg-white dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="font-semibold">{call.title}</p>
+                              {call.phone_number && (
+                                <p className="text-sm flex items-center gap-1">
+                                  <Phone className="w-3 h-3" />
+                                  {call.phone_number}
+                                </p>
+                              )}
+                              {call.due_date && (
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(call.due_date), "PPp")}
+                                </p>
+                              )}
+                            </div>
+                            <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                              {call.priority}
+                            </Badge>
                           </div>
-                          <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
-                            {call.priority}
-                          </Badge>
+                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-blue-200/50 dark:border-blue-800/50">
+                            <Checkbox
+                              id={`call-alert-done-${call.id}`}
+                              onCheckedChange={() => handleMarkAsDone(call)}
+                            />
+                            <label htmlFor={`call-alert-done-${call.id}`} className="text-xs font-semibold cursor-pointer">
+                              Mark as Done
+                            </label>
+                          </div>
                         </div>
                       ))}
                       {pendingCalls.length > 3 && (
@@ -425,21 +455,32 @@ export default function PlayerDetailPage() {
                   <AlertDescription className="text-amber-800 dark:text-amber-200 mt-2">
                     <div className="space-y-2">
                       {pendingTasks.slice(0, 3).map(task => (
-                        <div key={task.id} className="flex items-center justify-between p-2 rounded bg-white dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                          <div>
-                            <p className="font-semibold">{task.title}</p>
-                            {task.description && (
-                              <p className="text-sm line-clamp-1">{task.description}</p>
-                            )}
-                            {task.due_date && (
-                              <p className="text-xs text-muted-foreground">
-                                Due: {format(new Date(task.due_date), "PPp")}
-                              </p>
-                            )}
+                        <div key={task.id} className="p-2 rounded bg-white dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                           <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="font-semibold">{task.title}</p>
+                              {task.description && (
+                                <p className="text-sm line-clamp-1">{task.description}</p>
+                              )}
+                              {task.due_date && (
+                                <p className="text-xs text-muted-foreground">
+                                  Due: {format(new Date(task.due_date), "PPp")}
+                                </p>
+                              )}
+                            </div>
+                            <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">
+                              {task.priority}
+                            </Badge>
                           </div>
-                          <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">
-                            {task.priority}
-                          </Badge>
+                           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-amber-200/50 dark:border-amber-800/50">
+                            <Checkbox
+                              id={`task-alert-done-${task.id}`}
+                              onCheckedChange={() => handleMarkAsDone(task)}
+                            />
+                            <label htmlFor={`task-alert-done-${task.id}`} className="text-xs font-semibold cursor-pointer">
+                              Mark as Done
+                            </label>
+                          </div>
                         </div>
                       ))}
                       {pendingTasks.length > 3 && (
@@ -814,11 +855,11 @@ export default function PlayerDetailPage() {
                               </div>
                             )}
 
-                            {log.topic && (
+                            {log.call_topic && (
                               <div className="flex items-center gap-2 text-sm">
                                 <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                 <span className="font-semibold">Topic:</span>
-                                <span>{log.topic}</span>
+                                <span>{log.call_topic}</span>
                               </div>
                             )}
                           </div>
@@ -861,6 +902,14 @@ export default function PlayerDetailPage() {
           onClose={() => setIsPlayerFormOpen(false)}
           onSubmit={handlePlayerUpdate}
           player={player}
+        />
+
+        <CallCompletionDialog
+          isOpen={completingCallId !== null}
+          onClose={() => setCompletingCallId(null)}
+          onComplete={handleDialogCallComplete}
+          callTopic={tasks.find(t => t.id === completingCallId)?.call_topic}
+          phoneNumber={tasks.find(t => t.id === completingCallId)?.phone_number}
         />
       </div>
     </ProtectedRoute>

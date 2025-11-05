@@ -177,12 +177,15 @@ export function TaskAlertsPanel() {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1">
-            <div className="pt-1">
+            <div className="pt-1 flex flex-col items-center space-y-1">
               <Checkbox
-                id={`task-${task.id}`}
+                id={`task-done-${task.id}`}
                 onCheckedChange={() => handleMarkAsDone(task)}
                 className="h-5 w-5 border-2"
               />
+               <label htmlFor={`task-done-${task.id}`} className="text-xs font-semibold cursor-pointer text-center leading-tight">
+                Mark as<br/>Done
+              </label>
             </div>
             
             <div className="flex-1 space-y-2">
