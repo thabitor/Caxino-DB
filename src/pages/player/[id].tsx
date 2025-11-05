@@ -828,6 +828,33 @@ export default function PlayerDetailPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Tasks & Reminders moved here to align with left column */}
+              <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
+                <CardHeader className="border-b-2 border-border/40 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Tasks & Reminders</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Manage player-related tasks and follow-ups
+                      </p>
+                    </div>
+                    <Button onClick={() => setIsTaskFormOpen(true)} size="sm" className="border-2 border-primary">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Task
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <TaskList
+                    tasks={tasks}
+                    onEdit={handleEditTask}
+                    onDelete={handleTaskDelete}
+                    onComplete={handleTaskComplete}
+                    onCompleteCall={handleCallComplete}
+                  />
+                </CardContent>
+              </Card>
             </div>
 
             <div className="space-y-4">
@@ -994,32 +1021,6 @@ export default function PlayerDetailPage() {
               </Card>
             </div>
           </div>
-
-          <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
-            <CardHeader className="border-b-2 border-border/40 bg-muted/30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Tasks & Reminders</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Manage player-related tasks and follow-ups
-                  </p>
-                </div>
-                <Button onClick={() => setIsTaskFormOpen(true)} size="sm" className="border-2 border-primary">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Task
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <TaskList
-                tasks={tasks}
-                onEdit={handleEditTask}
-                onDelete={handleTaskDelete}
-                onComplete={handleTaskComplete}
-                onCompleteCall={handleCallComplete}
-              />
-            </CardContent>
-          </Card>
         </main>
 
         <TaskFormDialog
