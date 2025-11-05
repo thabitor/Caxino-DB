@@ -32,7 +32,6 @@ const getResetValues = (player: Player | null): PlayerFormData => {
       gender: "other",
       casino: "",
       vip_level: 3,
-      total_deposits: 0,
       last_email_sent: undefined,
       preferences: "{}",
       notes: "",
@@ -61,7 +60,6 @@ const getResetValues = (player: Player | null): PlayerFormData => {
     gender: player.gender as "male" | "female" | "other" | undefined,
     casino: player.casino ?? "",
     vip_level: player.vip_level as VipLevel,
-    total_deposits: Number(player.total_deposits) || 0,
     last_email_sent: player.last_email_sent ? new Date(player.last_email_sent) : undefined,
     preferences: preferencesStr,
     notes: player.notes ?? "",
@@ -249,17 +247,6 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                             <FormMessage />
                         </FormItem>
                     )}
-                />
-                <FormField
-                  control={form.control}
-                  name="total_deposits"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Total Deposits</FormLabel>
-                      <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
                 />
                 <FormField
                   control={form.control}

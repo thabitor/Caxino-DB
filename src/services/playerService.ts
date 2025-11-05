@@ -24,7 +24,6 @@ export const playerSchema = z.object({
   gender: z.enum(["male", "female", "other"]).optional(),
   casino: z.string().optional(),
   vip_level: z.coerce.number().min(3).max(5) as z.ZodType<VipLevel>,
-  total_deposits: z.coerce.number().min(0).optional(),
   last_email_sent: z.date().optional(),
   preferences: z.string().optional().refine((val) => {
     if (!val || val.trim() === "") return true;
