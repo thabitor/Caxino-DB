@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { playerService, Player, getFullName, vipConfig, VipLevel } from "@/services/playerService";
 import { taskService, Task } from "@/services/taskService";
+import { callLogService, CallLog } from "@/services/callLogService";
 import { TaskList } from "@/components/TaskList";
 import { TaskFormDialog } from "@/components/TaskFormDialog";
 import { PlayerFormDialog } from "@/components/PlayerFormDialog";
@@ -13,8 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Phone, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle } from "lucide-react";
-import { format } from "date-fns";
+import { ArrowLeft, Mail, Phone, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,6 +63,7 @@ export default function PlayerDetailPage() {
   const { id } = router.query;
   const [player, setPlayer] = useState<Player | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [isPlayerFormOpen, setIsPlayerFormOpen] = useState(false);
@@ -77,9 +79,10 @@ export default function PlayerDetailPage() {
 
     try {
       setLoading(true);
-      const [playerData, tasksData] = await Promise.all([
+      const [playerData, tasksData, callLogsData] = await Promise.all([
         playerService.getPlayerById(id),
         taskService.getTasksByPlayerId(id),
+        callLogService.getCallLogsByPlayerId(id),
       ]);
 
       if (!playerData) {
@@ -95,6 +98,7 @@ export default function PlayerDetailPage() {
       setPlayer(playerData);
       setNotesValue(playerData.notes || "");
       setTasks(tasksData);
+      setCallLogs(callLogsData);
     } catch (error) {
       console.error("Error fetching player data:", error);
       toast({
@@ -737,6 +741,109 @@ export default function PlayerDetailPage() {
                 onComplete={handleTaskComplete}
                 onCompleteCall={handleCallComplete}
               />
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
+            <CardHeader className="border-b-2 border-border/40 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
+                    <Phone className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      Call History
+                      <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0">
+                        {callLogs.length}
+                      </Badge>
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Complete log of all calls made to this player
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {callLogs.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-border/60 rounded-lg bg-muted/20">
+                  <Phone className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground font-medium mb-1">No call history yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Call logs will appear here when calls are completed
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {callLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="p-4 rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0">
+                              <Phone className="w-3 h-3 mr-1" />
+                              Call Completed
+                            </Badge>
+                            {log.duration_minutes && (
+                              <Badge variant="outline" className="border-2 border-blue-300 dark:border-blue-700">
+                                <Clock className="w-3 h-3 mr-1" />
+                                {log.duration_minutes} min
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(log.completed_at), { addSuffix: true })}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                              <span className="font-semibold">Call Time:</span>
+                              <span>{format(new Date(log.call_time), "PPp")}</span>
+                            </div>
+
+                            {log.phone_number && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                <span className="font-semibold">Number:</span>
+                                <span className="font-mono">{log.phone_number}</span>
+                              </div>
+                            )}
+
+                            {log.topic && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                <span className="font-semibold">Topic:</span>
+                                <span>{log.topic}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {log.notes && (
+                            <div className="mt-3 p-3 rounded-lg bg-white dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                              <div className="flex items-center gap-2 mb-2">
+                                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                <span className="text-sm font-semibold">Call Notes:</span>
+                              </div>
+                              <p className="text-sm whitespace-pre-wrap text-muted-foreground">
+                                {log.notes}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="text-xs text-muted-foreground pt-2 border-t border-blue-200/50 dark:border-blue-800/50">
+                            Completed at: {format(new Date(log.completed_at), "PPpp")}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </main>
