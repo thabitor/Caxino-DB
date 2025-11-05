@@ -591,88 +591,88 @@ export default function PlayerDetailPage() {
                 </CardHeader>
                 <CardContent className="py-3">
                   <div className="grid gap-2 md:grid-cols-2">
-                    <div className="space-y-0.5 p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+                    <div className="space-y-0.5 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           <User className="w-3 h-3 text-slate-600 dark:text-slate-400" />
                           <span className="font-semibold">User ID</span>
                         </div>
                         <CopyButton text={player.user_id} label="User ID" size="sm" />
                       </div>
-                      <p className="font-mono text-xs font-bold">{player.user_id}</p>
+                      <p className="font-mono text-sm font-bold">{player.user_id}</p>
                     </div>
 
-                    <div className="space-y-0.5 p-2 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+                    <div className="space-y-0.5 p-1.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           <User className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                           <span className="font-semibold">Gender</span>
                         </div>
                         <CopyButton text={player.gender || "Not specified"} label="Gender" size="sm" />
                       </div>
-                      <p className="text-xs font-bold capitalize">{player.gender || "Not specified"}</p>
+                      <p className="text-sm font-bold capitalize">{player.gender || "Not specified"}</p>
                     </div>
 
-                    <div className="space-y-0.5 p-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                    <div className="space-y-0.5 p-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           <Mail className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                           <span className="font-semibold">Email</span>
                         </div>
                         <CopyButton text={player.email} label="Email" size="sm" />
                       </div>
-                      <p className="text-xs font-medium truncate">{player.email}</p>
+                      <p className="text-sm font-medium truncate">{player.email}</p>
                     </div>
 
                     {player.phone && (
-                      <div className="space-y-0.5 p-2 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+                      <div className="space-y-0.5 p-1.5 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                             <Phone className="w-3 h-3 text-green-600 dark:text-green-400" />
                             <span className="font-semibold">Phone</span>
                           </div>
                           <CopyButton text={player.phone} label="Phone" size="sm" />
                         </div>
-                        <p className="text-xs font-medium">{player.phone}</p>
+                        <p className="text-sm font-medium">{player.phone}</p>
                       </div>
                     )}
 
                     {player.dob && (
-                      <div className="space-y-0.5 p-2 rounded-lg border border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-pink-950/20">
+                      <div className="space-y-0.5 p-1.5 rounded-lg border border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-pink-950/20">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                             <Calendar className="w-3 h-3 text-pink-600 dark:text-pink-400" />
                             <span className="font-semibold">Date of Birth</span>
                           </div>
                           <CopyButton text={format(new Date(player.dob), "PPP")} label="Date of Birth" size="sm" />
                         </div>
-                        <p className="text-xs font-medium">{format(new Date(player.dob), "PPP")}</p>
+                        <p className="text-sm font-medium">{format(new Date(player.dob), "PPP")}</p>
                       </div>
                     )}
 
                     {player.casino && (
-                      <div className="space-y-0.5 p-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                      <div className="space-y-0.5 p-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                             <Crown className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                             <span className="font-semibold">Casino</span>
                           </div>
                           <CopyButton text={player.casino} label="Casino" size="sm" />
                         </div>
-                        <p className="text-xs font-medium">{player.casino}</p>
+                        <p className="text-sm font-medium">{player.casino}</p>
                       </div>
                     )}
 
                     {player.last_email_sent && (
-                      <div className="space-y-0.5 p-2 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
+                      <div className="space-y-0.5 p-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                             <Mail className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                             <span className="font-semibold">Last Email Sent</span>
                           </div>
                           <CopyButton text={format(new Date(player.last_email_sent), "PPP")} label="Last Email Sent" size="sm" />
                         </div>
-                        <p className="text-xs font-medium">{format(new Date(player.last_email_sent), "PPP")}</p>
+                        <p className="text-sm font-medium">{format(new Date(player.last_email_sent), "PPP")}</p>
                       </div>
                     )}
                   </div>
@@ -912,28 +912,28 @@ export default function PlayerDetailPage() {
                         <button
                           key={log.id}
                           onClick={() => setSelectedCallLog(log)}
-                          className="w-full text-left p-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-100/70 dark:hover:bg-blue-900/30 transition-all hover:shadow-sm hover:scale-[1.01] active:scale-[0.99]"
+                          className="w-full text-left p-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-100/70 dark:hover:bg-blue-900/30 transition-all hover:shadow-sm hover:scale-[1.01] active:scale-[0.99]"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
-                                <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0 text-[9px] px-1 py-0">
+                                <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0 text-[10px] px-1 py-0">
                                   Call #{callLogs.length - index}
                                 </Badge>
                                 {log.duration_minutes && (
-                                  <span className="text-[9px] text-muted-foreground">
+                                  <span className="text-[10px] text-muted-foreground">
                                     {log.duration_minutes}m
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs font-medium truncate">
+                              <p className="text-sm font-medium truncate">
                                 {log.call_topic || "Call completed"}
                               </p>
-                              <p className="text-[10px] text-muted-foreground">
+                              <p className="text-[11px] text-muted-foreground">
                                 {format(new Date(log.call_time), "MMM d, yyyy • h:mm a")}
                               </p>
                             </div>
-                            <div className="text-[10px] text-muted-foreground whitespace-nowrap">
+                            <div className="text-[11px] text-muted-foreground whitespace-nowrap">
                               {formatDistanceToNow(new Date(log.completed_at), { addSuffix: true })}
                             </div>
                           </div>
