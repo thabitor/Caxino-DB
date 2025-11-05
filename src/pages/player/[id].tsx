@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Mail, Phone, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User } from "lucide-react";
@@ -70,6 +71,10 @@ export default function PlayerDetailPage() {
   const { signOut, user } = useAuth();
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [showAllCallLogs, setShowAllCallLogs] = useState(false);
+  const [isEditingCallLog, setIsEditingCallLog] = useState(false);
+  const [editedCallTopic, setEditedCallTopic] = useState("");
+  const [editedCallNotes, setEditedCallNotes] = useState("");
+  const [isSavingCallLog, setIsSavingCallLog] = useState(false);
 
   const fetchPlayerData = async () => {
     if (!id || typeof id !== "string") return;
@@ -982,13 +987,26 @@ export default function PlayerDetailPage() {
           phoneNumber={tasks.find(t => t.id === completingCallId)?.phone_number}
         />
 
-        <Dialog open={selectedCallLog !== null} onOpenChange={() => setSelectedCallLog(null)}>
+        <Dialog open={selectedCallLog !== null} onOpenChange={handleCloseCallLogDialog}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                Call Details
-              </DialogTitle>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="flex items-center gap-2">
+                  <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  Call Details
+                </DialogTitle>
+                {!isEditingCallLog && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleEditCallLog}
+                    className="h-7 px-2 text-xs"
+                  >
+                    <Edit className="w-3 h-3 mr-1" />
+                    Edit
+                  </Button>
+                )}
+              </div>
             </DialogHeader>
             {selectedCallLog && (
               <div className="space-y-4">
@@ -1024,27 +1042,43 @@ export default function PlayerDetailPage() {
                     </div>
                   )}
 
-                  {selectedCallLog.call_topic && (
-                    <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
-                      <div className="flex items-center gap-2 text-sm mb-1">
-                        <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span className="font-semibold">Call Topic</span>
-                      </div>
-                      <p className="text-sm pl-6">{selectedCallLog.call_topic}</p>
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
+                    <div className="flex items-center gap-2 text-sm mb-2">
+                      <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span className="font-semibold">Call Topic</span>
                     </div>
-                  )}
+                    {isEditingCallLog ? (
+                      <input
+                        type="text"
+                        value={editedCallTopic}
+                        onChange={(e) => setEditedCallTopic(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-border/40 rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter call topic..."
+                      />
+                    ) : (
+                      <p className="text-sm pl-6">{selectedCallLog.call_topic || "No topic specified"}</p>
+                    )}
+                  </div>
 
-                  {selectedCallLog.notes && (
-                    <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
-                      <div className="flex items-center gap-2 text-sm mb-2">
-                        <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span className="font-semibold">Call Notes</span>
-                      </div>
-                      <p className="text-sm whitespace-pre-wrap pl-6 text-muted-foreground">
-                        {selectedCallLog.notes}
-                      </p>
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
+                    <div className="flex items-center gap-2 text-sm mb-2">
+                      <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span className="font-semibold">Call Notes</span>
                     </div>
-                  )}
+                    {isEditingCallLog ? (
+                      <Textarea
+                        value={editedCallNotes}
+                        onChange={(e) => setEditedCallNotes(e.target.value)}
+                        rows={4}
+                        className="resize-none text-sm"
+                        placeholder="Add notes about this call..."
+                      />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap pl-6 text-muted-foreground">
+                        {selectedCallLog.notes || "No notes available"}
+                      </p>
+                    )}
+                  </div>
 
                   <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
                     <div className="flex items-center gap-2 text-sm mb-1">
@@ -1054,6 +1088,30 @@ export default function PlayerDetailPage() {
                     <p className="text-sm pl-6">{format(new Date(selectedCallLog.completed_at), "PPPP 'at' p")}</p>
                   </div>
                 </div>
+
+                {isEditingCallLog && (
+                  <div className="flex gap-2 justify-end pt-2 border-t border-border/40">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleCancelCallLogEdit}
+                      disabled={isSavingCallLog}
+                      className="h-8 px-3 text-xs"
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={handleSaveCallLog}
+                      disabled={isSavingCallLog}
+                      className="h-8 px-3 text-xs"
+                    >
+                      <Save className="w-3 h-3 mr-1" />
+                      {isSavingCallLog ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </DialogContent>
