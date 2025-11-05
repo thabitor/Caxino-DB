@@ -384,14 +384,12 @@ export default function PlayerDetailPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h1 className="text-xl font-bold">{getFullName(player)}</h1>
-                      <CopyButton text={getFullName(player)} label="Name" size="sm" />
                       <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
                         {player.vip_level} - {vipInfo.name}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-muted-foreground">@{player.username}</p>
-                      <CopyButton text={player.username} label="Username" size="sm" />
                     </div>
                   </div>
                 </div>
@@ -602,17 +600,6 @@ export default function PlayerDetailPage() {
                     </div>
                   )}
 
-                  <div className="space-y-1 p-3 rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        <span className="font-semibold">Total Deposits</span>
-                      </div>
-                      <CopyButton text={`$${Number(player.total_deposits || 0).toLocaleString()}`} label="Total Deposits" />
-                    </div>
-                    <p className="font-medium text-sm">${Number(player.total_deposits || 0).toLocaleString()}</p>
-                  </div>
-
                   {player.casino && (
                     <div className="space-y-1 p-3 rounded-lg border-2 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
                       <div className="flex items-center justify-between">
@@ -718,17 +705,11 @@ export default function PlayerDetailPage() {
                   </div>
                   <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border-2 border-purple-200 dark:border-purple-800">
                     <span className="text-sm font-semibold text-muted-foreground">Gender</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold capitalize">{player.gender || "Not specified"}</span>
-                      {player.gender && <CopyButton text={player.gender} label="Gender" />}
-                    </div>
+                    <span className="font-bold capitalize">{player.gender || "Not specified"}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border-2 border-green-200 dark:border-green-800">
                     <span className="text-sm font-semibold text-muted-foreground">Active Tasks</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-xl">{tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length}</span>
-                      <CopyButton text={String(tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length)} label="Active Tasks" />
-                    </div>
+                    <span className="font-bold text-xl">{tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length}</span>
                   </div>
                 </CardContent>
               </Card>
