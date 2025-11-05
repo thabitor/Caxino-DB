@@ -14,27 +14,22 @@ export interface PlayerPreferences {
   language?: string;
 }
 
-interface PreferencesEditorProps {
-  value: string;
-  onChange: (value: string) => void;
+export interface PreferencesEditorProps {
+  preferences: PlayerPreferences;
+  onUpdate: (newPreferences: PlayerPreferences) => void;
 }
 
-export function PreferencesEditor({ value, onChange }: PreferencesEditorProps) {
-  const [preferences, setPreferences] = useState<PlayerPreferences>({});
+export function PreferencesEditor({ preferences: initialPreferences, onUpdate }: PreferencesEditorProps) {
+  const [preferences, setPreferences] = useState<PlayerPreferences>(initialPreferences);
 
   useEffect(() => {
-    try {
-      const parsed = value ? JSON.parse(value) : {};
-      setPreferences(parsed);
-    } catch {
-      setPreferences({});
-    }
-  }, [value]);
+    setPreferences(initialPreferences);
+  }, [initialPreferences]);
 
   const updatePreferences = (updates: Partial<PlayerPreferences>) => {
     const newPrefs = { ...preferences, ...updates };
     setPreferences(newPrefs);
-    onChange(JSON.stringify(newPrefs));
+    onUpdate(newPrefs);
   };
 
   const updateCommunication = (key: keyof NonNullable<PlayerPreferences["communication"]>, val: boolean) => {

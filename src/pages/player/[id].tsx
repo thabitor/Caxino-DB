@@ -301,7 +301,7 @@ export default function PlayerDetailPage() {
 
     try {
       await playerService.updatePlayer(player.id, { 
-        preferences: newPreferences,
+        preferences: newPreferences as any,
         preferred_time_from: newPreferences.preferred_time_from,
         preferred_time_to: newPreferences.preferred_time_to
       });
