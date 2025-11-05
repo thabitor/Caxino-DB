@@ -847,7 +847,7 @@ export default function PlayerDetailPage() {
                     <div className="space-y-2">
                       {player.notes ? (
                         <div className="p-3 rounded-lg border border-border/40 bg-muted/10 relative group">
-                          <p className="text-sm whitespace-pre-wrap text-muted-foreground min-h-[100px]">
+                          <p className="text-sm whitespace-pre-wrap min-h-[100px]">
                             {player.notes}
                           </p>
                           <div className="absolute top-2 right-2">
