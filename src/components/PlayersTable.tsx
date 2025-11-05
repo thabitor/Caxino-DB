@@ -236,6 +236,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
         <Table>
           <TableHeader>
             <TableRow>
+              <SortableHeader field="user_id" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>User ID</SortableHeader>
               <SortableHeader field="username" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Username</SortableHeader>
               <SortableHeader field="firstname" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Full Name</SortableHeader>
               <SortableHeader field="email" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Email</SortableHeader>
@@ -250,6 +251,12 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
             {filteredAndSortedPlayers.length > 0 ? (
               filteredAndSortedPlayers.map((player) => (
                 <TableRow key={player.id} className={getRowHighlight(player)}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm text-muted-foreground">{player.user_id}</span>
+                      <CopyButton text={player.user_id} label="User ID" />
+                    </div>
+                  </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <Link href={`/player/${player.id}`} className="hover:underline text-blue-600 dark:text-blue-400">{player.username}</Link>
@@ -305,7 +312,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
                 </TableRow>
               ))
             ) : (
-              <TableRow><TableCell colSpan={8} className="h-24 text-center">No players found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="h-24 text-center">No players found.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
