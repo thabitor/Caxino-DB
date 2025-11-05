@@ -578,9 +578,12 @@ export default function PlayerDetailPage() {
 
                   {player.phone && (
                     <div className="space-y-1 p-3 rounded-lg border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="w-4 h-4 text-green-600 dark:text-green-400" />
-                        <span className="font-semibold">Phone</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Phone className="w-4 h-4 text-green-600 dark:text-green-400" />
+                          <span className="font-semibold">Phone</span>
+                        </div>
+                        <CopyButton text={player.phone} label="Phone" />
                       </div>
                       <p className="font-medium text-sm">{player.phone}</p>
                     </div>
@@ -588,27 +591,36 @@ export default function PlayerDetailPage() {
 
                   {player.dob && (
                     <div className="space-y-1 p-3 rounded-lg border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                        <span className="font-semibold">Date of Birth</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                          <span className="font-semibold">Date of Birth</span>
+                        </div>
+                        <CopyButton text={format(new Date(player.dob), "PPP")} label="Date of Birth" />
                       </div>
                       <p className="font-medium text-sm">{format(new Date(player.dob), "PPP")}</p>
                     </div>
                   )}
 
                   <div className="space-y-1 p-3 rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span className="font-semibold">Total Deposits</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="font-semibold">Total Deposits</span>
+                      </div>
+                      <CopyButton text={`$${Number(player.total_deposits || 0).toLocaleString()}`} label="Total Deposits" />
                     </div>
                     <p className="font-medium text-sm">${Number(player.total_deposits || 0).toLocaleString()}</p>
                   </div>
 
                   {player.casino && (
                     <div className="space-y-1 p-3 rounded-lg border-2 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Crown className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                        <span className="font-semibold">Casino</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Crown className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                          <span className="font-semibold">Casino</span>
+                        </div>
+                        <CopyButton text={player.casino} label="Casino" />
                       </div>
                       <p className="font-medium text-sm">{player.casino}</p>
                     </div>
@@ -616,9 +628,12 @@ export default function PlayerDetailPage() {
 
                   {player.last_email_sent && (
                     <div className="space-y-1 p-3 rounded-lg border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span className="font-semibold">Last Email Sent</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Mail className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          <span className="font-semibold">Last Email Sent</span>
+                        </div>
+                        <CopyButton text={format(new Date(player.last_email_sent), "PPP")} label="Last Email Sent" />
                       </div>
                       <p className="font-medium text-sm">{format(new Date(player.last_email_sent), "PPP")}</p>
                     </div>
@@ -696,15 +711,24 @@ export default function PlayerDetailPage() {
                 <CardContent className="space-y-3 pt-4">
                   <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border-2 border-blue-200 dark:border-blue-800">
                     <span className="text-sm font-semibold text-muted-foreground">User ID</span>
-                    <span className="font-mono text-sm font-bold">{player.user_id}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-bold">{player.user_id}</span>
+                      <CopyButton text={player.user_id} label="User ID" />
+                    </div>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border-2 border-purple-200 dark:border-purple-800">
                     <span className="text-sm font-semibold text-muted-foreground">Gender</span>
-                    <span className="font-bold capitalize">{player.gender || "Not specified"}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold capitalize">{player.gender || "Not specified"}</span>
+                      {player.gender && <CopyButton text={player.gender} label="Gender" />}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border-2 border-green-200 dark:border-green-800">
                     <span className="text-sm font-semibold text-muted-foreground">Active Tasks</span>
-                    <span className="font-bold text-xl">{tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xl">{tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length}</span>
+                      <CopyButton text={String(tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length)} label="Active Tasks" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
