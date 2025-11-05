@@ -63,6 +63,7 @@ export default function PlayerDetailPage() {
   const [notesValue, setNotesValue] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [isEditingPreferences, setIsEditingPreferences] = useState(false);
+  const [draftPreferences, setDraftPreferences] = useState<PlayerPreferences>({});
   const [completingCallId, setCompletingCallId] = useState<string | null>(null);
   const [checkedAlertTasks, setCheckedAlertTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
@@ -296,17 +297,28 @@ export default function PlayerDetailPage() {
     setIsEditingNotes(false);
   };
 
-  const handleSavePreferences = async (newPreferences: PlayerPreferences) => {
+  const handleStartEditingPreferences = () => {
+    // Initialize draft preferences with current values
+    const currentPrefs = parsePreferences(player?.preferences);
+    setDraftPreferences({
+      ...currentPrefs,
+      preferred_time_from: player?.preferred_time_from ?? undefined,
+      preferred_time_to: player?.preferred_time_to ?? undefined
+    });
+    setIsEditingPreferences(true);
+  };
+
+  const handleSavePreferences = async () => {
     if (!player) return;
 
     try {
-      // Extract the time preferences from the preferences object
-      const timeFrom = newPreferences.preferred_time_from;
-      const timeTo = newPreferences.preferred_time_to;
+      // Extract the time preferences from the draft preferences object
+      const timeFrom = draftPreferences.preferred_time_from;
+      const timeTo = draftPreferences.preferred_time_to;
       
       // Update the player with both the preferences JSON and the individual time columns
       await playerService.updatePlayer(player.id, { 
-        preferences: newPreferences as any,
+        preferences: draftPreferences as any,
         preferred_time_from: timeFrom,
         preferred_time_to: timeTo
       });
@@ -320,22 +332,14 @@ export default function PlayerDetailPage() {
     }
   };
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      toast({ 
-        title: "Signed out", 
-        description: "You have been successfully signed out." 
-      });
-      router.push("/auth/login");
-    } catch (error) {
-      console.error("Sign out error:", error);
-      toast({ 
-        title: "Error", 
-        description: "Could not sign out. Please try again.", 
-        variant: "destructive" 
-      });
-    }
+  const handleCancelPreferencesEdit = () => {
+    setDraftPreferences({});
+    setIsEditingPreferences(false);
+  };
+
+  const handleCancelPreferencesEdit = () => {
+    setDraftPreferences({});
+    setIsEditingPreferences(false);
   };
 
   const parsePreferences = (prefs: any): PlayerPreferences => {
@@ -684,7 +688,7 @@ export default function PlayerDetailPage() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => setIsEditingPreferences(true)}
+                        onClick={handleStartEditingPreferences}
                         className="h-7 px-2 text-xs"
                       >
                         <Edit className="w-3 h-3 mr-1" />
@@ -697,22 +701,26 @@ export default function PlayerDetailPage() {
                   {isEditingPreferences ? (
                     <div className="space-y-3">
                       <PreferencesEditor 
-                        preferences={{
-                          ...preferences,
-                          preferred_time_from: player.preferred_time_from ?? undefined,
-                          preferred_time_to: player.preferred_time_to ?? undefined
-                        }}
-                        onUpdate={handleSavePreferences}
+                        preferences={draftPreferences}
+                        onUpdate={setDraftPreferences}
                       />
                       <div className="flex gap-2 justify-end pt-2 border-t border-border/40">
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => setIsEditingPreferences(false)}
+                          onClick={handleCancelPreferencesEdit}
                           className="h-7 px-2 text-xs"
                         >
                           <X className="w-3 h-3 mr-1" />
                           Cancel
+                        </Button>
+                        <Button 
+                          size="sm"
+                          onClick={handleSavePreferences}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <Save className="w-3 h-3 mr-1" />
+                          Save
                         </Button>
                       </div>
                     </div>
