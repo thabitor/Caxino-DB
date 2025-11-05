@@ -24,6 +24,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getBirthdayStatus, getBirthdayBadge } from "@/lib/utils";
 import { CallCompletionDialog } from "@/components/CallCompletionDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface PlayerPreferences {
   communication?: {
@@ -72,6 +73,7 @@ export default function PlayerDetailPage() {
   const [checkedAlertTasks, setCheckedAlertTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { signOut, user } = useAuth();
+  const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
 
   const fetchPlayerData = async () => {
     if (!id || typeof id !== "string") return;
@@ -542,122 +544,194 @@ export default function PlayerDetailPage() {
             </div>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <Card className="lg:col-span-2 border-2 hover:shadow-xl transition-all hover:border-primary/20">
-              <CardHeader className="border-b-2 border-border/40 bg-muted/30 pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CardTitle>Player Information</CardTitle>
-                    {tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length > 0 && (
-                      <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300">
-                        {tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length} active
-                      </Badge>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-4">
+              <Card className="border-2 hover:shadow-lg transition-all">
+                <CardHeader className="border-b border-border/40 bg-muted/20 py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base">Player Information</CardTitle>
+                      {tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length > 0 && (
+                        <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 text-xs px-1.5 py-0">
+                          {tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length} active
+                        </Badge>
+                      )}
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsPlayerFormOpen(true)}
+                      className="h-7 px-2 text-xs"
+                    >
+                      <Edit className="w-3 h-3 mr-1" />
+                      Edit
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="py-3">
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div className="space-y-0.5 p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <User className="w-3 h-3 text-slate-600 dark:text-slate-400" />
+                          <span className="font-semibold">User ID</span>
+                        </div>
+                        <CopyButton text={player.user_id} label="User ID" size="sm" />
+                      </div>
+                      <p className="font-mono text-xs font-bold">{player.user_id}</p>
+                    </div>
+
+                    <div className="space-y-0.5 p-2 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <User className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                          <span className="font-semibold">Gender</span>
+                        </div>
+                        <CopyButton text={player.gender || "Not specified"} label="Gender" size="sm" />
+                      </div>
+                      <p className="text-xs font-bold capitalize">{player.gender || "Not specified"}</p>
+                    </div>
+
+                    <div className="space-y-0.5 p-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <Mail className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                          <span className="font-semibold">Email</span>
+                        </div>
+                        <CopyButton text={player.email} label="Email" size="sm" />
+                      </div>
+                      <p className="text-xs font-medium truncate">{player.email}</p>
+                    </div>
+
+                    {player.phone && (
+                      <div className="space-y-0.5 p-2 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <Phone className="w-3 h-3 text-green-600 dark:text-green-400" />
+                            <span className="font-semibold">Phone</span>
+                          </div>
+                          <CopyButton text={player.phone} label="Phone" size="sm" />
+                        </div>
+                        <p className="text-xs font-medium">{player.phone}</p>
+                      </div>
+                    )}
+
+                    {player.dob && (
+                      <div className="space-y-0.5 p-2 rounded-lg border border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-pink-950/20">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <Calendar className="w-3 h-3 text-pink-600 dark:text-pink-400" />
+                            <span className="font-semibold">Date of Birth</span>
+                          </div>
+                          <CopyButton text={format(new Date(player.dob), "PPP")} label="Date of Birth" size="sm" />
+                        </div>
+                        <p className="text-xs font-medium">{format(new Date(player.dob), "PPP")}</p>
+                      </div>
+                    )}
+
+                    {player.casino && (
+                      <div className="space-y-0.5 p-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <Crown className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                            <span className="font-semibold">Casino</span>
+                          </div>
+                          <CopyButton text={player.casino} label="Casino" size="sm" />
+                        </div>
+                        <p className="text-xs font-medium">{player.casino}</p>
+                      </div>
+                    )}
+
+                    {player.last_email_sent && (
+                      <div className="space-y-0.5 p-2 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <Mail className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                            <span className="font-semibold">Last Email Sent</span>
+                          </div>
+                          <CopyButton text={format(new Date(player.last_email_sent), "PPP")} label="Last Email Sent" size="sm" />
+                        </div>
+                        <p className="text-xs font-medium">{format(new Date(player.last_email_sent), "PPP")}</p>
+                      </div>
                     )}
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setIsPlayerFormOpen(true)}
-                    className="h-8 px-3 border-2 hover:bg-accent"
-                  >
-                    <Edit className="w-3 h-3 mr-1" />
-                    Edit
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-4">
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-1 p-2.5 rounded-lg border-2 border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <User className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
-                        <span className="font-semibold">User ID</span>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 hover:shadow-lg transition-all">
+                <CardHeader className="border-b border-border/40 bg-muted/20 py-3">
+                  <CardTitle className="text-base">Preferences</CardTitle>
+                </CardHeader>
+                <CardContent className="py-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="p-2 rounded-lg border border-border/40 bg-muted/10">
+                      <h4 className="text-[10px] font-bold mb-1.5 flex items-center gap-1.5">
+                        <Mail className="w-3 h-3" />
+                        Communication
+                      </h4>
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Email:</span>
+                          {preferences.communication?.email !== false ? (
+                            <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <X className="w-3 h-3 text-red-600 dark:text-red-400" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">SMS:</span>
+                          {preferences.communication?.sms !== false ? (
+                            <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <X className="w-3 h-3 text-red-600 dark:text-red-400" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Phone:</span>
+                          {preferences.communication?.phone !== false ? (
+                            <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <X className="w-3 h-3 text-red-600 dark:text-red-400" />
+                          )}
+                        </div>
                       </div>
-                      <CopyButton text={player.user_id} label="User ID" size="sm" />
                     </div>
-                    <p className="font-mono text-sm font-bold">{player.user_id}</p>
+
+                    <div className="p-2 rounded-lg border border-border/40 bg-muted/10">
+                      <div className="space-y-1 text-[10px]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground font-medium">Contact Time:</span>
+                          <span className="font-semibold text-[9px]">
+                            {contactTimeLabels[preferences.contact_time || "any"]}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground font-medium">Language:</span>
+                          <span className="font-semibold">
+                            {languageLabels[preferences.language || "en"]}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2 rounded-lg border border-border/40 bg-muted/10">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground font-medium">Marketing Consent:</span>
+                        {preferences.marketing_consent ? (
+                          <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <X className="w-3 h-3 text-red-600 dark:text-red-400" />
+                        )}
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="space-y-1 p-2.5 rounded-lg border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <User className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                        <span className="font-semibold">Gender</span>
-                      </div>
-                      <CopyButton text={player.gender || "Not specified"} label="Gender" size="sm" />
-                    </div>
-                    <p className="text-sm font-bold capitalize">{player.gender || "Not specified"}</p>
-                  </div>
-
-                  <div className="space-y-1 p-2.5 rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Mail className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                        <span className="font-semibold">Email</span>
-                      </div>
-                      <CopyButton text={player.email} label="Email" size="sm" />
-                    </div>
-                    <p className="text-sm font-medium">{player.email}</p>
-                  </div>
-
-                  {player.phone && (
-                    <div className="space-y-1 p-2.5 rounded-lg border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Phone className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                          <span className="font-semibold">Phone</span>
-                        </div>
-                        <CopyButton text={player.phone} label="Phone" size="sm" />
-                      </div>
-                      <p className="text-sm font-medium">{player.phone}</p>
-                    </div>
-                  )}
-
-                  {player.dob && (
-                    <div className="space-y-1 p-2.5 rounded-lg border-2 border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-pink-950/20">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Calendar className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />
-                          <span className="font-semibold">Date of Birth</span>
-                        </div>
-                        <CopyButton text={format(new Date(player.dob), "PPP")} label="Date of Birth" size="sm" />
-                      </div>
-                      <p className="text-sm font-medium">{format(new Date(player.dob), "PPP")}</p>
-                    </div>
-                  )}
-
-                  {player.casino && (
-                    <div className="space-y-1 p-2.5 rounded-lg border-2 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                          <span className="font-semibold">Casino</span>
-                        </div>
-                        <CopyButton text={player.casino} label="Casino" size="sm" />
-                      </div>
-                      <p className="text-sm font-medium">{player.casino}</p>
-                    </div>
-                  )}
-
-                  {player.last_email_sent && (
-                    <div className="space-y-1 p-2.5 rounded-lg border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Mail className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                          <span className="font-semibold">Last Email Sent</span>
-                        </div>
-                        <CopyButton text={format(new Date(player.last_email_sent), "PPP")} label="Last Email Sent" size="sm" />
-                      </div>
-                      <p className="text-sm font-medium">{format(new Date(player.last_email_sent), "PPP")}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
             <div className="space-y-4">
-              <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
-                <CardHeader className="border-b-2 border-border/40 bg-muted/30 pb-3">
+              <Card className="border-2 hover:shadow-lg transition-all">
+                <CardHeader className="border-b border-border/40 bg-muted/20 py-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Notes</CardTitle>
                     {player.notes && !isEditingNotes && (
@@ -668,7 +742,7 @@ export default function PlayerDetailPage() {
                         variant="outline" 
                         size="sm"
                         onClick={() => setIsEditingNotes(true)}
-                        className="h-7 px-2 border-2 text-xs"
+                        className="h-7 px-2 text-xs"
                       >
                         <Edit className="w-3 h-3 mr-1" />
                         Edit
@@ -676,14 +750,14 @@ export default function PlayerDetailPage() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="pt-4">
+                <CardContent className="py-3">
                   {isEditingNotes ? (
                     <div className="space-y-2">
                       <Textarea
                         value={notesValue}
                         onChange={(e) => setNotesValue(e.target.value)}
                         rows={6}
-                        className="resize-none border-2 text-sm"
+                        className="resize-none text-sm"
                         placeholder="Add notes about this player..."
                       />
                       <div className="flex gap-2 justify-end">
@@ -692,7 +766,7 @@ export default function PlayerDetailPage() {
                           size="sm"
                           onClick={handleCancelNotesEdit}
                           disabled={isSavingNotes}
-                          className="border-2 h-7 px-2 text-xs"
+                          className="h-7 px-2 text-xs"
                         >
                           <X className="w-3 h-3 mr-1" />
                           Cancel
@@ -701,7 +775,7 @@ export default function PlayerDetailPage() {
                           size="sm"
                           onClick={handleSaveNotes}
                           disabled={isSavingNotes}
-                          className="border-2 border-primary h-7 px-2 text-xs"
+                          className="h-7 px-2 text-xs"
                         >
                           <Save className="w-3 h-3 mr-1" />
                           {isSavingNotes ? "Saving..." : "Save"}
@@ -709,75 +783,68 @@ export default function PlayerDetailPage() {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-lg border border-border/40 min-h-[120px]">
+                    <p className="text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-lg border border-border/40 min-h-[100px]">
                       {player.notes || "No notes added yet."}
                     </p>
                   )}
                 </CardContent>
               </Card>
 
-              <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
-                <CardHeader className="border-b-2 border-border/40 bg-muted/30 pb-3">
-                  <CardTitle className="text-base">Preferences</CardTitle>
+              <Card className="border-2 hover:shadow-lg transition-all">
+                <CardHeader className="border-b border-border/40 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/30 py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <CardTitle className="text-base flex items-center gap-2">
+                        Call History
+                        <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0 text-xs px-1.5 py-0">
+                          {callLogs.length}
+                        </Badge>
+                      </CardTitle>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-3 pt-4">
-                  <div className="p-2.5 rounded-lg border-2 border-border/40 bg-muted/20">
-                    <h4 className="text-xs font-bold mb-2 flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5" />
-                      Communication
-                    </h4>
-                    <div className="space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
-                        <span className="text-muted-foreground font-medium">Email</span>
-                        {preferences.communication?.email !== false ? (
-                          <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
-                        <span className="text-muted-foreground font-medium">SMS</span>
-                        {preferences.communication?.sms !== false ? (
-                          <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
-                        <span className="text-muted-foreground font-medium">Phone</span>
-                        {preferences.communication?.phone !== false ? (
-                          <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                        )}
-                      </div>
+                <CardContent className="py-3">
+                  {callLogs.length === 0 ? (
+                    <div className="text-center py-8 border border-dashed border-border/60 rounded-lg bg-muted/10">
+                      <Phone className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
+                      <p className="text-xs text-muted-foreground">No call history yet</p>
                     </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-1.5 text-xs p-2.5 rounded-lg border-2 border-border/40 bg-muted/20">
-                    <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
-                      <span className="text-muted-foreground font-medium">Contact Time</span>
-                      <span className="font-semibold text-[10px]">
-                        {contactTimeLabels[preferences.contact_time || "any"]}
-                      </span>
+                  ) : (
+                    <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
+                      {callLogs.map((log) => (
+                        <button
+                          key={log.id}
+                          onClick={() => setSelectedCallLog(log)}
+                          className="w-full text-left p-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-100/70 dark:hover:bg-blue-900/30 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0 text-[9px] px-1 py-0">
+                                  Call
+                                </Badge>
+                                {log.duration_minutes && (
+                                  <span className="text-[9px] text-muted-foreground">
+                                    {log.duration_minutes}m
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-medium truncate">
+                                {log.call_topic || "Call completed"}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {format(new Date(log.call_time), "MMM d, yyyy • h:mm a")}
+                              </p>
+                            </div>
+                            <div className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {formatDistanceToNow(new Date(log.completed_at), { addSuffix: true })}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
-                      <span className="text-muted-foreground font-medium">Language</span>
-                      <span className="font-semibold">
-                        {languageLabels[preferences.language || "en"]}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
-                      <span className="text-muted-foreground font-medium">Marketing</span>
-                      {preferences.marketing_consent ? (
-                        <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                      )}
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -808,109 +875,6 @@ export default function PlayerDetailPage() {
               />
             </CardContent>
           </Card>
-
-          <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
-            <CardHeader className="border-b-2 border-border/40 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/30">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
-                    <Phone className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      Call History
-                      <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0">
-                        {callLogs.length}
-                      </Badge>
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Complete log of all calls made to this player
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {callLogs.length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed border-border/60 rounded-lg bg-muted/20">
-                  <Phone className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-muted-foreground font-medium mb-1">No call history yet</p>
-                  <p className="text-sm text-muted-foreground">
-                    Call logs will appear here when calls are completed
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {callLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="p-4 rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 hover:shadow-md transition-all"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0">
-                              <Phone className="w-3 h-3 mr-1" />
-                              Call Completed
-                            </Badge>
-                            {log.duration_minutes && (
-                              <Badge variant="outline" className="border-2 border-blue-300 dark:border-blue-700">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {log.duration_minutes} min
-                              </Badge>
-                            )}
-                            <span className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(log.completed_at), { addSuffix: true })}
-                            </span>
-                          </div>
-
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-sm">
-                              <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                              <span className="font-semibold">Call Time:</span>
-                              <span>{format(new Date(log.call_time), "PPp")}</span>
-                            </div>
-
-                            {log.phone_number && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                <span className="font-semibold">Number:</span>
-                                <span className="font-mono">{log.phone_number}</span>
-                              </div>
-                            )}
-
-                            {log.call_topic && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                <span className="font-semibold">Topic:</span>
-                                <span>{log.call_topic}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {log.notes && (
-                            <div className="mt-3 p-3 rounded-lg bg-white dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                              <div className="flex items-center gap-2 mb-2">
-                                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                <span className="text-sm font-semibold">Call Notes:</span>
-                              </div>
-                              <p className="text-sm whitespace-pre-wrap text-muted-foreground">
-                                {log.notes}
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="text-xs text-muted-foreground pt-2 border-t border-blue-200/50 dark:border-blue-800/50">
-                            Completed at: {format(new Date(log.completed_at), "PPpp")}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </main>
 
         <TaskFormDialog
@@ -936,6 +900,83 @@ export default function PlayerDetailPage() {
           callTopic={tasks.find(t => t.id === completingCallId)?.call_topic}
           phoneNumber={tasks.find(t => t.id === completingCallId)?.phone_number}
         />
+
+        <Dialog open={selectedCallLog !== null} onOpenChange={() => setSelectedCallLog(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                Call Details
+              </DialogTitle>
+            </DialogHeader>
+            {selectedCallLog && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0">
+                    <Phone className="w-3 h-3 mr-1" />
+                    Call Completed
+                  </Badge>
+                  {selectedCallLog.duration_minutes && (
+                    <Badge variant="outline" className="border-2 border-blue-300 dark:border-blue-700">
+                      <Clock className="w-3 h-3 mr-1" />
+                      {selectedCallLog.duration_minutes} minutes
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
+                    <div className="flex items-center gap-2 text-sm mb-1">
+                      <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span className="font-semibold">Call Time</span>
+                    </div>
+                    <p className="text-sm pl-6">{format(new Date(selectedCallLog.call_time), "PPPP 'at' p")}</p>
+                  </div>
+
+                  {selectedCallLog.phone_number && (
+                    <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
+                      <div className="flex items-center gap-2 text-sm mb-1">
+                        <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span className="font-semibold">Phone Number</span>
+                      </div>
+                      <p className="text-sm font-mono pl-6">{selectedCallLog.phone_number}</p>
+                    </div>
+                  )}
+
+                  {selectedCallLog.call_topic && (
+                    <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
+                      <div className="flex items-center gap-2 text-sm mb-1">
+                        <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span className="font-semibold">Call Topic</span>
+                      </div>
+                      <p className="text-sm pl-6">{selectedCallLog.call_topic}</p>
+                    </div>
+                  )}
+
+                  {selectedCallLog.notes && (
+                    <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
+                      <div className="flex items-center gap-2 text-sm mb-2">
+                        <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span className="font-semibold">Call Notes</span>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap pl-6 text-muted-foreground">
+                        {selectedCallLog.notes}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
+                    <div className="flex items-center gap-2 text-sm mb-1">
+                      <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span className="font-semibold">Completed At</span>
+                    </div>
+                    <p className="text-sm pl-6">{format(new Date(selectedCallLog.completed_at), "PPPP 'at' p")}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </ProtectedRoute>
   );
