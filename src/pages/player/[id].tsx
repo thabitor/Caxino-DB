@@ -316,9 +316,12 @@ export default function PlayerDetailPage() {
       const timeFrom = draftPreferences.preferred_time_from;
       const timeTo = draftPreferences.preferred_time_to;
       
+      // Create a clean preferences object WITHOUT the time fields (those go in separate columns)
+      const { preferred_time_from, preferred_time_to, ...preferencesOnly } = draftPreferences;
+      
       // Update the player with both the preferences JSON and the individual time columns
       await playerService.updatePlayer(player.id, { 
-        preferences: draftPreferences as any,
+        preferences: preferencesOnly as any,
         preferred_time_from: timeFrom,
         preferred_time_to: timeTo
       });
