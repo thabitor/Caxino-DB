@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +22,7 @@ interface TaskFormDialogProps {
   onSubmit: (data: TaskInsert | TaskUpdate) => void;
   task?: Task | null;
   playerId?: string;
+  playerPhone?: string;
 }
 
 const extendedTaskSchema = taskSchema.extend({
@@ -34,7 +34,7 @@ const extendedTaskSchema = taskSchema.extend({
 
 type ExtendedTaskFormData = z.infer<typeof extendedTaskSchema>;
 
-const getResetValues = (task: Task | null | undefined, playerId?: string): ExtendedTaskFormData => {
+const getResetValues = (task: Task | null | undefined, playerId?: string, playerPhone?: string): ExtendedTaskFormData => {
   if (!task) {
     return {
       player_id: playerId || "",
@@ -44,7 +44,7 @@ const getResetValues = (task: Task | null | undefined, playerId?: string): Exten
       status: "pending",
       due_date: undefined,
       is_call: false,
-      phone_number: "",
+      phone_number: playerPhone || "",
       call_topic: "",
       call_time: "",
     };
@@ -56,27 +56,27 @@ const getResetValues = (task: Task | null | undefined, playerId?: string): Exten
     priority: task.priority as TaskPriority,
     status: task.status as TaskStatus,
     is_call: task.is_call || false,
-    phone_number: task.phone_number ?? "",
+    phone_number: task.phone_number ?? (playerPhone || ""),
     call_topic: task.call_topic ?? "",
     call_time: task.due_date ? format(new Date(task.due_date), "HH:mm") : "",
   };
 };
 
-export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId }: TaskFormDialogProps) {
+export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, playerPhone }: TaskFormDialogProps) {
   const [isCall, setIsCall] = useState(false);
 
   const form = useForm<ExtendedTaskFormData>({
     resolver: zodResolver(extendedTaskSchema),
-    defaultValues: getResetValues(null, playerId),
+    defaultValues: getResetValues(null, playerId, playerPhone),
   });
 
   useEffect(() => {
     if (isOpen) {
-      const resetValues = getResetValues(task, playerId);
+      const resetValues = getResetValues(task, playerId, playerPhone);
       form.reset(resetValues);
       setIsCall(resetValues.is_call);
     }
-  }, [task, playerId, isOpen, form]);
+  }, [task, playerId, playerPhone, isOpen, form]);
 
   const handleFormSubmit = (data: ExtendedTaskFormData) => {
     let dueDate = null;
@@ -92,7 +92,7 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId }: Ta
 
     const submissionData = {
       player_id: data.player_id,
-      title: data.title,
+      title: data.is_call ? (data.call_topic || "Call Task") : data.title,
       description: data.description || null,
       priority: data.priority,
       status: data.status,
@@ -154,6 +154,9 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId }: Ta
                       <FormControl>
                         <Input {...field} placeholder="+1 (555) 123-4567" className="border-blue-300" />
                       </FormControl>
+                      <FormDescription className="text-xs">
+                        Pre-filled with player's phone number (you can edit if needed)
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -164,10 +167,13 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId }: Ta
                   name="call_topic"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-blue-700 dark:text-blue-300">Call Topic (Optional)</FormLabel>
+                      <FormLabel className="text-blue-700 dark:text-blue-300">Call Topic</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="e.g., Account verification, Bonus discussion" className="border-blue-300" />
                       </FormControl>
+                      <FormDescription className="text-xs">
+                        This will be used as the task title
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -227,19 +233,21 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId }: Ta
               </div>
             )}
 
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{isCall ? "Call Title/Subject" : "Title"}</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder={isCall ? "e.g., Follow-up call with John" : "Enter task title"} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {!isCall && (
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter task title" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
