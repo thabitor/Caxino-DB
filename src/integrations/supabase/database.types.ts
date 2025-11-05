@@ -110,6 +110,8 @@ export type Database = {
           notes: string | null
           phone: string | null
           preferences: Json | null
+          preferred_time_from: number | null
+          preferred_time_to: number | null
           total_deposits: number | null
           updated_at: string | null
           user_id: string
@@ -129,6 +131,8 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           preferences?: Json | null
+          preferred_time_from?: number | null
+          preferred_time_to?: number | null
           total_deposits?: number | null
           updated_at?: string | null
           user_id: string
@@ -148,6 +152,8 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           preferences?: Json | null
+          preferred_time_from?: number | null
+          preferred_time_to?: number | null
           total_deposits?: number | null
           updated_at?: string | null
           user_id?: string

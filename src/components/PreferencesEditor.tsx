@@ -7,11 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export interface PlayerPreferences {
   communication?: {
     email?: boolean;
-    sms?: boolean;
     phone?: boolean;
   };
-  contact_time?: "morning" | "afternoon" | "evening" | "any";
-  marketing_consent?: boolean;
+  preferred_time_from?: number;
+  preferred_time_to?: number;
   language?: string;
 }
 
@@ -64,14 +63,6 @@ export function PreferencesEditor({ value, onChange }: PreferencesEditorProps) {
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="sms-toggle" className="text-sm">SMS</Label>
-            <Switch
-              id="sms-toggle"
-              checked={preferences.communication?.sms ?? true}
-              onCheckedChange={(checked) => updateCommunication("sms", checked)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
             <Label htmlFor="phone-toggle" className="text-sm">Phone Call</Label>
             <Switch
               id="phone-toggle"
@@ -88,22 +79,44 @@ export function PreferencesEditor({ value, onChange }: PreferencesEditorProps) {
           <CardDescription className="text-xs">Contact and language settings</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="contact-time" className="text-sm">Preferred Contact Time</Label>
-            <Select
-              value={preferences.contact_time ?? "any"}
-              onValueChange={(val) => updatePreferences({ contact_time: val as PlayerPreferences["contact_time"] })}
-            >
-              <SelectTrigger id="contact-time">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="morning">Morning (9 AM - 12 PM)</SelectItem>
-                <SelectItem value="afternoon">Afternoon (12 PM - 5 PM)</SelectItem>
-                <SelectItem value="evening">Evening (5 PM - 9 PM)</SelectItem>
-                <SelectItem value="any">Any Time</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="time-from" className="text-sm">Preferred Time From</Label>
+              <Select
+                value={preferences.preferred_time_from?.toString() ?? "9"}
+                onValueChange={(val) => updatePreferences({ preferred_time_from: parseInt(val) })}
+              >
+                <SelectTrigger id="time-from">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 13 }, (_, i) => i + 9).map((hour) => (
+                    <SelectItem key={hour} value={hour.toString()}>
+                      {hour}h
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="time-to" className="text-sm">Preferred Time To</Label>
+              <Select
+                value={preferences.preferred_time_to?.toString() ?? "21"}
+                onValueChange={(val) => updatePreferences({ preferred_time_to: parseInt(val) })}
+              >
+                <SelectTrigger id="time-to">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 13 }, (_, i) => i + 9).map((hour) => (
+                    <SelectItem key={hour} value={hour.toString()}>
+                      {hour}h
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -127,18 +140,6 @@ export function PreferencesEditor({ value, onChange }: PreferencesEditorProps) {
                 <SelectItem value="ar">Arabic</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-center justify-between pt-2">
-            <div>
-              <Label htmlFor="marketing-toggle" className="text-sm">Marketing Consent</Label>
-              <p className="text-xs text-muted-foreground">Receive promotional offers</p>
-            </div>
-            <Switch
-              id="marketing-toggle"
-              checked={preferences.marketing_consent ?? false}
-              onCheckedChange={(checked) => updatePreferences({ marketing_consent: checked })}
-            />
           </div>
         </CardContent>
       </Card>

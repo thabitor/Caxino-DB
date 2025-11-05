@@ -31,16 +31,10 @@ interface PlayerPreferences {
     email?: boolean;
     phone?: boolean;
   };
-  contact_time?: "morning" | "afternoon" | "evening" | "any";
+  preferred_time_from?: number;
+  preferred_time_to?: number;
   language?: string;
 }
-
-const contactTimeLabels = {
-  morning: "Morning (9 AM - 12 PM)",
-  afternoon: "Afternoon (12 PM - 5 PM)",
-  evening: "Evening (5 PM - 9 PM)",
-  any: "Any Time",
-};
 
 const languageLabels: Record<string, string> = {
   en: "English",
@@ -712,7 +706,9 @@ export default function PlayerDetailPage() {
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Preferred Time:</span>
                           <span className="font-medium">
-                            {contactTimeLabels[preferences.contact_time || "any"]}
+                            {preferences.preferred_time_from && preferences.preferred_time_to
+                              ? `${preferences.preferred_time_from}h to ${preferences.preferred_time_to}h`
+                              : "Not specified"}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
