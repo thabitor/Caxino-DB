@@ -74,6 +74,7 @@ export default function PlayerDetailPage() {
   const [notesValue, setNotesValue] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [completingCallId, setCompletingCallId] = useState<string | null>(null);
+  const [checkedAlertTasks, setCheckedAlertTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { signOut, user } = useAuth();
 
@@ -102,6 +103,8 @@ export default function PlayerDetailPage() {
       setNotesValue(playerData.notes || "");
       setTasks(tasksData);
       setCallLogs(callLogsData);
+      // Clear checked tasks state after refresh
+      setCheckedAlertTasks(new Set());
     } catch (error) {
       console.error("Error fetching player data:", error);
       toast({
@@ -162,10 +165,22 @@ export default function PlayerDetailPage() {
     try {
       await taskService.completeTask(taskId);
       toast({ title: "Task completed", description: "Task marked as completed." });
+      // Remove from checked tasks and refresh
+      setCheckedAlertTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
       fetchPlayerData();
     } catch (error) {
       console.error("Error completing task:", error);
       toast({ title: "Error", description: "Could not complete task.", variant: "destructive" });
+      // Uncheck on error
+      setCheckedAlertTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
     }
   };
 
@@ -182,6 +197,12 @@ export default function PlayerDetailPage() {
         description: "Call task marked as completed and logged successfully.",
         duration: 3000
       });
+      // Remove from checked tasks, close dialog, and refresh
+      setCheckedAlertTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
       if (completingCallId) {
         setCompletingCallId(null);
       }
@@ -193,6 +214,14 @@ export default function PlayerDetailPage() {
         description: "Could not complete call task. Please try again.", 
         variant: "destructive" 
       });
+      // Uncheck on error
+      if (taskId) {
+        setCheckedAlertTasks(prev => {
+          const next = new Set(prev);
+          next.delete(taskId);
+          return next;
+        });
+      }
     }
   };
 
@@ -200,12 +229,33 @@ export default function PlayerDetailPage() {
     if (!completingCallId) return;
     await handleCallComplete(completingCallId, notes, durationMinutes);
   };
+
+  const handleCallDialogClose = () => {
+    // Uncheck the checkbox when dialog is cancelled
+    if (completingCallId) {
+      setCheckedAlertTasks(prev => {
+        const next = new Set(prev);
+        next.delete(completingCallId);
+        return next;
+      });
+      setCompletingCallId(null);
+    }
+  };
   
-  const handleMarkAsDone = (task: Task) => {
-    if (task.is_call) {
-      setCompletingCallId(task.id);
+  const handleAlertCheckboxChange = (task: Task, checked: boolean) => {
+    if (checked) {
+      setCheckedAlertTasks(prev => new Set(prev).add(task.id));
+      if (task.is_call) {
+        setCompletingCallId(task.id);
+      } else {
+        handleTaskComplete(task.id);
+      }
     } else {
-      handleTaskComplete(task.id);
+      setCheckedAlertTasks(prev => {
+        const next = new Set(prev);
+        next.delete(task.id);
+        return next;
+      });
     }
   };
 
@@ -428,7 +478,8 @@ export default function PlayerDetailPage() {
                           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-blue-200/50 dark:border-blue-800/50">
                             <Checkbox
                               id={`call-alert-done-${call.id}`}
-                              onCheckedChange={() => handleMarkAsDone(call)}
+                              checked={checkedAlertTasks.has(call.id)}
+                              onCheckedChange={(checked) => handleAlertCheckboxChange(call, checked as boolean)}
                             />
                             <label htmlFor={`call-alert-done-${call.id}`} className="text-xs font-semibold cursor-pointer">
                               Mark as Done
@@ -475,7 +526,8 @@ export default function PlayerDetailPage() {
                            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-amber-200/50 dark:border-amber-800/50">
                             <Checkbox
                               id={`task-alert-done-${task.id}`}
-                              onCheckedChange={() => handleMarkAsDone(task)}
+                              checked={checkedAlertTasks.has(task.id)}
+                              onCheckedChange={(checked) => handleAlertCheckboxChange(task, checked as boolean)}
                             />
                             <label htmlFor={`task-alert-done-${task.id}`} className="text-xs font-semibold cursor-pointer">
                               Mark as Done
@@ -906,7 +958,7 @@ export default function PlayerDetailPage() {
 
         <CallCompletionDialog
           isOpen={completingCallId !== null}
-          onClose={() => setCompletingCallId(null)}
+          onClose={handleCallDialogClose}
           onComplete={handleDialogCallComplete}
           callTopic={tasks.find(t => t.id === completingCallId)?.call_topic}
           phoneNumber={tasks.find(t => t.id === completingCallId)?.phone_number}

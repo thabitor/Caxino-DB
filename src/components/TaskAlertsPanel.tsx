@@ -26,6 +26,7 @@ export function TaskAlertsPanel() {
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(true);
   const [completingCallId, setCompletingCallId] = useState<string | null>(null);
+  const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -67,19 +68,19 @@ export function TaskAlertsPanel() {
         return dueDate > now && dueDate <= threeDaysFromNow && !urgent.includes(task);
       });
 
-      // Sort: calls first, then by due date
       const sortTasksWithCallsFirst = (tasks: TaskWithPlayer[]) => {
         return tasks.sort((a, b) => {
-          // First, sort by is_call (calls first)
           if (a.is_call && !b.is_call) return -1;
           if (!a.is_call && b.is_call) return 1;
-          // Then by due date
           return new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime();
         });
       };
 
       setUrgentTasks(sortTasksWithCallsFirst(urgent));
       setUpcomingTasks(sortTasksWithCallsFirst(upcoming));
+      
+      // Clear checked tasks state after refresh
+      setCheckedTasks(new Set());
     } catch (error) {
       console.error("Error fetching alerts:", error);
     } finally {
@@ -95,6 +96,12 @@ export function TaskAlertsPanel() {
         description: "Task marked as completed successfully.",
         duration: 3000
       });
+      // Remove from checked tasks and refresh alerts
+      setCheckedTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
       fetchAlerts();
     } catch (error) {
       console.error("Error completing task:", error);
@@ -102,6 +109,12 @@ export function TaskAlertsPanel() {
         title: "Error", 
         description: "Could not complete task. Please try again.", 
         variant: "destructive" 
+      });
+      // Uncheck on error
+      setCheckedTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
       });
     }
   };
@@ -119,6 +132,12 @@ export function TaskAlertsPanel() {
         description: "Call logged successfully and task marked as complete.",
         duration: 3000
       });
+      // Remove from checked tasks, close dialog, and refresh alerts
+      setCheckedTasks(prev => {
+        const next = new Set(prev);
+        next.delete(completingCallId);
+        return next;
+      });
       setCompletingCallId(null);
       fetchAlerts();
     } catch (error) {
@@ -128,14 +147,43 @@ export function TaskAlertsPanel() {
         description: "Could not complete call. Please try again.", 
         variant: "destructive" 
       });
+      // Uncheck on error
+      if (completingCallId) {
+        setCheckedTasks(prev => {
+          const next = new Set(prev);
+          next.delete(completingCallId);
+          return next;
+        });
+      }
     }
   };
 
-  const handleMarkAsDone = (task: TaskWithPlayer) => {
-    if (task.is_call) {
-      setCompletingCallId(task.id);
+  const handleCallDialogClose = () => {
+    // Uncheck the checkbox when dialog is cancelled
+    if (completingCallId) {
+      setCheckedTasks(prev => {
+        const next = new Set(prev);
+        next.delete(completingCallId);
+        return next;
+      });
+      setCompletingCallId(null);
+    }
+  };
+
+  const handleCheckboxChange = (task: TaskWithPlayer, checked: boolean) => {
+    if (checked) {
+      setCheckedTasks(prev => new Set(prev).add(task.id));
+      if (task.is_call) {
+        setCompletingCallId(task.id);
+      } else {
+        handleTaskComplete(task.id);
+      }
     } else {
-      handleTaskComplete(task.id);
+      setCheckedTasks(prev => {
+        const next = new Set(prev);
+        next.delete(task.id);
+        return next;
+      });
     }
   };
 
@@ -168,7 +216,7 @@ export function TaskAlertsPanel() {
         ? getPriorityColor(task.priority)
         : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20";
 
-    const completingCall = urgentTasks.find(t => t.id === completingCallId) || upcomingTasks.find(t => t.id === completingCallId);
+    const isChecked = checkedTasks.has(task.id);
 
     return (
       <div
@@ -180,7 +228,8 @@ export function TaskAlertsPanel() {
             <div className="pt-1 flex flex-col items-center space-y-1">
               <Checkbox
                 id={`task-done-${task.id}`}
-                onCheckedChange={() => handleMarkAsDone(task)}
+                checked={isChecked}
+                onCheckedChange={(checked) => handleCheckboxChange(task, checked as boolean)}
                 className="h-5 w-5 border-2"
               />
                <label htmlFor={`task-done-${task.id}`} className="text-xs font-semibold cursor-pointer text-center leading-tight">
@@ -365,7 +414,7 @@ export function TaskAlertsPanel() {
 
       <CallCompletionDialog
         isOpen={completingCallId !== null}
-        onClose={() => setCompletingCallId(null)}
+        onClose={handleCallDialogClose}
         onComplete={handleCallComplete}
         callTopic={urgentTasks.find(t => t.id === completingCallId)?.call_topic || upcomingTasks.find(t => t.id === completingCallId)?.call_topic}
         phoneNumber={urgentTasks.find(t => t.id === completingCallId)?.phone_number || upcomingTasks.find(t => t.id === completingCallId)?.phone_number}
