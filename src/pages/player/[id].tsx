@@ -34,11 +34,6 @@ interface PlayerPreferences {
   contact_time?: "morning" | "afternoon" | "evening" | "any";
   marketing_consent?: boolean;
   language?: string;
-  notifications?: {
-    promotions?: boolean;
-    account_updates?: boolean;
-    game_results?: boolean;
-  };
 }
 
 const contactTimeLabels = {
@@ -776,41 +771,6 @@ export default function PlayerDetailPage() {
                       ) : (
                         <X className="w-4 h-4 text-red-600 dark:text-red-400" />
                       )}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="p-3 rounded-lg border-2 border-border/40 bg-muted/20">
-                    <h4 className="text-sm font-bold mb-3 flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      Notifications
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
-                        <span className="text-muted-foreground font-medium">Promotions</span>
-                        {preferences.notifications?.promotions !== false ? (
-                          <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <X className="w-4 h-4 text-red-600 dark:text-red-400" />
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
-                        <span className="text-muted-foreground font-medium">Account Updates</span>
-                        {preferences.notifications?.account_updates !== false ? (
-                          <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <X className="w-4 h-4 text-red-600 dark:text-red-400" />
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
-                        <span className="text-muted-foreground font-medium">Game Results</span>
-                        {preferences.notifications?.game_results !== false ? (
-                          <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <X className="w-4 h-4 text-red-600 dark:text-red-400" />
-                        )}
-                      </div>
                     </div>
                   </div>
                 </CardContent>
