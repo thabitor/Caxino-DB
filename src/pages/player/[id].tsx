@@ -25,6 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getBirthdayStatus, getBirthdayBadge } from "@/lib/utils";
 import { CallCompletionDialog } from "@/components/CallCompletionDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PreferencesEditor } from "@/components/PreferencesEditor";
 
 interface PlayerPreferences {
   communication?: {
@@ -61,6 +62,7 @@ export default function PlayerDetailPage() {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [isEditingPreferences, setIsEditingPreferences] = useState(false);
   const [completingCallId, setCompletingCallId] = useState<string | null>(null);
   const [checkedAlertTasks, setCheckedAlertTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
@@ -292,6 +294,24 @@ export default function PlayerDetailPage() {
   const handleCancelNotesEdit = () => {
     setNotesValue(player?.notes || "");
     setIsEditingNotes(false);
+  };
+
+  const handleSavePreferences = async (newPreferences: PlayerPreferences) => {
+    if (!player) return;
+
+    try {
+      await playerService.updatePlayer(player.id, { 
+        preferences: newPreferences,
+        preferred_time_from: newPreferences.preferred_time_from,
+        preferred_time_to: newPreferences.preferred_time_to
+      });
+      toast({ title: "Preferences saved", description: "Player preferences have been updated successfully." });
+      setIsEditingPreferences(false);
+      fetchPlayerData();
+    } catch (error) {
+      console.error("Error saving preferences:", error);
+      toast({ title: "Error", description: "Could not save preferences.", variant: "destructive" });
+    }
   };
 
   const handleSignOut = async () => {
@@ -652,91 +672,13 @@ export default function PlayerDetailPage() {
 
               <Card className="border-2 hover:shadow-lg transition-all">
                 <CardHeader className="border-b border-border/40 bg-muted/20 py-3">
-                  <CardTitle className="text-base">Preferences</CardTitle>
-                </CardHeader>
-                <CardContent className="py-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-3 rounded-lg border border-border/40 bg-muted/10">
-                      <h4 className="text-sm font-bold mb-2 flex items-center gap-2">
-                        <Mail className="w-4 h-4" />
-                        Communication Channels
-                      </h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Email:</span>
-                          <div className="flex items-center gap-1">
-                            {preferences.communication?.email !== false ? (
-                              <>
-                                <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                <span className="font-medium">Enabled</span>
-                              </>
-                            ) : (
-                              <>
-                                <X className="w-4 h-4 text-red-600 dark:text-red-400" />
-                                <span className="font-medium">Disabled</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Phone:</span>
-                          <div className="flex items-center gap-1">
-                            {preferences.communication?.phone !== false ? (
-                              <>
-                                <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                <span className="font-medium">Enabled</span>
-                              </>
-                            ) : (
-                              <>
-                                <X className="w-4 h-4 text-red-600 dark:text-red-400" />
-                                <span className="font-medium">Disabled</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-lg border border-border/40 bg-muted/10">
-                      <h4 className="text-sm font-bold mb-2 flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        Contact Settings
-                      </h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Preferred Time:</span>
-                          <span className="font-medium">
-                            {preferences.preferred_time_from && preferences.preferred_time_to
-                              ? `${preferences.preferred_time_from}h to ${preferences.preferred_time_to}h`
-                              : "Not specified"}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Language:</span>
-                          <span className="font-medium">
-                            {languageLabels[preferences.language || "en"]}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-4">
-              <Card className="border-2 hover:shadow-lg transition-all">
-                <CardHeader className="border-b border-border/40 bg-muted/20 py-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Notes</CardTitle>
-                    {player.notes && !isEditingNotes && (
-                      <CopyButton text={player.notes} label="Notes" size="sm" />
-                    )}
-                    {!isEditingNotes && (
+                    <CardTitle className="text-base">Preferences</CardTitle>
+                    {!isEditingPreferences && (
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => setIsEditingNotes(true)}
+                        onClick={() => setIsEditingPreferences(true)}
                         className="h-7 px-2 text-xs"
                       >
                         <Edit className="w-3 h-3 mr-1" />
@@ -745,43 +687,136 @@ export default function PlayerDetailPage() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="py-3">
-                  {isEditingNotes ? (
-                    <div className="space-y-2">
-                      <Textarea
-                        value={notesValue}
-                        onChange={(e) => setNotesValue(e.target.value)}
-                        rows={6}
-                        className="resize-none text-sm"
-                        placeholder="Add notes about this player..."
+                <CardContent className="py-4">
+                  {isEditingPreferences ? (
+                    <div className="space-y-3">
+                      <PreferencesEditor 
+                        preferences={{
+                          ...preferences,
+                          preferred_time_from: player.preferred_time_from ?? undefined,
+                          preferred_time_to: player.preferred_time_to ?? undefined
+                        }}
+                        onUpdate={handleSavePreferences}
                       />
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex gap-2 justify-end pt-2 border-t border-border/40">
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={handleCancelNotesEdit}
-                          disabled={isSavingNotes}
+                          onClick={() => setIsEditingPreferences(false)}
                           className="h-7 px-2 text-xs"
                         >
                           <X className="w-3 h-3 mr-1" />
                           Cancel
                         </Button>
-                        <Button 
-                          size="sm"
-                          onClick={handleSaveNotes}
-                          disabled={isSavingNotes}
-                          className="h-7 px-2 text-xs"
-                        >
-                          <Save className="w-3 h-3 mr-1" />
-                          {isSavingNotes ? "Saving..." : "Save"}
-                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-lg border border-border/40 min-h-[100px]">
-                      {player.notes || "No notes added yet."}
-                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 rounded-lg border border-border/40 bg-muted/10">
+                        <h4 className="text-sm font-bold mb-2 flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          Communication Channels
+                        </h4>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Email:</span>
+                            <div className="flex items-center gap-1">
+                              {preferences.communication?.email !== false ? (
+                                <>
+                                  <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                  <span className="font-medium">Enabled</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                  <span className="font-medium">Disabled</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Phone:</span>
+                            <div className="flex items-center gap-1">
+                              {preferences.communication?.phone !== false ? (
+                                <>
+                                  <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                  <span className="font-medium">Enabled</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                  <span className="font-medium">Disabled</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg border border-border/40 bg-muted/10">
+                        <h4 className="text-sm font-bold mb-2 flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Contact Settings
+                        </h4>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Preferred Time:</span>
+                            <span className="font-medium">
+                              {player.preferred_time_from && player.preferred_time_to
+                                ? `${player.preferred_time_from}h to ${player.preferred_time_to}h`
+                                : "Not specified"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Language:</span>
+                            <span className="font-medium">
+                              {languageLabels[preferences.language || "en"]}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-4">
+              <Card className="border-2 hover:shadow-lg transition-all">
+                <CardHeader className="border-b border-border/40 bg-muted/20 py-3">
+                  <CardTitle className="text-base">Notes</CardTitle>
+                </CardHeader>
+                <CardContent className="py-3">
+                  <div className="space-y-2">
+                    <Textarea
+                      value={notesValue}
+                      onChange={(e) => setNotesValue(e.target.value)}
+                      rows={6}
+                      className="resize-none text-sm"
+                      placeholder="Add notes about this player..."
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleCancelNotesEdit}
+                        disabled={isSavingNotes}
+                        className="h-7 px-2 text-xs"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={handleSaveNotes}
+                        disabled={isSavingNotes}
+                        className="h-7 px-2 text-xs"
+                      >
+                        <Save className="w-3 h-3 mr-1" />
+                        {isSavingNotes ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
