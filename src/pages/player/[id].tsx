@@ -100,7 +100,40 @@ export default function PlayerDetailPage() {
       setPlayer(playerData);
       setNotesValue(playerData.notes || "");
       setTasks(tasksData);
-      setCallLogs(callLogsData);
+      
+      // TEMPORARY: Generate mock call logs for UI testing (12 logs total)
+      const mockCallLogs: CallLog[] = [
+        ...callLogsData,
+        // Generate 12 - callLogsData.length fake logs
+        ...Array.from({ length: Math.max(0, 12 - callLogsData.length) }, (_, i) => ({
+          id: `mock-${i}`,
+          player_id: playerData.id,
+          user_id: user?.id || "mock-user",
+          call_time: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000 - Math.random() * 12 * 60 * 60 * 1000).toISOString(),
+          call_topic: [
+            "VIP Welcome Call",
+            "Weekly Check-in",
+            "Bonus Explanation",
+            "Account Verification",
+            "Birthday Wishes",
+            "Loyalty Rewards Discussion",
+            "Withdrawal Assistance",
+            "Technical Support",
+            "Game Recommendations",
+            "Special Promotion Offer",
+            "Feedback Collection",
+            "Monthly Review"
+          ][i % 12],
+          phone_number: playerData.phone || "+1234567890",
+          duration_minutes: Math.floor(Math.random() * 20) + 5,
+          notes: i % 3 === 0 ? `Great conversation! Player was very engaged and ${["expressed interest in new games", "asked about upcoming promotions", "appreciated the personalized service", "had some questions about their account"][i % 4]}.` : i % 3 === 1 ? "Brief check-in call. All good!" : null,
+          completed_at: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000 - Math.random() * 12 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000).toISOString(),
+          task_id: null,
+        } as CallLog))
+      ].sort((a, b) => new Date(b.call_time).getTime() - new Date(a.call_time).getTime());
+      
+      setCallLogs(mockCallLogs);
       // Clear checked tasks state after refresh
       setCheckedAlertTasks(new Set());
     } catch (error) {
