@@ -29,7 +29,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 interface PlayerPreferences {
   communication?: {
     email?: boolean;
-    sms?: boolean;
     phone?: boolean;
   };
   contact_time?: "morning" | "afternoon" | "evening" | "any";
@@ -673,22 +672,6 @@ export default function PlayerDetailPage() {
                           <span className="text-muted-foreground">Email:</span>
                           <div className="flex items-center gap-1">
                             {preferences.communication?.email !== false ? (
-                              <>
-                                <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                <span className="font-medium">Enabled</span>
-                              </>
-                            ) : (
-                              <>
-                                <X className="w-4 h-4 text-red-600 dark:text-red-400" />
-                                <span className="font-medium">Disabled</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">SMS:</span>
-                          <div className="flex items-center gap-1">
-                            {preferences.communication?.sms !== false ? (
                               <>
                                 <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                                 <span className="font-medium">Enabled</span>
