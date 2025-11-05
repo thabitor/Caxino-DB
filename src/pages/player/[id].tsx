@@ -384,12 +384,14 @@ export default function PlayerDetailPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h1 className="text-xl font-bold">{getFullName(player)}</h1>
+                      <CopyButton text={getFullName(player)} label="Name" />
                       <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
                         {player.vip_level} - {vipInfo.name}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-muted-foreground">@{player.username}</p>
+                      <CopyButton text={player.username} label="Username" size="sm" />
                     </div>
                   </div>
                 </div>
