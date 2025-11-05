@@ -591,73 +591,59 @@ export default function PlayerDetailPage() {
                 </CardHeader>
                 <CardContent className="py-3">
                   <div className="grid gap-2 md:grid-cols-2">
-                    <div className="flex items-center justify-between p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
-                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
-                        <User className="w-3 h-3 text-slate-600 dark:text-slate-400 flex-shrink-0" />
-                        <span className="font-semibold whitespace-nowrap">User ID:</span>
-                        <span className="font-mono text-sm font-bold text-foreground truncate">{player.user_id}</span>
-                      </div>
+                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+                      <User className="w-3 h-3 text-slate-600 dark:text-slate-400 flex-shrink-0" />
+                      <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">User ID:</span>
+                      <span className="font-mono text-sm font-bold text-foreground truncate">{player.user_id}</span>
                       <CopyButton text={player.user_id} label="User ID" size="sm" />
                     </div>
 
-                    <div className="flex items-center justify-between p-1.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
-                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
-                        <User className="w-3 h-3 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                        <span className="font-semibold whitespace-nowrap">Gender:</span>
-                        <span className="text-sm font-bold text-foreground capitalize truncate">{player.gender || "Not specified"}</span>
-                      </div>
+                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+                      <User className="w-3 h-3 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                      <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Gender:</span>
+                      <span className="text-sm font-bold text-foreground capitalize truncate">{player.gender || "Not specified"}</span>
                       <CopyButton text={player.gender || "Not specified"} label="Gender" size="sm" />
                     </div>
 
-                    <div className="flex items-center justify-between p-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
-                        <Mail className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                        <span className="font-semibold whitespace-nowrap">Email:</span>
-                        <span className="text-sm font-medium text-foreground truncate">{player.email}</span>
-                      </div>
+                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                      <Mail className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                      <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Email:</span>
+                      <span className="text-sm font-medium text-foreground truncate">{player.email}</span>
                       <CopyButton text={player.email} label="Email" size="sm" />
                     </div>
 
                     {player.phone && (
-                      <div className="flex items-center justify-between p-1.5 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
-                          <Phone className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0" />
-                          <span className="font-semibold whitespace-nowrap">Phone:</span>
-                          <span className="text-sm font-medium text-foreground truncate">{player.phone}</span>
-                        </div>
+                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+                        <Phone className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0" />
+                        <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Phone:</span>
+                        <span className="text-sm font-medium text-foreground truncate">{player.phone}</span>
                         <CopyButton text={player.phone} label="Phone" size="sm" />
                       </div>
                     )}
 
                     {player.dob && (
-                      <div className="flex items-center justify-between p-1.5 rounded-lg border border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-pink-950/20">
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
-                          <Calendar className="w-3 h-3 text-pink-600 dark:text-pink-400 flex-shrink-0" />
-                          <span className="font-semibold whitespace-nowrap">DOB:</span>
-                          <span className="text-sm font-medium text-foreground truncate">{format(new Date(player.dob), "PPP")}</span>
-                        </div>
+                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-pink-950/20">
+                        <Calendar className="w-3 h-3 text-pink-600 dark:text-pink-400 flex-shrink-0" />
+                        <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">DOB:</span>
+                        <span className="text-sm font-medium text-foreground truncate">{format(new Date(player.dob), "PPP")}</span>
                         <CopyButton text={format(new Date(player.dob), "PPP")} label="Date of Birth" size="sm" />
                       </div>
                     )}
 
                     {player.casino && (
-                      <div className="flex items-center justify-between p-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
-                          <Crown className="w-3 h-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                          <span className="font-semibold whitespace-nowrap">Casino:</span>
-                          <span className="text-sm font-medium text-foreground truncate">{player.casino}</span>
-                        </div>
+                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                        <Crown className="w-3 h-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                        <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Casino:</span>
+                        <span className="text-sm font-medium text-foreground truncate">{player.casino}</span>
                         <CopyButton text={player.casino} label="Casino" size="sm" />
                       </div>
                     )}
 
                     {player.last_email_sent && (
-                      <div className="flex items-center justify-between p-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
-                          <Mail className="w-3 h-3 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
-                          <span className="font-semibold whitespace-nowrap">Last Email:</span>
-                          <span className="text-sm font-medium text-foreground truncate">{format(new Date(player.last_email_sent), "PPP")}</span>
-                        </div>
+                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
+                        <Mail className="w-3 h-3 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                        <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Last Email:</span>
+                        <span className="text-sm font-medium text-foreground truncate">{format(new Date(player.last_email_sent), "PPP")}</span>
                         <CopyButton text={format(new Date(player.last_email_sent), "PPP")} label="Last Email Sent" size="sm" />
                       </div>
                     )}
