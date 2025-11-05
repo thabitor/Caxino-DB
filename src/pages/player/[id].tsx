@@ -544,9 +544,16 @@ export default function PlayerDetailPage() {
 
           <div className="grid gap-6 lg:grid-cols-3">
             <Card className="lg:col-span-2 border-2 hover:shadow-xl transition-all hover:border-primary/20">
-              <CardHeader className="border-b-2 border-border/40 bg-muted/30">
+              <CardHeader className="border-b-2 border-border/40 bg-muted/30 pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle>Player Information</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle>Player Information</CardTitle>
+                    {tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length > 0 && (
+                      <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300">
+                        {tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length} active
+                      </Badge>
+                    )}
+                  </div>
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -558,102 +565,125 @@ export default function PlayerDetailPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6 pt-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-1 p-3 rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+              <CardContent className="space-y-4 pt-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1 p-2.5 rounded-lg border-2 border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <User className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                        <span className="font-semibold">User ID</span>
+                      </div>
+                      <CopyButton text={player.user_id} label="User ID" size="sm" />
+                    </div>
+                    <p className="font-mono text-sm font-bold">{player.user_id}</p>
+                  </div>
+
+                  <div className="space-y-1 p-2.5 rounded-lg border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <User className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                        <span className="font-semibold">Gender</span>
+                      </div>
+                      <CopyButton text={player.gender || "Not specified"} label="Gender" size="sm" />
+                    </div>
+                    <p className="text-sm font-bold capitalize">{player.gender || "Not specified"}</p>
+                  </div>
+
+                  <div className="space-y-1 p-2.5 rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Mail className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                         <span className="font-semibold">Email</span>
                       </div>
-                      <CopyButton text={player.email} label="Email" />
+                      <CopyButton text={player.email} label="Email" size="sm" />
                     </div>
-                    <p className="font-medium text-sm">{player.email}</p>
+                    <p className="text-sm font-medium">{player.email}</p>
                   </div>
 
                   {player.phone && (
-                    <div className="space-y-1 p-3 rounded-lg border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+                    <div className="space-y-1 p-2.5 rounded-lg border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Phone className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Phone className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                           <span className="font-semibold">Phone</span>
                         </div>
-                        <CopyButton text={player.phone} label="Phone" />
+                        <CopyButton text={player.phone} label="Phone" size="sm" />
                       </div>
-                      <p className="font-medium text-sm">{player.phone}</p>
+                      <p className="text-sm font-medium">{player.phone}</p>
                     </div>
                   )}
 
                   {player.dob && (
-                    <div className="space-y-1 p-3 rounded-lg border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+                    <div className="space-y-1 p-2.5 rounded-lg border-2 border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-pink-950/20">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />
                           <span className="font-semibold">Date of Birth</span>
                         </div>
-                        <CopyButton text={format(new Date(player.dob), "PPP")} label="Date of Birth" />
+                        <CopyButton text={format(new Date(player.dob), "PPP")} label="Date of Birth" size="sm" />
                       </div>
-                      <p className="font-medium text-sm">{format(new Date(player.dob), "PPP")}</p>
+                      <p className="text-sm font-medium">{format(new Date(player.dob), "PPP")}</p>
                     </div>
                   )}
 
                   {player.casino && (
-                    <div className="space-y-1 p-3 rounded-lg border-2 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                    <div className="space-y-1 p-2.5 rounded-lg border-2 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Crown className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                           <span className="font-semibold">Casino</span>
                         </div>
-                        <CopyButton text={player.casino} label="Casino" />
+                        <CopyButton text={player.casino} label="Casino" size="sm" />
                       </div>
-                      <p className="font-medium text-sm">{player.casino}</p>
+                      <p className="text-sm font-medium">{player.casino}</p>
                     </div>
                   )}
 
                   {player.last_email_sent && (
-                    <div className="space-y-1 p-3 rounded-lg border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
+                    <div className="space-y-1 p-2.5 rounded-lg border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Mail className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Mail className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                           <span className="font-semibold">Last Email Sent</span>
                         </div>
-                        <CopyButton text={format(new Date(player.last_email_sent), "PPP")} label="Last Email Sent" />
+                        <CopyButton text={format(new Date(player.last_email_sent), "PPP")} label="Last Email Sent" size="sm" />
                       </div>
-                      <p className="font-medium text-sm">{format(new Date(player.last_email_sent), "PPP")}</p>
+                      <p className="text-sm font-medium">{format(new Date(player.last_email_sent), "PPP")}</p>
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
 
-                <Separator className="my-4" />
-                
-                <div className="space-y-3 p-4 rounded-lg border-2 border-border/60 bg-muted/30">
+            <div className="space-y-4">
+              <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
+                <CardHeader className="border-b-2 border-border/40 bg-muted/30 pb-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                      <FileText className="w-4 h-4" />
-                      <span>Notes</span>
-                      {player.notes && !isEditingNotes && (
-                        <CopyButton text={player.notes} label="Notes" size="sm" />
-                      )}
-                    </div>
+                    <CardTitle className="text-base">Notes</CardTitle>
+                    {player.notes && !isEditingNotes && (
+                      <CopyButton text={player.notes} label="Notes" size="sm" />
+                    )}
                     {!isEditingNotes && (
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => setIsEditingNotes(true)}
-                        className="h-8 px-3 border-2"
+                        className="h-7 px-2 border-2 text-xs"
                       >
                         <Edit className="w-3 h-3 mr-1" />
                         Edit
                       </Button>
                     )}
                   </div>
+                </CardHeader>
+                <CardContent className="pt-4">
                   {isEditingNotes ? (
                     <div className="space-y-2">
                       <Textarea
                         value={notesValue}
                         onChange={(e) => setNotesValue(e.target.value)}
-                        rows={4}
-                        className="resize-none border-2"
+                        rows={6}
+                        className="resize-none border-2 text-sm"
                         placeholder="Add notes about this player..."
                       />
                       <div className="flex gap-2 justify-end">
@@ -662,88 +692,63 @@ export default function PlayerDetailPage() {
                           size="sm"
                           onClick={handleCancelNotesEdit}
                           disabled={isSavingNotes}
-                          className="border-2"
+                          className="border-2 h-7 px-2 text-xs"
                         >
-                          <X className="w-4 h-4 mr-1" />
+                          <X className="w-3 h-3 mr-1" />
                           Cancel
                         </Button>
                         <Button 
                           size="sm"
                           onClick={handleSaveNotes}
                           disabled={isSavingNotes}
-                          className="border-2 border-primary"
+                          className="border-2 border-primary h-7 px-2 text-xs"
                         >
-                          <Save className="w-4 h-4 mr-1" />
+                          <Save className="w-3 h-3 mr-1" />
                           {isSavingNotes ? "Saving..." : "Save"}
                         </Button>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm whitespace-pre-wrap bg-background p-3 rounded-lg border-2 border-border/40">
+                    <p className="text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-lg border border-border/40 min-h-[120px]">
                       {player.notes || "No notes added yet."}
                     </p>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-6">
-              <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
-                <CardHeader className="border-b-2 border-border/40 bg-muted/30">
-                  <CardTitle className="text-lg">Quick Stats</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-4">
-                  <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border-2 border-blue-200 dark:border-blue-800">
-                    <span className="text-sm font-semibold text-muted-foreground">User ID</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-bold">{player.user_id}</span>
-                      <CopyButton text={player.user_id} label="User ID" />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border-2 border-purple-200 dark:border-purple-800">
-                    <span className="text-sm font-semibold text-muted-foreground">Gender</span>
-                    <span className="font-bold capitalize">{player.gender || "Not specified"}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border-2 border-green-200 dark:border-green-800">
-                    <span className="text-sm font-semibold text-muted-foreground">Active Tasks</span>
-                    <span className="font-bold text-xl">{tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length}</span>
-                  </div>
                 </CardContent>
               </Card>
 
               <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
-                <CardHeader className="border-b-2 border-border/40 bg-muted/30">
-                  <CardTitle className="text-lg">Preferences</CardTitle>
+                <CardHeader className="border-b-2 border-border/40 bg-muted/30 pb-3">
+                  <CardTitle className="text-base">Preferences</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 pt-4">
-                  <div className="p-3 rounded-lg border-2 border-border/40 bg-muted/20">
-                    <h4 className="text-sm font-bold mb-3 flex items-center gap-2">
-                      <Mail className="w-4 h-4" />
+                <CardContent className="space-y-3 pt-4">
+                  <div className="p-2.5 rounded-lg border-2 border-border/40 bg-muted/20">
+                    <h4 className="text-xs font-bold mb-2 flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5" />
                       Communication
                     </h4>
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-1.5 text-xs">
                       <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
                         <span className="text-muted-foreground font-medium">Email</span>
                         {preferences.communication?.email !== false ? (
-                          <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                          <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                         ) : (
-                          <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                          <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
                         )}
                       </div>
                       <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
                         <span className="text-muted-foreground font-medium">SMS</span>
                         {preferences.communication?.sms !== false ? (
-                          <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                          <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                         ) : (
-                          <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                          <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
                         )}
                       </div>
                       <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
                         <span className="text-muted-foreground font-medium">Phone</span>
                         {preferences.communication?.phone !== false ? (
-                          <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                          <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                         ) : (
-                          <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                          <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
                         )}
                       </div>
                     </div>
@@ -751,10 +756,10 @@ export default function PlayerDetailPage() {
 
                   <Separator />
 
-                  <div className="space-y-2 text-sm p-3 rounded-lg border-2 border-border/40 bg-muted/20">
+                  <div className="space-y-1.5 text-xs p-2.5 rounded-lg border-2 border-border/40 bg-muted/20">
                     <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
                       <span className="text-muted-foreground font-medium">Contact Time</span>
-                      <span className="font-semibold text-xs">
+                      <span className="font-semibold text-[10px]">
                         {contactTimeLabels[preferences.contact_time || "any"]}
                       </span>
                     </div>
@@ -767,9 +772,9 @@ export default function PlayerDetailPage() {
                     <div className="flex items-center justify-between p-2 rounded bg-background border border-border/30">
                       <span className="text-muted-foreground font-medium">Marketing</span>
                       {preferences.marketing_consent ? (
-                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                       ) : (
-                        <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
                       )}
                     </div>
                   </div>
