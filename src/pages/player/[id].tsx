@@ -796,39 +796,72 @@ export default function PlayerDetailPage() {
             <div className="space-y-4">
               <Card className="border-2 hover:shadow-lg transition-all">
                 <CardHeader className="border-b border-border/40 bg-muted/20 py-3">
-                  <CardTitle className="text-base">Notes</CardTitle>
-                </CardHeader>
-                <CardContent className="py-3">
-                  <div className="space-y-2">
-                    <Textarea
-                      value={notesValue}
-                      onChange={(e) => setNotesValue(e.target.value)}
-                      rows={6}
-                      className="resize-none text-sm"
-                      placeholder="Add notes about this player..."
-                    />
-                    <div className="flex gap-2 justify-end">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Notes</CardTitle>
+                    {!isEditingNotes && (
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={handleCancelNotesEdit}
-                        disabled={isSavingNotes}
+                        onClick={() => setIsEditingNotes(true)}
                         className="h-7 px-2 text-xs"
                       >
-                        <X className="w-3 h-3 mr-1" />
-                        Cancel
+                        <Edit className="w-3 h-3 mr-1" />
+                        Edit
                       </Button>
-                      <Button 
-                        size="sm"
-                        onClick={handleSaveNotes}
-                        disabled={isSavingNotes}
-                        className="h-7 px-2 text-xs"
-                      >
-                        <Save className="w-3 h-3 mr-1" />
-                        {isSavingNotes ? "Saving..." : "Save"}
-                      </Button>
-                    </div>
+                    )}
                   </div>
+                </CardHeader>
+                <CardContent className="py-3">
+                  {isEditingNotes ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={notesValue}
+                        onChange={(e) => setNotesValue(e.target.value)}
+                        rows={6}
+                        className="resize-none text-sm"
+                        placeholder="Add notes about this player..."
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={handleCancelNotesEdit}
+                          disabled={isSavingNotes}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          Cancel
+                        </Button>
+                        <Button 
+                          size="sm"
+                          onClick={handleSaveNotes}
+                          disabled={isSavingNotes}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <Save className="w-3 h-3 mr-1" />
+                          {isSavingNotes ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {player.notes ? (
+                        <div className="p-3 rounded-lg border border-border/40 bg-muted/10 relative group">
+                          <p className="text-sm whitespace-pre-wrap text-muted-foreground min-h-[100px]">
+                            {player.notes}
+                          </p>
+                          <div className="absolute top-2 right-2">
+                            <CopyButton text={player.notes} label="Notes" size="sm" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 border border-dashed border-border/60 rounded-lg bg-muted/10">
+                          <FileText className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
+                          <p className="text-xs text-muted-foreground">No notes yet</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
