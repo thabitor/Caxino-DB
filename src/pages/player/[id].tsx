@@ -69,6 +69,7 @@ export default function PlayerDetailPage() {
   const { toast } = useToast();
   const { signOut, user } = useAuth();
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
+  const [showAllCallLogs, setShowAllCallLogs] = useState(false);
 
   const fetchPlayerData = async () => {
     if (!id || typeof id !== "string") return;
@@ -877,6 +878,26 @@ export default function PlayerDetailPage() {
                         </Badge>
                       </CardTitle>
                     </div>
+                    {callLogs.length > 5 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAllCallLogs(!showAllCallLogs)}
+                        className="h-7 px-2 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50"
+                      >
+                        {showAllCallLogs ? (
+                          <>
+                            <Clock className="w-3 h-3 mr-1" />
+                            Show Recent
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-3 h-3 mr-1" />
+                            Show All ({callLogs.length})
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="py-3">
@@ -886,18 +907,18 @@ export default function PlayerDetailPage() {
                       <p className="text-xs text-muted-foreground">No call history yet</p>
                     </div>
                   ) : (
-                    <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
-                      {callLogs.map((log) => (
+                    <div className={`space-y-1.5 ${showAllCallLogs ? 'max-h-[600px]' : 'max-h-[320px]'} overflow-y-auto transition-all duration-300 ease-in-out scrollbar-thin scrollbar-thumb-blue-300 dark:scrollbar-thumb-blue-700 scrollbar-track-transparent`}>
+                      {(showAllCallLogs ? callLogs : callLogs.slice(0, 5)).map((log, index) => (
                         <button
                           key={log.id}
                           onClick={() => setSelectedCallLog(log)}
-                          className="w-full text-left p-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-100/70 dark:hover:bg-blue-900/30 transition-colors"
+                          className="w-full text-left p-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-100/70 dark:hover:bg-blue-900/30 transition-all hover:shadow-sm hover:scale-[1.01] active:scale-[0.99]"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
                                 <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0 text-[9px] px-1 py-0">
-                                  Call
+                                  Call #{callLogs.length - index}
                                 </Badge>
                                 {log.duration_minutes && (
                                   <span className="text-[9px] text-muted-foreground">
@@ -918,6 +939,19 @@ export default function PlayerDetailPage() {
                           </div>
                         </button>
                       ))}
+                      {!showAllCallLogs && callLogs.length > 5 && (
+                        <div className="pt-2 border-t border-blue-200/50 dark:border-blue-800/50">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowAllCallLogs(true)}
+                            className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-100/50 dark:hover:bg-blue-900/30 font-medium"
+                          >
+                            <Clock className="w-3 h-3 mr-1.5" />
+                            View {callLogs.length - 5} More Calls
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
