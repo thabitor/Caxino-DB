@@ -45,6 +45,7 @@ export function TaskAlertsPanel() {
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+      const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
       const tasksWithPlayers = await Promise.all(
         activeTasks.map(async (task) => {
@@ -57,31 +58,52 @@ export function TaskAlertsPanel() {
         })
       );
 
-      // Filter to show only calls scheduled for today
-      const todayCalls = tasksWithPlayers.filter(task => {
-        if (!task.due_date || !task.is_call) return false;
+      // Separate calls and regular tasks
+      const calls = tasksWithPlayers.filter(task => task.is_call);
+      const regularTasks = tasksWithPlayers.filter(task => !task.is_call);
+
+      // Filter calls to show only today's calls
+      const todayCalls = calls.filter(task => {
+        if (!task.due_date) return false;
         const dueDate = new Date(task.due_date);
         return dueDate >= todayStart && dueDate < todayEnd;
       });
 
-      // Sort calls by time (earliest first)
-      const sortedCalls = todayCalls.sort((a, b) => {
-        return new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime();
+      // Filter regular tasks: urgent (overdue or due within 24 hours)
+      const urgentRegularTasks = regularTasks.filter(task => {
+        if (!task.due_date) return false;
+        const dueDate = new Date(task.due_date);
+        return dueDate <= next24Hours;
       });
 
-      // Separate into overdue and upcoming based on current time
-      const urgent = sortedCalls.filter(task => {
+      // Filter regular tasks: upcoming (due within 24 hours but not overdue)
+      const upcomingRegularTasks = regularTasks.filter(task => {
+        if (!task.due_date) return false;
+        const dueDate = new Date(task.due_date);
+        return dueDate > now && dueDate <= next24Hours;
+      });
+
+      // Combine calls with regular tasks
+      // Urgent: overdue calls + overdue/due-soon regular tasks
+      const urgentCalls = todayCalls.filter(task => {
         const dueDate = new Date(task.due_date!);
         return dueDate <= now;
       });
 
-      const upcoming = sortedCalls.filter(task => {
+      const upcomingCalls = todayCalls.filter(task => {
         const dueDate = new Date(task.due_date!);
         return dueDate > now;
       });
 
-      setUrgentTasks(urgent);
-      setUpcomingTasks(upcoming);
+      // Sort by due date (earliest first)
+      const sortedUrgent = [...urgentCalls, ...urgentRegularTasks.filter(task => new Date(task.due_date!) <= now)]
+        .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+
+      const sortedUpcoming = [...upcomingCalls, ...upcomingRegularTasks]
+        .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+
+      setUrgentTasks(sortedUrgent);
+      setUpcomingTasks(sortedUpcoming);
       
       // Clear checked tasks state after refresh
       setCheckedTasks(new Set());
