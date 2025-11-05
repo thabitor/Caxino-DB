@@ -337,11 +337,6 @@ export default function PlayerDetailPage() {
     setIsEditingPreferences(false);
   };
 
-  const handleCancelPreferencesEdit = () => {
-    setDraftPreferences({});
-    setIsEditingPreferences(false);
-  };
-
   const parsePreferences = (prefs: any): PlayerPreferences => {
     if (!prefs) return {};
     if (typeof prefs === "string") {
@@ -429,7 +424,7 @@ export default function PlayerDetailPage() {
               <Button 
                 variant="outline"
                 size="sm"
-                onClick={handleSignOut}
+                onClick={signOut}
                 className="gap-2"
               >
                 <LogOut className="w-4 h-4" />
