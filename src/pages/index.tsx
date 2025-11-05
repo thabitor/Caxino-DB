@@ -331,6 +331,7 @@ export default function Home() {
           onClose={handleTaskFormClose}
           onSubmit={handleTaskCreate}
           playerId={selectedPlayerId || undefined}
+          playerPhone={selectedPlayerId ? players.find(p => p.id === selectedPlayerId)?.phone || undefined : undefined}
           task={null}
         />
       </div>

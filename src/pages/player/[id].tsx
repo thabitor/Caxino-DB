@@ -947,6 +947,7 @@ export default function PlayerDetailPage() {
           onSubmit={editingTask ? handleTaskUpdate : handleTaskCreate}
           task={editingTask}
           playerId={player.id}
+          playerPhone={player.phone || undefined}
         />
 
         <PlayerFormDialog
