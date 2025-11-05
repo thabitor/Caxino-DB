@@ -300,11 +300,17 @@ export default function PlayerDetailPage() {
     if (!player) return;
 
     try {
+      // Extract the time preferences from the preferences object
+      const timeFrom = newPreferences.preferred_time_from;
+      const timeTo = newPreferences.preferred_time_to;
+      
+      // Update the player with both the preferences JSON and the individual time columns
       await playerService.updatePlayer(player.id, { 
         preferences: newPreferences as any,
-        preferred_time_from: newPreferences.preferred_time_from,
-        preferred_time_to: newPreferences.preferred_time_to
+        preferred_time_from: timeFrom,
+        preferred_time_to: timeTo
       });
+      
       toast({ title: "Preferences saved", description: "Player preferences have been updated successfully." });
       setIsEditingPreferences(false);
       fetchPlayerData();
