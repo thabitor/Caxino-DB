@@ -39,6 +39,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [filter, setFilter] = useState("");
   const [vipFilter, setVipFilter] = useState<string>("all");
+  const [casinoFilter, setCasinoFilter] = useState<string>("all");
   const [taskFilter, setTaskFilter] = useState<TaskFilter>("all");
 
   const handleSort = (field: SortField) => {
@@ -46,10 +47,22 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
     setSortField(field);
   };
 
+  // Get unique casino values for filter dropdown
+  const uniqueCasinos = useMemo(() => {
+    const casinos = new Set<string>();
+    players.forEach(player => {
+      if (player.casino) {
+        casinos.add(player.casino);
+      }
+    });
+    return Array.from(casinos).sort();
+  }, [players]);
+
   const filteredAndSortedPlayers = useMemo(() => {
     const filtered = players.filter((player) => {
       const lowerCaseFilter = filter.toLowerCase();
       const vipLevelMatch = vipFilter === "all" || String(player.vip_level) === vipFilter;
+      const casinoMatch = casinoFilter === "all" || player.casino === casinoFilter;
       
       const taskCount = player.tasks[0]?.count ?? 0;
       const callCount = player.tasks[0]?.call_count ?? 0;
@@ -69,12 +82,13 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
         taskFilterMatch = hasBirthday;
       }
 
-      return taskFilterMatch && vipLevelMatch && (
+      return taskFilterMatch && vipLevelMatch && casinoMatch && (
         player.user_id.toLowerCase().includes(lowerCaseFilter) ||
         getFullName(player).toLowerCase().includes(lowerCaseFilter) ||
         player.username.toLowerCase().includes(lowerCaseFilter) ||
         (player.email || "").toLowerCase().includes(lowerCaseFilter) ||
-        (player.phone || "").toLowerCase().includes(lowerCaseFilter)
+        (player.phone || "").toLowerCase().includes(lowerCaseFilter) ||
+        (player.casino || "").toLowerCase().includes(lowerCaseFilter)
       );
     });
 
@@ -123,7 +137,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
       
       return 0;
     });
-  }, [players, filter, vipFilter, taskFilter, sortField, sortDirection]);
+  }, [players, filter, vipFilter, casinoFilter, taskFilter, sortField, sortDirection]);
 
   const getTaskIndicators = (player: PlayerWithTasks) => {
     const taskCount = player.tasks[0]?.count ?? 0;
@@ -185,6 +199,20 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
           </SelectContent>
         </Select>
         
+        <Select value={casinoFilter} onValueChange={setCasinoFilter}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by Casino" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Casinos</SelectItem>
+            {uniqueCasinos.length > 0 ? (
+              uniqueCasinos.map((casino) => (
+                <SelectItem key={casino} value={casino}>{casino}</SelectItem>
+              ))
+            ) : (
+              <SelectItem value="none" disabled>No casinos yet</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+        
         <div className="flex items-center gap-2 border rounded-lg p-1 bg-muted/30">
           <Button
             variant={taskFilter === "all" ? "secondary" : "ghost"}
@@ -243,6 +271,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
               <SortableHeader field="firstname" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Full Name</SortableHeader>
               <SortableHeader field="email" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Email</SortableHeader>
               <SortableHeader field="phone" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Phone</SortableHeader>
+              <SortableHeader field="casino" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Casino</SortableHeader>
               <SortableHeader field="vip_level" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>VIP Level</SortableHeader>
               <SortableHeader field="task_count" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Tasks</SortableHeader>
               <TableHead>Reminders</TableHead>
@@ -288,6 +317,13 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
                     )}
                   </TableCell>
                   <TableCell>
+                    {player.casino ? (
+                      <span className="font-medium">{player.casino}</span>
+                    ) : (
+                      <span className="text-muted-foreground italic text-sm">Not specified</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <Badge className={`${vipConfig[player.vip_level as VipLevel].bgColor} ${vipConfig[player.vip_level as VipLevel].color} hover:${vipConfig[player.vip_level as VipLevel].bgColor}`}>
                       {player.vip_level} - {vipConfig[player.vip_level as VipLevel].name}
                     </Badge>
@@ -314,7 +350,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
                 </TableRow>
               ))
             ) : (
-              <TableRow><TableCell colSpan={9} className="h-24 text-center">No players found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="h-24 text-center">No players found.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
