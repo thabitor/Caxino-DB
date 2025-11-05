@@ -346,6 +346,65 @@ export default function PlayerDetailPage() {
     setIsEditingPreferences(false);
   };
 
+  const handleEditCallLog = () => {
+    if (selectedCallLog) {
+      setEditedCallTopic(selectedCallLog.call_topic || "");
+      setEditedCallNotes(selectedCallLog.notes || "");
+      setIsEditingCallLog(true);
+    }
+  };
+
+  const handleSaveCallLog = async () => {
+    if (!selectedCallLog) return;
+
+    try {
+      setIsSavingCallLog(true);
+      await callLogService.updateCallLog(selectedCallLog.id, {
+        call_topic: editedCallTopic,
+        notes: editedCallNotes,
+      });
+
+      // Optimistically update UI
+      const updatedCallLogs = callLogs.map(log => 
+        log.id === selectedCallLog.id 
+          ? { ...log, call_topic: editedCallTopic, notes: editedCallNotes } 
+          : log
+      );
+      setCallLogs(updatedCallLogs);
+      setSelectedCallLog(prev => prev ? { ...prev, call_topic: editedCallTopic, notes: editedCallNotes } : null);
+
+      toast({ 
+        title: "Call log updated", 
+        description: "Call details have been saved successfully." 
+      });
+      setIsEditingCallLog(false);
+    } catch (error) {
+      console.error("Error updating call log:", error);
+      toast({ 
+        title: "Error", 
+        description: "Could not update call log.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSavingCallLog(false);
+    }
+  };
+
+  const handleCancelCallLogEdit = () => {
+    setEditedCallTopic("");
+    setEditedCallNotes("");
+    setIsEditingCallLog(false);
+  };
+
+  const handleCloseCallLogDialog = (isOpen: boolean) => {
+    if (!isOpen) {
+      setSelectedCallLog(null);
+      setIsEditingCallLog(false);
+      setEditedCallTopic("");
+      setEditedCallNotes("");
+    }
+  };
+
   const parsePreferences = (prefs: any): PlayerPreferences => {
     if (!prefs) return {};
     if (typeof prefs === "string") {
@@ -1048,11 +1107,10 @@ export default function PlayerDetailPage() {
                       <span className="font-semibold">Call Topic</span>
                     </div>
                     {isEditingCallLog ? (
-                      <input
-                        type="text"
+                      <Input
                         value={editedCallTopic}
                         onChange={(e) => setEditedCallTopic(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-border/40 rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full text-sm"
                         placeholder="Enter call topic..."
                       />
                     ) : (
@@ -1090,7 +1148,7 @@ export default function PlayerDetailPage() {
                 </div>
 
                 {isEditingCallLog && (
-                  <div className="flex gap-2 justify-end pt-2 border-t border-border/40">
+                  <div className="flex gap-2 justify-end pt-3 mt-3 border-t border-border/40">
                     <Button 
                       variant="outline" 
                       size="sm"
