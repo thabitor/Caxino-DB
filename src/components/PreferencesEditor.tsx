@@ -13,11 +13,6 @@ export interface PlayerPreferences {
   contact_time?: "morning" | "afternoon" | "evening" | "any";
   marketing_consent?: boolean;
   language?: string;
-  notifications?: {
-    promotions?: boolean;
-    account_updates?: boolean;
-    game_results?: boolean;
-  };
 }
 
 interface PreferencesEditorProps {
@@ -47,15 +42,6 @@ export function PreferencesEditor({ value, onChange }: PreferencesEditorProps) {
     updatePreferences({
       communication: {
         ...preferences.communication,
-        [key]: val,
-      },
-    });
-  };
-
-  const updateNotifications = (key: keyof NonNullable<PlayerPreferences["notifications"]>, val: boolean) => {
-    updatePreferences({
-      notifications: {
-        ...preferences.notifications,
         [key]: val,
       },
     });
@@ -152,39 +138,6 @@ export function PreferencesEditor({ value, onChange }: PreferencesEditorProps) {
               id="marketing-toggle"
               checked={preferences.marketing_consent ?? false}
               onCheckedChange={(checked) => updatePreferences({ marketing_consent: checked })}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Notifications</CardTitle>
-          <CardDescription className="text-xs">Notification preferences</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="promo-toggle" className="text-sm">Promotions</Label>
-            <Switch
-              id="promo-toggle"
-              checked={preferences.notifications?.promotions ?? true}
-              onCheckedChange={(checked) => updateNotifications("promotions", checked)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="account-toggle" className="text-sm">Account Updates</Label>
-            <Switch
-              id="account-toggle"
-              checked={preferences.notifications?.account_updates ?? true}
-              onCheckedChange={(checked) => updateNotifications("account_updates", checked)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="game-toggle" className="text-sm">Game Results</Label>
-            <Switch
-              id="game-toggle"
-              checked={preferences.notifications?.game_results ?? true}
-              onCheckedChange={(checked) => updateNotifications("game_results", checked)}
             />
           </div>
         </CardContent>
