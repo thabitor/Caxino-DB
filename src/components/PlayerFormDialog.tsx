@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
-import { PreferencesEditor } from "@/components/PreferencesEditor";
+import { PreferencesEditor, PlayerPreferences } from "@/components/PreferencesEditor";
 import { Player, playerSchema, PlayerFormData, PlayerInsert, PlayerUpdate, vipConfig, VipLevel } from "@/services/playerService";
 import { Json } from "@/integrations/supabase/database.types";
 
@@ -293,14 +293,39 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
             <FormField
               control={form.control}
               name="preferences"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <PreferencesEditor value={field.value} onChange={field.onChange} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const handlePreferencesUpdate = (newPreferences: PlayerPreferences) => {
+                  try {
+                    const jsonString = JSON.stringify(newPreferences);
+                    field.onChange(jsonString);
+                  } catch (error) {
+                    console.error("Failed to stringify preferences:", error);
+                    // Optionally set a form error here
+                  }
+                };
+
+                let currentPreferences: PlayerPreferences = {};
+                try {
+                  if (field.value && typeof field.value === 'string') {
+                    currentPreferences = JSON.parse(field.value);
+                  }
+                } catch (error) {
+                  console.error("Failed to parse preferences:", error);
+                  // Optionally set a form error here
+                }
+                
+                return (
+                  <FormItem>
+                    <FormControl>
+                      <PreferencesEditor 
+                        preferences={currentPreferences} 
+                        onUpdate={handlePreferencesUpdate} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <DialogFooter className="gap-2 sm:gap-0">
