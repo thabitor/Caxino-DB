@@ -204,12 +204,6 @@ export default function Home() {
                 <LogOut className="w-4 h-4" />
                 Sign Out
               </Button>
-              <Button 
-                onClick={() => setIsFormOpen(true)}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-              >
-                Add New Player
-              </Button>
             </div>
           </div>
         </header>
@@ -297,6 +291,12 @@ export default function Home() {
                     Manage and view all casino players
                   </p>
                 </div>
+                <Button 
+                  onClick={() => setIsFormOpen(true)}
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                >
+                  Add New Player
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
