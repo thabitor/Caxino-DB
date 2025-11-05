@@ -70,9 +70,11 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask }: PlayersTa
       }
 
       return taskFilterMatch && vipLevelMatch && (
+        player.user_id.toLowerCase().includes(lowerCaseFilter) ||
         getFullName(player).toLowerCase().includes(lowerCaseFilter) ||
         player.username.toLowerCase().includes(lowerCaseFilter) ||
-        (player.email || "").toLowerCase().includes(lowerCaseFilter)
+        (player.email || "").toLowerCase().includes(lowerCaseFilter) ||
+        (player.phone || "").toLowerCase().includes(lowerCaseFilter)
       );
     });
 
