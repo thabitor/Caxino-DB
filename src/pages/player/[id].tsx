@@ -884,7 +884,7 @@ export default function PlayerDetailPage() {
                     <div className="space-y-2">
                       {player.notes ? (
                         <div className="p-3 rounded-lg border border-border/40 bg-muted/10 relative group">
-                          <p className="text-sm whitespace-pre-wrap min-h-[100px]">
+                          <p className="text-sm whitespace-pre-wrap min-h-[100px] text-foreground">
                             {player.notes}
                           </p>
                           <div className="absolute top-2 right-2">
@@ -1114,7 +1114,9 @@ export default function PlayerDetailPage() {
                         placeholder="Enter call topic..."
                       />
                     ) : (
-                      <p className="text-sm pl-6">{selectedCallLog.call_topic || "No topic specified"}</p>
+                      <p className="text-sm font-medium truncate">
+                        {selectedCallLog.call_topic || "No topic specified"}
+                      </p>
                     )}
                   </div>
 
@@ -1132,7 +1134,7 @@ export default function PlayerDetailPage() {
                         placeholder="Add notes about this call..."
                       />
                     ) : (
-                      <p className="text-sm whitespace-pre-wrap pl-6 text-muted-foreground">
+                      <p className="text-sm whitespace-pre-wrap pl-6 text-foreground">
                         {selectedCallLog.notes || "No notes available"}
                       </p>
                     )}
