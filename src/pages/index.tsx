@@ -212,76 +212,6 @@ export default function Home() {
           <TaskAlertsPanel />
           <BirthdayReminders />
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Players</CardTitle>
-                <Users className="w-5 h-5 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <Skeleton className="h-10 w-20" />
-                ) : (
-                  <div>
-                    <p className="text-3xl font-bold">{totalPlayers}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Active in database</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-amber-500 hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">VIP Level Distribution</CardTitle>
-                <Crown className="w-5 h-5 text-amber-500" />
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <Skeleton className="h-20 w-full" />
-                ) : (
-                  <div className="space-y-2">
-                    {(Object.keys(vipDistribution).map(Number) as VipLevel[]).sort((a, b) => b - a).map((level) => {
-                      const count = vipDistribution[level];
-                      const config = vipConfig[level];
-                      if (!config || count === 0) return null;
-                      return (
-                        <div key={level} className="flex items-center justify-between">
-                          <Badge className={`${config.bgColor} ${config.color} border-0`}>
-                            Level {level}
-                          </Badge>
-                          <span className="text-sm font-semibold">{count} players</span>
-                        </div>
-                      );
-                    })}
-                    {totalPlayers > 0 && Object.values(vipDistribution).every(c => c === 0) && (
-                      <p className="text-sm text-muted-foreground">No VIP players in levels 3-5.</p>
-                    )}
-                    {totalPlayers === 0 && (
-                      <p className="text-sm text-muted-foreground">No players yet</p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Active Tasks</CardTitle>
-                <ListTodo className="w-5 h-5 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <Skeleton className="h-10 w-20" />
-                ) : (
-                  <div>
-                    <p className="text-3xl font-bold">{activeTasks}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Pending & in progress</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -299,6 +229,55 @@ export default function Home() {
                 </Button>
               </div>
             </CardHeader>
+
+            <div className="px-6 pb-3">
+              {loading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <div className="flex items-center gap-6 py-3 px-4 bg-muted/30 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm font-medium text-muted-foreground">Total:</span>
+                    <span className="text-sm font-bold">{totalPlayers}</span>
+                  </div>
+
+                  <div className="h-5 w-px bg-border" />
+
+                  <div className="flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span className="text-sm font-medium text-muted-foreground">VIP:</span>
+                    <div className="flex items-center gap-1.5">
+                      {(Object.keys(vipDistribution).map(Number) as VipLevel[]).sort((a, b) => b - a).map((level) => {
+                        const count = vipDistribution[level];
+                        const config = vipConfig[level];
+                        if (!config || count === 0) return null;
+                        return (
+                          <Badge 
+                            key={level} 
+                            variant="secondary" 
+                            className={`text-xs px-1.5 py-0 ${config.bgColor} ${config.color} border-0`}
+                          >
+                            L{level}: {count}
+                          </Badge>
+                        );
+                      })}
+                      {Object.values(vipDistribution).every(c => c === 0) && (
+                        <span className="text-xs text-muted-foreground">None</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="h-5 w-px bg-border" />
+
+                  <div className="flex items-center gap-2">
+                    <ListTodo className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <span className="text-sm font-medium text-muted-foreground">Active Tasks:</span>
+                    <span className="text-sm font-bold">{activeTasks}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <CardContent>
               {loading ? (
                 <div className="space-y-3">
