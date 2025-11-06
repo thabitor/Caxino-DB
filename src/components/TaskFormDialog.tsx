@@ -25,11 +25,59 @@ interface TaskFormDialogProps {
   playerPhone?: string;
 }
 
-const extendedTaskSchema = taskSchema.extend({
+const extendedTaskSchema = z.object({
+  player_id: z.string().min(1, "Player ID is required"),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]),
+  status: z.enum(["pending", "in_progress", "completed", "cancelled"]),
+  due_date: z.date().optional(),
   is_call: z.boolean().default(false),
   phone_number: z.string().optional(),
   call_topic: z.string().optional(),
   call_time: z.string().optional(),
+}).superRefine((data, ctx) => {
+  // If it's a call task, validate call-specific fields
+  if (data.is_call) {
+    if (!data.phone_number || data.phone_number.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Phone number is required for call tasks",
+        path: ["phone_number"],
+      });
+    }
+    if (!data.due_date) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Call date is required",
+        path: ["due_date"],
+      });
+    }
+    if (!data.call_time || data.call_time.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Call time is required",
+        path: ["call_time"],
+      });
+    }
+    // For call tasks, call_topic becomes the title, so it should be provided
+    if (!data.call_topic || data.call_topic.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Call topic is required",
+        path: ["call_topic"],
+      });
+    }
+  } else {
+    // For non-call tasks, title is required
+    if (!data.title || data.title.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Title is required for tasks",
+        path: ["title"],
+      });
+    }
+  }
 });
 
 type ExtendedTaskFormData = z.infer<typeof extendedTaskSchema>;
