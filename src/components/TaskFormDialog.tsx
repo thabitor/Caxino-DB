@@ -169,7 +169,19 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(
+            handleFormSubmit,
+            (errors) => {
+              console.log("Form validation errors:", errors);
+              // Show a toast or alert if validation fails
+              Object.keys(errors).forEach((key) => {
+                const error = errors[key as keyof ExtendedTaskFormData];
+                if (error?.message) {
+                  console.error(`${key}: ${error.message}`);
+                }
+              });
+            }
+          )} className="space-y-4">
             <FormField
               control={form.control}
               name="is_call"
