@@ -135,6 +135,21 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
     console.log("Call time:", data.call_time);
     console.log("Due date:", data.due_date);
     
+    // Pre-submission validation for call tasks
+    if (data.is_call) {
+      const missingFields: string[] = [];
+      if (!data.phone_number || data.phone_number.trim() === "") missingFields.push("Phone Number");
+      if (!data.call_topic || data.call_topic.trim() === "") missingFields.push("Call Topic");
+      if (!data.call_time || data.call_time.trim() === "") missingFields.push("Call Time");
+      if (!data.due_date) missingFields.push("Call Date");
+      
+      if (missingFields.length > 0) {
+        console.error("Missing required fields:", missingFields);
+        alert(`Please fill in all required fields:\n\n${missingFields.join("\n")}`);
+        return;
+      }
+    }
+    
     let dueDate = null;
 
     if (data.is_call && data.due_date && data.call_time) {
@@ -158,7 +173,8 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
       call_topic: data.is_call ? data.call_topic : null,
     };
 
-    console.log("Submission data:", submissionData);
+    console.log("✅ Submission data validated:", submissionData);
+    console.log("Calling onSubmit...");
     onSubmit(submissionData);
   };
 
@@ -239,7 +255,16 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                     </FormDescription>
                   </div>
                   <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch 
+                      checked={field.value} 
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        // Immediately set phone number when switching to call mode
+                        if (checked && playerPhone) {
+                          form.setValue("phone_number", playerPhone, { shouldValidate: true });
+                        }
+                      }} 
+                    />
                   </FormControl>
                 </FormItem>
               )}
