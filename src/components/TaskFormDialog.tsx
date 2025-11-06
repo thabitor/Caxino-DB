@@ -115,6 +115,8 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
   const form = useForm<ExtendedTaskFormData>({
     resolver: zodResolver(extendedTaskSchema),
     defaultValues: getResetValues(null, playerId, playerPhone),
+    mode: "onSubmit", // Only validate when form is submitted
+    reValidateMode: "onChange", // After first submit, revalidate on change
   });
 
   useEffect(() => {
@@ -215,18 +217,15 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
 
   useEffect(() => {
     setIsCall(watchIsCall);
-    // When switching to call mode, ensure phone number is set and trigger validation
+    // When switching to call mode, ensure phone number is set (but don't validate yet)
     if (watchIsCall && playerPhone) {
       const currentPhoneNumber = form.getValues("phone_number");
       if (!currentPhoneNumber || currentPhoneNumber.trim() === "") {
-        form.setValue("phone_number", playerPhone, { shouldValidate: true });
+        form.setValue("phone_number", playerPhone, { shouldValidate: false });
       }
     }
     
-    // If switching to call mode, ensure required fields are touched to show errors
-    if (watchIsCall) {
-      form.trigger(["phone_number", "call_topic", "call_time", "due_date"]);
-    }
+    // Don't trigger validation here - wait for user to submit
   }, [watchIsCall, playerPhone, form]);
 
   return (
@@ -265,7 +264,7 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
               }
             }
           )} className="space-y-4">
-            {Object.keys(form.formState.errors).length > 0 && (
+            {form.formState.isSubmitted && Object.keys(form.formState.errors).length > 0 && (
               <div className="p-3 bg-red-50 dark:bg-red-950/30 border-2 border-red-400 dark:border-red-600 rounded-lg">
                 <p className="text-sm font-bold text-red-700 dark:text-red-300 mb-2 flex items-center gap-2">
                   <X className="w-4 h-4" />
@@ -329,10 +328,6 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                           {...field} 
                           placeholder="+1 (555) 123-4567" 
                           className="border-blue-300"
-                          onBlur={(e) => {
-                            field.onBlur();
-                            form.trigger("phone_number");
-                          }}
                         />
                       </FormControl>
                       <FormDescription className="text-xs">
@@ -354,10 +349,6 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                           {...field} 
                           placeholder="e.g., Account verification, Bonus discussion" 
                           className="border-blue-300"
-                          onBlur={(e) => {
-                            field.onBlur();
-                            form.trigger("call_topic");
-                          }}
                         />
                       </FormControl>
                       <FormDescription className="text-xs">
