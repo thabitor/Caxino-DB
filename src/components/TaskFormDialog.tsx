@@ -166,9 +166,17 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
 
   useEffect(() => {
     setIsCall(watchIsCall);
-    // When switching to call mode, ensure phone number is set
-    if (watchIsCall && playerPhone && !form.getValues("phone_number")) {
-      form.setValue("phone_number", playerPhone);
+    // When switching to call mode, ensure phone number is set and trigger validation
+    if (watchIsCall && playerPhone) {
+      const currentPhoneNumber = form.getValues("phone_number");
+      if (!currentPhoneNumber || currentPhoneNumber.trim() === "") {
+        form.setValue("phone_number", playerPhone, { shouldValidate: true });
+      }
+    }
+    
+    // If switching to call mode, ensure required fields are touched to show errors
+    if (watchIsCall) {
+      form.trigger(["phone_number", "call_topic", "call_time", "due_date"]);
     }
   }, [watchIsCall, playerPhone, form]);
 
@@ -246,7 +254,15 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                     <FormItem>
                       <FormLabel className="text-blue-700 dark:text-blue-300">Phone Number *</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="+1 (555) 123-4567" className="border-blue-300" />
+                        <Input 
+                          {...field} 
+                          placeholder="+1 (555) 123-4567" 
+                          className="border-blue-300"
+                          onBlur={(e) => {
+                            field.onBlur();
+                            form.trigger("phone_number");
+                          }}
+                        />
                       </FormControl>
                       <FormDescription className="text-xs">
                         Pre-filled with player's phone number (you can edit if needed)
@@ -263,7 +279,15 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                     <FormItem>
                       <FormLabel className="text-blue-700 dark:text-blue-300">Call Topic *</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="e.g., Account verification, Bonus discussion" className="border-blue-300" />
+                        <Input 
+                          {...field} 
+                          placeholder="e.g., Account verification, Bonus discussion" 
+                          className="border-blue-300"
+                          onBlur={(e) => {
+                            field.onBlur();
+                            form.trigger("call_topic");
+                          }}
+                        />
                       </FormControl>
                       <FormDescription className="text-xs">
                         Required - This will be used as the task title
@@ -457,11 +481,12 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                 type="submit" 
                 className={cn(
                   isCall ? "bg-blue-600 hover:bg-blue-700" : "",
-                  Object.keys(form.formState.errors).length > 0 && "border-2 border-red-500 animate-pulse"
+                  Object.keys(form.formState.errors).length > 0 && "opacity-50 cursor-not-allowed"
                 )}
+                disabled={form.formState.isSubmitting}
               >
                 {isCall && <Phone className="w-4 h-4 mr-2" />}
-                {task ? "Save Changes" : isCall ? "Schedule Call" : "Create Task"}
+                {form.formState.isSubmitting ? "Saving..." : task ? "Save Changes" : isCall ? "Schedule Call" : "Create Task"}
               </Button>
             </DialogFooter>
           </form>
