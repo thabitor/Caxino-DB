@@ -215,12 +215,12 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                   name="call_topic"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-blue-700 dark:text-blue-300">Call Topic</FormLabel>
+                      <FormLabel className="text-blue-700 dark:text-blue-300">Call Topic *</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="e.g., Account verification, Bonus discussion" className="border-blue-300" />
                       </FormControl>
                       <FormDescription className="text-xs">
-                        This will be used as the task title
+                        Required - This will be used as the task title
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
