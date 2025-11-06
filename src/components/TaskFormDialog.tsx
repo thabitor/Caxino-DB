@@ -127,6 +127,14 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
   }, [task, playerId, playerPhone, isOpen, form]);
 
   const handleFormSubmit = (data: ExtendedTaskFormData) => {
+    console.log("=== FORM SUBMISSION ATTEMPT ===");
+    console.log("Form data:", data);
+    console.log("Is call:", data.is_call);
+    console.log("Phone number:", data.phone_number);
+    console.log("Call topic:", data.call_topic);
+    console.log("Call time:", data.call_time);
+    console.log("Due date:", data.due_date);
+    
     let dueDate = null;
 
     if (data.is_call && data.due_date && data.call_time) {
@@ -150,6 +158,7 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
       call_topic: data.is_call ? data.call_topic : null,
     };
 
+    console.log("Submission data:", submissionData);
     onSubmit(submissionData);
   };
 
@@ -157,7 +166,11 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
 
   useEffect(() => {
     setIsCall(watchIsCall);
-  }, [watchIsCall]);
+    // When switching to call mode, ensure phone number is set
+    if (watchIsCall && playerPhone && !form.getValues("phone_number")) {
+      form.setValue("phone_number", playerPhone);
+    }
+  }, [watchIsCall, playerPhone, form]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
