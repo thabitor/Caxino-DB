@@ -419,11 +419,36 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
 
             <DialogFooter className="gap-2 sm:gap-0">
               <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit" className={isCall ? "bg-blue-600 hover:bg-blue-700" : ""}>
+              <Button 
+                type="submit" 
+                className={cn(
+                  isCall ? "bg-blue-600 hover:bg-blue-700" : "",
+                  Object.keys(form.formState.errors).length > 0 && "border-2 border-red-500"
+                )}
+              >
                 {isCall && <Phone className="w-4 h-4 mr-2" />}
                 {task ? "Save Changes" : isCall ? "Schedule Call" : "Create Task"}
               </Button>
             </DialogFooter>
+            {Object.keys(form.formState.errors).length > 0 && (
+              <div className="mt-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-lg">
+                <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">
+                  Please fix the following errors:
+                </p>
+                <ul className="text-xs text-red-600 dark:text-red-400 list-disc list-inside space-y-1">
+                  {Object.entries(form.formState.errors).map(([key, error]) => (
+                    <li key={key}>
+                      {key === "phone_number" && "Phone number is required"}
+                      {key === "call_topic" && "Call topic is required"}
+                      {key === "call_time" && "Call time is required"}
+                      {key === "due_date" && "Call date is required"}
+                      {key === "title" && "Title is required"}
+                      {error && typeof error === "object" && "message" in error && error.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </form>
         </Form>
       </DialogContent>
