@@ -27,7 +27,7 @@ interface TaskFormDialogProps {
 
 const extendedTaskSchema = z.object({
   player_id: z.string().min(1, "Player ID is required"),
-  title: z.string().min(1, "Title is required"),
+  title: z.string().optional(), // Make title optional at base level
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]),
   status: z.enum(["pending", "in_progress", "completed", "cancelled"]),
@@ -60,7 +60,6 @@ const extendedTaskSchema = z.object({
         path: ["call_time"],
       });
     }
-    // For call tasks, call_topic becomes the title, so it should be provided
     if (!data.call_topic || data.call_topic.trim() === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -127,17 +126,14 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
   }, [task, playerId, playerPhone, isOpen, form]);
 
   const handleFormSubmit = (data: ExtendedTaskFormData) => {
-    console.log("=== FORM SUBMISSION ATTEMPT ===");
-    console.log("Form data:", data);
-    console.log("Is call:", data.is_call);
-    console.log("Phone number:", data.phone_number);
-    console.log("Call topic:", data.call_topic);
-    console.log("Call time:", data.call_time);
-    console.log("Due date:", data.due_date);
+    console.log("=== FORM SUBMISSION STARTED ===");
+    console.log("Raw form data:", JSON.stringify(data, null, 2));
     
     // Pre-submission validation for call tasks
     if (data.is_call) {
+      console.log("📞 Processing CALL task submission");
       const missingFields: string[] = [];
+      
       if (!data.phone_number || data.phone_number.trim() === "") {
         console.error("❌ Missing: Phone Number");
         missingFields.push("Phone Number");
@@ -157,13 +153,18 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
       
       if (missingFields.length > 0) {
         console.error("❌ VALIDATION FAILED - Missing required fields:", missingFields);
-        // Force trigger validation on all fields to show errors
-        form.trigger();
         alert(`⚠️ VALIDATION ERROR\n\nPlease fill in all required fields:\n\n• ${missingFields.join("\n• ")}`);
         return;
       }
       
       console.log("✅ All call task fields validated successfully");
+    } else {
+      console.log("📝 Processing REGULAR task submission");
+      if (!data.title || data.title.trim() === "") {
+        console.error("❌ Missing: Title");
+        alert("⚠️ VALIDATION ERROR\n\nPlease provide a task title.");
+        return;
+      }
     }
     
     let dueDate = null;
@@ -173,32 +174,40 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
       const [hours, minutes] = data.call_time.split(":");
       date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
       dueDate = date.toISOString();
-      console.log("✅ Due date constructed:", dueDate);
+      console.log("✅ Call due date constructed:", dueDate);
     } else if (data.due_date) {
       dueDate = data.due_date.toISOString();
-      console.log("✅ Due date set:", dueDate);
+      console.log("✅ Task due date set:", dueDate);
     }
+
+    // For call tasks, use call_topic as the title
+    const finalTitle = data.is_call 
+      ? (data.call_topic || "Scheduled Call") 
+      : (data.title || "Untitled Task");
 
     const submissionData = {
       player_id: data.player_id,
-      title: data.is_call ? (data.call_topic || "Call Task") : data.title,
+      title: finalTitle,
       description: data.description || null,
       priority: data.priority,
       status: data.status,
       due_date: dueDate,
       is_call: data.is_call,
-      phone_number: data.is_call ? data.phone_number : null,
-      call_topic: data.is_call ? data.call_topic : null,
+      phone_number: data.is_call ? (data.phone_number || null) : null,
+      call_topic: data.is_call ? (data.call_topic || null) : null,
     };
 
-    console.log("✅ SUBMISSION DATA VALIDATED AND READY:", submissionData);
+    console.log("✅ FINAL SUBMISSION DATA:", JSON.stringify(submissionData, null, 2));
     console.log("🚀 Calling onSubmit callback...");
     
     try {
       onSubmit(submissionData);
-      console.log("✅ onSubmit callback executed successfully");
+      console.log("✅ onSubmit callback completed successfully");
+      console.log("✅ Closing dialog...");
+      onClose();
     } catch (error) {
       console.error("❌ ERROR in onSubmit callback:", error);
+      alert(`Error submitting task: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
