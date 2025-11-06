@@ -138,16 +138,32 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
     // Pre-submission validation for call tasks
     if (data.is_call) {
       const missingFields: string[] = [];
-      if (!data.phone_number || data.phone_number.trim() === "") missingFields.push("Phone Number");
-      if (!data.call_topic || data.call_topic.trim() === "") missingFields.push("Call Topic");
-      if (!data.call_time || data.call_time.trim() === "") missingFields.push("Call Time");
-      if (!data.due_date) missingFields.push("Call Date");
+      if (!data.phone_number || data.phone_number.trim() === "") {
+        console.error("❌ Missing: Phone Number");
+        missingFields.push("Phone Number");
+      }
+      if (!data.call_topic || data.call_topic.trim() === "") {
+        console.error("❌ Missing: Call Topic");
+        missingFields.push("Call Topic");
+      }
+      if (!data.call_time || data.call_time.trim() === "") {
+        console.error("❌ Missing: Call Time");
+        missingFields.push("Call Time");
+      }
+      if (!data.due_date) {
+        console.error("❌ Missing: Call Date");
+        missingFields.push("Call Date");
+      }
       
       if (missingFields.length > 0) {
-        console.error("Missing required fields:", missingFields);
-        alert(`Please fill in all required fields:\n\n${missingFields.join("\n")}`);
+        console.error("❌ VALIDATION FAILED - Missing required fields:", missingFields);
+        // Force trigger validation on all fields to show errors
+        form.trigger();
+        alert(`⚠️ VALIDATION ERROR\n\nPlease fill in all required fields:\n\n• ${missingFields.join("\n• ")}`);
         return;
       }
+      
+      console.log("✅ All call task fields validated successfully");
     }
     
     let dueDate = null;
@@ -157,8 +173,10 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
       const [hours, minutes] = data.call_time.split(":");
       date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
       dueDate = date.toISOString();
+      console.log("✅ Due date constructed:", dueDate);
     } else if (data.due_date) {
       dueDate = data.due_date.toISOString();
+      console.log("✅ Due date set:", dueDate);
     }
 
     const submissionData = {
@@ -173,9 +191,15 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
       call_topic: data.is_call ? data.call_topic : null,
     };
 
-    console.log("✅ Submission data validated:", submissionData);
-    console.log("Calling onSubmit...");
-    onSubmit(submissionData);
+    console.log("✅ SUBMISSION DATA VALIDATED AND READY:", submissionData);
+    console.log("🚀 Calling onSubmit callback...");
+    
+    try {
+      onSubmit(submissionData);
+      console.log("✅ onSubmit callback executed successfully");
+    } catch (error) {
+      console.error("❌ ERROR in onSubmit callback:", error);
+    }
   };
 
   const watchIsCall = form.watch("is_call");
@@ -209,14 +233,27 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
           <form onSubmit={form.handleSubmit(
             handleFormSubmit,
             (errors) => {
-              console.log("Form validation errors:", errors);
-              // Show a toast or alert if validation fails
-              Object.keys(errors).forEach((key) => {
-                const error = errors[key as keyof ExtendedTaskFormData];
-                if (error?.message) {
-                  console.error(`${key}: ${error.message}`);
+              console.error("❌ FORM VALIDATION FAILED");
+              console.error("Validation errors:", errors);
+              
+              // Create a user-friendly error message
+              const errorMessages: string[] = [];
+              Object.entries(errors).forEach(([key, error]) => {
+                if (error && typeof error === "object" && "message" in error) {
+                  const fieldName = key === "phone_number" ? "Phone Number" : 
+                                   key === "call_topic" ? "Call Topic" : 
+                                   key === "call_time" ? "Call Time" : 
+                                   key === "due_date" ? "Call Date" : 
+                                   key === "title" ? "Title" : key;
+                  errorMessages.push(`${fieldName}: ${error.message}`);
+                  console.error(`  - ${fieldName}: ${error.message}`);
                 }
               });
+              
+              // Show alert with all errors
+              if (errorMessages.length > 0) {
+                alert(`⚠️ VALIDATION ERROR\n\nPlease fix the following:\n\n• ${errorMessages.join("\n• ")}`);
+              }
             }
           )} className="space-y-4">
             {Object.keys(form.formState.errors).length > 0 && (
