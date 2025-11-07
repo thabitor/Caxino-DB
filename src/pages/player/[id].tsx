@@ -311,10 +311,21 @@ export default function PlayerDetailPage() {
   const handleStartEditingPreferences = () => {
     // Initialize draft preferences with current values
     const currentPrefs = parsePreferences(player?.preferences);
+    
+    // Get time values, falling back to defaults if null/undefined
+    const timeFrom = player?.preferred_time_from ?? 9;
+    const timeTo = player?.preferred_time_to ?? 21;
+    
+    console.log("=== INITIALIZING PREFERENCES EDIT ===");
+    console.log("Current player.preferred_time_from:", player?.preferred_time_from);
+    console.log("Current player.preferred_time_to:", player?.preferred_time_to);
+    console.log("Using timeFrom:", timeFrom);
+    console.log("Using timeTo:", timeTo);
+    
     setDraftPreferences({
       ...currentPrefs,
-      preferred_time_from: player?.preferred_time_from ?? undefined,
-      preferred_time_to: player?.preferred_time_to ?? undefined
+      preferred_time_from: timeFrom,
+      preferred_time_to: timeTo
     });
     setIsEditingPreferences(true);
   };
@@ -333,43 +344,19 @@ export default function PlayerDetailPage() {
       console.log("Time From (raw):", timeFrom, "Type:", typeof timeFrom);
       console.log("Time To (raw):", timeTo, "Type:", typeof timeTo);
       
-      // Properly convert to numbers, handling undefined/null cases
-      let finalTimeFrom: number | null = null;
-      let finalTimeTo: number | null = null;
-      
-      if (timeFrom !== undefined && timeFrom !== null) {
-        const converted = Number(timeFrom);
-        finalTimeFrom = !isNaN(converted) ? converted : null;
-      }
-      
-      if (timeTo !== undefined && timeTo !== null) {
-        const converted = Number(timeTo);
-        finalTimeTo = !isNaN(converted) ? converted : null;
-      }
-      
-      console.log("Time From (final):", finalTimeFrom, "Type:", typeof finalTimeFrom);
-      console.log("Time To (final):", finalTimeTo, "Type:", typeof finalTimeTo);
-      
       // Create a clean preferences object WITHOUT the time fields (those go in separate columns)
       const { preferred_time_from, preferred_time_to, ...preferencesOnly } = draftPreferences;
       
-      console.log("Preferences to save:", preferencesOnly);
-      console.log("Individual columns - preferred_time_from:", finalTimeFrom, "preferred_time_to:", finalTimeTo);
+      console.log("Preferences JSON to save:", preferencesOnly);
       
       // Update the player with both the preferences JSON and the individual time columns
       const updateData: any = { 
-        preferences: preferencesOnly as any
+        preferences: preferencesOnly as any,
+        preferred_time_from: timeFrom ?? 9, // Always save with fallback to default
+        preferred_time_to: timeTo ?? 21  // Always save with fallback to default
       };
       
-      // Only include time fields if they have valid values
-      if (finalTimeFrom !== null) {
-        updateData.preferred_time_from = finalTimeFrom;
-      }
-      if (finalTimeTo !== null) {
-        updateData.preferred_time_to = finalTimeTo;
-      }
-      
-      console.log("Final update data:", updateData);
+      console.log("Final update data being sent to database:", updateData);
       
       await playerService.updatePlayer(player.id, updateData);
       

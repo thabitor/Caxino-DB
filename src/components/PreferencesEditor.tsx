@@ -86,8 +86,11 @@ export function PreferencesEditor({ preferences: initialPreferences, onUpdate }:
             <div className="space-y-2">
               <Label htmlFor="time-from" className="text-sm">Preferred Time From</Label>
               <Select
-                value={preferences.preferred_time_from?.toString() ?? "9"}
-                onValueChange={(val) => updatePreferences({ preferred_time_from: parseInt(val) })}
+                value={(preferences.preferred_time_from?.toString()) || "9"}
+                onValueChange={(val) => {
+                  console.log("Time From changed to:", val);
+                  updatePreferences({ preferred_time_from: parseInt(val) });
+                }}
               >
                 <SelectTrigger id="time-from">
                   <SelectValue />
@@ -105,8 +108,11 @@ export function PreferencesEditor({ preferences: initialPreferences, onUpdate }:
             <div className="space-y-2">
               <Label htmlFor="time-to" className="text-sm">Preferred Time To</Label>
               <Select
-                value={preferences.preferred_time_to?.toString() ?? "21"}
-                onValueChange={(val) => updatePreferences({ preferred_time_to: parseInt(val) })}
+                value={(preferences.preferred_time_to?.toString()) || "21"}
+                onValueChange={(val) => {
+                  console.log("Time To changed to:", val);
+                  updatePreferences({ preferred_time_to: parseInt(val) });
+                }}
               >
                 <SelectTrigger id="time-to">
                   <SelectValue />
