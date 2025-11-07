@@ -133,6 +133,12 @@ export const playerService = {
   },
 
   async updatePlayer(id: string, playerData: PlayerUpdate): Promise<Player> {
+    console.log("=== PLAYER SERVICE UPDATE ===");
+    console.log("Player ID:", id);
+    console.log("Update data being sent to Supabase:", JSON.stringify(playerData, null, 2));
+    console.log("preferred_time_from in update:", playerData.preferred_time_from, "Type:", typeof playerData.preferred_time_from);
+    console.log("preferred_time_to in update:", playerData.preferred_time_to, "Type:", typeof playerData.preferred_time_to);
+    
     const { data, error } = await supabase
       .from("players")
       .update(playerData)
@@ -144,6 +150,12 @@ export const playerService = {
       console.error(`Error updating player ${id}:`, error);
       throw error;
     }
+    
+    console.log("=== PLAYER SERVICE UPDATE RESPONSE ===");
+    console.log("Returned player data:", JSON.stringify(data, null, 2));
+    console.log("preferred_time_from in response:", data.preferred_time_from, "Type:", typeof data.preferred_time_from);
+    console.log("preferred_time_to in response:", data.preferred_time_to, "Type:", typeof data.preferred_time_to);
+    
     return data;
   },
 
