@@ -101,6 +101,16 @@ export default function PlayerDetailPage() {
       console.log("Full player object:", playerData);
       console.log("preferred_time_from:", playerData.preferred_time_from, "Type:", typeof playerData.preferred_time_from);
       console.log("preferred_time_to:", playerData.preferred_time_to, "Type:", typeof playerData.preferred_time_to);
+      
+      // Check if they're actually integers
+      console.log("Is preferred_time_from an integer?", Number.isInteger(playerData.preferred_time_from));
+      console.log("Is preferred_time_to an integer?", Number.isInteger(playerData.preferred_time_to));
+      
+      // Check the actual values in detail
+      console.log("preferred_time_from === null?", playerData.preferred_time_from === null);
+      console.log("preferred_time_from === undefined?", playerData.preferred_time_from === undefined);
+      console.log("preferred_time_to === null?", playerData.preferred_time_to === null);
+      console.log("preferred_time_to === undefined?", playerData.preferred_time_to === undefined);
 
       setPlayer(playerData);
       setNotesValue(playerData.notes || "");
