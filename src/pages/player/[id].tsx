@@ -97,6 +97,11 @@ export default function PlayerDetailPage() {
         return;
       }
 
+      console.log("=== PLAYER DATA FETCHED ===");
+      console.log("Full player object:", playerData);
+      console.log("preferred_time_from:", playerData.preferred_time_from, "Type:", typeof playerData.preferred_time_from);
+      console.log("preferred_time_to:", playerData.preferred_time_to, "Type:", typeof playerData.preferred_time_to);
+
       setPlayer(playerData);
       setNotesValue(playerData.notes || "");
       setTasks(tasksData);

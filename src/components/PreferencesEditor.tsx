@@ -27,9 +27,17 @@ export function PreferencesEditor({ preferences: initialPreferences, onUpdate }:
   }, [initialPreferences]);
 
   const updatePreferences = (updates: Partial<PlayerPreferences>) => {
+    console.log("=== PREFERENCES EDITOR UPDATE ===");
+    console.log("Current preferences:", preferences);
+    console.log("Update being applied:", updates);
+    
     const newPrefs = { ...preferences, ...updates };
+    console.log("New preferences after merge:", newPrefs);
+    
     setPreferences(newPrefs);
     onUpdate(newPrefs);
+    
+    console.log("onUpdate callback called with:", newPrefs);
   };
 
   const updateCommunication = (key: keyof NonNullable<PlayerPreferences["communication"]>, val: boolean) => {
