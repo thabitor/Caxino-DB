@@ -347,26 +347,35 @@ export default function PlayerDetailPage() {
       console.log("=== SAVING PREFERENCES ===");
       console.log("Current draftPreferences:", draftPreferences);
       
-      // Extract the time preferences from the draft preferences object
-      const timeFrom = draftPreferences.preferred_time_from;
-      const timeTo = draftPreferences.preferred_time_to;
+      // Extract the time preferences - these go in SEPARATE database columns
+      const timeFrom = draftPreferences.preferred_time_from ?? 9;
+      const timeTo = draftPreferences.preferred_time_to ?? 21;
       
-      console.log("Time From (raw):", timeFrom, "Type:", typeof timeFrom);
-      console.log("Time To (raw):", timeTo, "Type:", typeof timeTo);
+      console.log("Time From (extracted):", timeFrom, "Type:", typeof timeFrom);
+      console.log("Time To (extracted):", timeTo, "Type:", typeof timeTo);
       
-      // Create a clean preferences object WITHOUT the time fields (those go in separate columns)
-      const { preferred_time_from, preferred_time_to, ...preferencesOnly } = draftPreferences;
+      // CRITICAL: Remove time fields from preferences object - they belong in separate columns
+      const { preferred_time_from, preferred_time_to, ...preferencesForJson } = draftPreferences;
       
-      console.log("Preferences JSON to save:", preferencesOnly);
+      console.log("Preferences JSON (WITHOUT time fields):", preferencesForJson);
+      console.log("Time fields will be saved as SEPARATE columns");
       
-      // Update the player with both the preferences JSON and the individual time columns
-      const updateData: any = { 
-        preferences: preferencesOnly as any,
-        preferred_time_from: timeFrom ?? 9, // Always save with fallback to default
-        preferred_time_to: timeTo ?? 21  // Always save with fallback to default
+      // CRITICAL FIX: Ensure we're sending integers, not strings or other types
+      const timeFromInt = typeof timeFrom === 'number' ? timeFrom : parseInt(String(timeFrom), 10) || 9;
+      const timeToInt = typeof timeTo === 'number' ? timeTo : parseInt(String(timeTo), 10) || 21;
+      
+      console.log("FINAL Integer values - timeFrom:", timeFromInt, "timeTo:", timeToInt);
+      console.log("Are they integers?", Number.isInteger(timeFromInt), Number.isInteger(timeToInt));
+      
+      // Build update object with proper typing
+      const updateData = { 
+        preferences: preferencesForJson as any, // Only comm channels and language
+        preferred_time_from: timeFromInt,       // Separate integer column
+        preferred_time_to: timeToInt            // Separate integer column
       };
       
-      console.log("Final update data being sent to database:", updateData);
+      console.log("=== FINAL UPDATE PAYLOAD ===");
+      console.log(JSON.stringify(updateData, null, 2));
       
       await playerService.updatePlayer(player.id, updateData);
       
@@ -376,7 +385,6 @@ export default function PlayerDetailPage() {
       // Fetch fresh data
       console.log("Fetching fresh player data...");
       await fetchPlayerData();
-      console.log("Player data refreshed");
     } catch (error) {
       console.error("Error saving preferences:", error);
       toast({ title: "Error", description: "Could not save preferences.", variant: "destructive" });
