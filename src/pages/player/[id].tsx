@@ -328,12 +328,22 @@ export default function PlayerDetailPage() {
       console.log("Time From (raw):", timeFrom, "Type:", typeof timeFrom);
       console.log("Time To (raw):", timeTo, "Type:", typeof timeTo);
       
-      // Ensure they're numbers or undefined
-      const finalTimeFrom = timeFrom !== undefined ? Number(timeFrom) : undefined;
-      const finalTimeTo = timeTo !== undefined ? Number(timeTo) : undefined;
+      // Properly convert to numbers, handling undefined/null cases
+      let finalTimeFrom: number | null = null;
+      let finalTimeTo: number | null = null;
       
-      console.log("Time From (converted):", finalTimeFrom, "Type:", typeof finalTimeFrom);
-      console.log("Time To (converted):", finalTimeTo, "Type:", typeof finalTimeTo);
+      if (timeFrom !== undefined && timeFrom !== null) {
+        const converted = Number(timeFrom);
+        finalTimeFrom = !isNaN(converted) ? converted : null;
+      }
+      
+      if (timeTo !== undefined && timeTo !== null) {
+        const converted = Number(timeTo);
+        finalTimeTo = !isNaN(converted) ? converted : null;
+      }
+      
+      console.log("Time From (final):", finalTimeFrom, "Type:", typeof finalTimeFrom);
+      console.log("Time To (final):", finalTimeTo, "Type:", typeof finalTimeTo);
       
       // Create a clean preferences object WITHOUT the time fields (those go in separate columns)
       const { preferred_time_from, preferred_time_to, ...preferencesOnly } = draftPreferences;
@@ -342,11 +352,17 @@ export default function PlayerDetailPage() {
       console.log("Individual columns - preferred_time_from:", finalTimeFrom, "preferred_time_to:", finalTimeTo);
       
       // Update the player with both the preferences JSON and the individual time columns
-      const updateData = { 
-        preferences: preferencesOnly as any,
-        preferred_time_from: finalTimeFrom,
-        preferred_time_to: finalTimeTo
+      const updateData: any = { 
+        preferences: preferencesOnly as any
       };
+      
+      // Only include time fields if they have valid values
+      if (finalTimeFrom !== null) {
+        updateData.preferred_time_from = finalTimeFrom;
+      }
+      if (finalTimeTo !== null) {
+        updateData.preferred_time_to = finalTimeTo;
+      }
       
       console.log("Final update data:", updateData);
       
