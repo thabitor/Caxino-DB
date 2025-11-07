@@ -318,23 +318,47 @@ export default function PlayerDetailPage() {
     if (!player) return;
 
     try {
+      console.log("=== SAVING PREFERENCES ===");
+      console.log("Current draftPreferences:", draftPreferences);
+      
       // Extract the time preferences from the draft preferences object
       const timeFrom = draftPreferences.preferred_time_from;
       const timeTo = draftPreferences.preferred_time_to;
       
+      console.log("Time From (raw):", timeFrom, "Type:", typeof timeFrom);
+      console.log("Time To (raw):", timeTo, "Type:", typeof timeTo);
+      
+      // Ensure they're numbers or undefined
+      const finalTimeFrom = timeFrom !== undefined ? Number(timeFrom) : undefined;
+      const finalTimeTo = timeTo !== undefined ? Number(timeTo) : undefined;
+      
+      console.log("Time From (converted):", finalTimeFrom, "Type:", typeof finalTimeFrom);
+      console.log("Time To (converted):", finalTimeTo, "Type:", typeof finalTimeTo);
+      
       // Create a clean preferences object WITHOUT the time fields (those go in separate columns)
       const { preferred_time_from, preferred_time_to, ...preferencesOnly } = draftPreferences;
       
+      console.log("Preferences to save:", preferencesOnly);
+      console.log("Individual columns - preferred_time_from:", finalTimeFrom, "preferred_time_to:", finalTimeTo);
+      
       // Update the player with both the preferences JSON and the individual time columns
-      await playerService.updatePlayer(player.id, { 
+      const updateData = { 
         preferences: preferencesOnly as any,
-        preferred_time_from: timeFrom,
-        preferred_time_to: timeTo
-      });
+        preferred_time_from: finalTimeFrom,
+        preferred_time_to: finalTimeTo
+      };
+      
+      console.log("Final update data:", updateData);
+      
+      await playerService.updatePlayer(player.id, updateData);
       
       toast({ title: "Preferences saved", description: "Player preferences have been updated successfully." });
       setIsEditingPreferences(false);
-      fetchPlayerData();
+      
+      // Fetch fresh data
+      console.log("Fetching fresh player data...");
+      await fetchPlayerData();
+      console.log("Player data refreshed");
     } catch (error) {
       console.error("Error saving preferences:", error);
       toast({ title: "Error", description: "Could not save preferences.", variant: "destructive" });
@@ -811,9 +835,16 @@ export default function PlayerDetailPage() {
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-muted-foreground">Preferred Time:</span>
                             <span className="font-medium">
-                              {player.preferred_time_from && player.preferred_time_to
-                                ? `${player.preferred_time_from}h to ${player.preferred_time_to}h`
-                                : "Not specified"}
+                              {(() => {
+                                console.log("=== RENDERING PREFERRED TIME ===");
+                                console.log("player.preferred_time_from:", player.preferred_time_from, "Type:", typeof player.preferred_time_from);
+                                console.log("player.preferred_time_to:", player.preferred_time_to, "Type:", typeof player.preferred_time_to);
+                                
+                                if (player.preferred_time_from && player.preferred_time_to) {
+                                  return `${player.preferred_time_from}h to ${player.preferred_time_to}h`;
+                                }
+                                return "Not specified";
+                              })()}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
