@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, Clock, ChevronDown, ChevronUp, ExternalLink, Calendar, User, Phone } from "lucide-react";
+import { AlertCircle, Clock, ChevronDown, ChevronUp, ExternalLink, Calendar, User, Phone, X } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,6 +20,8 @@ interface TaskWithPlayer extends Task {
   player_username: string;
 }
 
+const DISMISSED_TASKS_KEY = "dismissedTaskReminders";
+
 export function TaskAlertsPanel() {
   const [todayCalls, setTodayCalls] = useState<TaskWithPlayer[]>([]);
   const [regularTasks, setRegularTasks] = useState<TaskWithPlayer[]>([]);
@@ -27,12 +29,60 @@ export function TaskAlertsPanel() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [completingCallId, setCompletingCallId] = useState<string | null>(null);
   const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set());
+  const [dismissedTasks, setDismissedTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { user } = useAuth();
 
   useEffect(() => {
+    loadDismissedTasks();
     fetchAlerts();
   }, []);
+
+  const loadDismissedTasks = () => {
+    try {
+      const stored = localStorage.getItem(DISMISSED_TASKS_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        const today = new Date().toDateString();
+        
+        if (data.date === today) {
+          setDismissedTasks(new Set(data.taskIds));
+        } else {
+          localStorage.removeItem(DISMISSED_TASKS_KEY);
+          setDismissedTasks(new Set());
+        }
+      }
+    } catch (error) {
+      console.error("Error loading dismissed tasks:", error);
+      setDismissedTasks(new Set());
+    }
+  };
+
+  const saveDismissedTasks = (taskIds: Set<string>) => {
+    try {
+      const today = new Date().toDateString();
+      const data = {
+        date: today,
+        taskIds: Array.from(taskIds)
+      };
+      localStorage.setItem(DISMISSED_TASKS_KEY, JSON.stringify(data));
+    } catch (error) {
+      console.error("Error saving dismissed tasks:", error);
+    }
+  };
+
+  const handleDismissTask = (taskId: string) => {
+    const newDismissed = new Set(dismissedTasks);
+    newDismissed.add(taskId);
+    setDismissedTasks(newDismissed);
+    saveDismissedTasks(newDismissed);
+    
+    toast({
+      title: "Reminder dismissed",
+      description: "This reminder has been acknowledged and will be hidden until tomorrow.",
+      duration: 3000
+    });
+  };
 
   const fetchAlerts = async () => {
     try {
@@ -58,18 +108,15 @@ export function TaskAlertsPanel() {
         })
       );
 
-      // Separate calls and regular tasks
       const calls = tasksWithPlayers.filter(task => task.is_call);
       const regularTasksList = tasksWithPlayers.filter(task => !task.is_call);
 
-      // Filter calls to show only today's calls
       const todaysCallsList = calls.filter(task => {
         if (!task.due_date) return false;
         const dueDate = new Date(task.due_date);
         return dueDate >= todayStart && dueDate < todayEnd;
       }).sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
 
-      // Filter regular tasks: due within 24 hours
       const urgentRegularTasks = regularTasksList.filter(task => {
         if (!task.due_date) return false;
         const dueDate = new Date(task.due_date);
@@ -79,7 +126,6 @@ export function TaskAlertsPanel() {
       setTodayCalls(todaysCallsList);
       setRegularTasks(urgentRegularTasks);
       
-      // Clear checked tasks state after refresh
       setCheckedTasks(new Set());
     } catch (error) {
       console.error("Error fetching alerts:", error);
@@ -96,7 +142,6 @@ export function TaskAlertsPanel() {
         description: "Task marked as completed successfully.",
         duration: 3000
       });
-      // Remove from checked tasks and refresh alerts
       setCheckedTasks(prev => {
         const next = new Set(prev);
         next.delete(taskId);
@@ -110,7 +155,6 @@ export function TaskAlertsPanel() {
         description: "Could not complete task. Please try again.", 
         variant: "destructive" 
       });
-      // Uncheck on error
       setCheckedTasks(prev => {
         const next = new Set(prev);
         next.delete(taskId);
@@ -132,7 +176,6 @@ export function TaskAlertsPanel() {
         description: "Call logged successfully and task marked as complete.",
         duration: 3000
       });
-      // Remove from checked tasks, close dialog, and refresh alerts
       setCheckedTasks(prev => {
         const next = new Set(prev);
         next.delete(completingCallId);
@@ -147,7 +190,6 @@ export function TaskAlertsPanel() {
         description: "Could not complete call. Please try again.", 
         variant: "destructive" 
       });
-      // Uncheck on error
       if (completingCallId) {
         setCheckedTasks(prev => {
           const next = new Set(prev);
@@ -159,7 +201,6 @@ export function TaskAlertsPanel() {
   };
 
   const handleCallDialogClose = () => {
-    // Uncheck the checkbox when dialog is cancelled
     if (completingCallId) {
       setCheckedTasks(prev => {
         const next = new Set(prev);
@@ -220,9 +261,20 @@ export function TaskAlertsPanel() {
     return (
       <div
         key={task.id}
-        className={`p-4 rounded-lg border-2 ${cardBorderColor} transition-all hover:shadow-md`}
+        className={`p-4 rounded-lg border-2 ${cardBorderColor} transition-all hover:shadow-md relative`}
       >
-        <div className="flex items-start justify-between gap-4">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => handleDismissTask(task.id)}
+          className="absolute top-2 right-2 h-8 px-3 gap-1.5 hover:bg-muted/80"
+          title="Dismiss this reminder"
+        >
+          <X className="w-3.5 h-3.5" />
+          <span className="text-xs font-medium">Ok, got it!</span>
+        </Button>
+
+        <div className="flex items-start justify-between gap-4 pr-24">
           <div className="flex items-start gap-3 flex-1">
             <div className="pt-1 flex flex-col items-center space-y-1">
               <Checkbox
@@ -332,7 +384,9 @@ export function TaskAlertsPanel() {
     );
   }
 
-  const totalAlerts = todayCalls.length + regularTasks.length;
+  const visibleCalls = todayCalls.filter(task => !dismissedTasks.has(task.id));
+  const visibleRegularTasks = regularTasks.filter(task => !dismissedTasks.has(task.id));
+  const totalAlerts = visibleCalls.length + visibleRegularTasks.length;
 
   if (totalAlerts === 0) {
     return (
@@ -362,7 +416,7 @@ export function TaskAlertsPanel() {
                   </Badge>
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  {todayCalls.length} calls today, {regularTasks.length} other tasks
+                  {visibleCalls.length} calls today, {visibleRegularTasks.length} other tasks
                 </p>
               </div>
             </div>
@@ -380,30 +434,30 @@ export function TaskAlertsPanel() {
 
         {isExpanded && (
           <CardContent className="pt-6 space-y-6">
-            {todayCalls.length > 0 && (
+            {visibleCalls.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <h3 className="font-bold text-lg text-blue-700 dark:text-blue-400">
-                    Calls for Today ({todayCalls.length})
+                    Calls for Today ({visibleCalls.length})
                   </h3>
                 </div>
                 <div className="space-y-2">
-                  {todayCalls.map((task) => renderTaskCard(task, true))}
+                  {visibleCalls.map((task) => renderTaskCard(task, true))}
                 </div>
               </div>
             )}
 
-            {regularTasks.length > 0 && (
+            {visibleRegularTasks.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                   <h3 className="font-bold text-lg text-amber-700 dark:text-amber-400">
-                    Other Tasks ({regularTasks.length})
+                    Other Tasks ({visibleRegularTasks.length})
                   </h3>
                 </div>
                 <div className="space-y-2">
-                  {regularTasks.map((task) => renderTaskCard(task, false))}
+                  {visibleRegularTasks.map((task) => renderTaskCard(task, false))}
                 </div>
               </div>
             )}
