@@ -3,25 +3,69 @@ import { playerService, Player, getFullName } from "@/services/playerService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Cake, ChevronDown, ChevronUp, User, ExternalLink } from "lucide-react";
+import { Cake, ChevronDown, ChevronUp, User, ExternalLink, Check } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { format, differenceInDays, isSameDay, addDays, subDays } from "date-fns";
+import { format, differenceInDays, isSameDay, addDays, subDays, startOfDay } from "date-fns";
 
 interface BirthdayPlayer {
   player: Player;
   status: "tomorrow" | "today" | "yesterday";
 }
 
+interface DismissedBirthdays {
+  [playerId: string]: string; // playerId -> ISO date string when dismissed
+}
+
+const STORAGE_KEY = "dismissed_birthday_reminders";
+
 export function BirthdayReminders() {
   const [birthdayPlayers, setBirthdayPlayers] = useState<BirthdayPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [dismissedBirthdays, setDismissedBirthdays] = useState<DismissedBirthdays>({});
 
   useEffect(() => {
+    // Load dismissed birthdays from localStorage
+    loadDismissedBirthdays();
     fetchBirthdayReminders();
   }, []);
+
+  const loadDismissedBirthdays = () => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const dismissed: DismissedBirthdays = JSON.parse(stored);
+        const today = startOfDay(new Date()).toISOString();
+        
+        // Filter out dismissals from previous days
+        const currentDismissals: DismissedBirthdays = {};
+        Object.entries(dismissed).forEach(([playerId, dismissedDate]) => {
+          if (dismissedDate === today) {
+            currentDismissals[playerId] = dismissedDate;
+          }
+        });
+        
+        setDismissedBirthdays(currentDismissals);
+        // Update localStorage with cleaned data
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(currentDismissals));
+      }
+    } catch (error) {
+      console.error("Error loading dismissed birthdays:", error);
+    }
+  };
+
+  const dismissBirthday = (playerId: string) => {
+    const today = startOfDay(new Date()).toISOString();
+    const updated = {
+      ...dismissedBirthdays,
+      [playerId]: today
+    };
+    
+    setDismissedBirthdays(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  };
 
   const fetchBirthdayReminders = async () => {
     try {
@@ -114,13 +158,18 @@ export function BirthdayReminders() {
     );
   }
 
-  if (birthdayPlayers.length === 0) {
+  // Filter out dismissed birthdays
+  const activeBirthdayPlayers = birthdayPlayers.filter(
+    bp => !dismissedBirthdays[bp.player.id]
+  );
+
+  if (activeBirthdayPlayers.length === 0) {
     return null;
   }
 
-  const todayCount = birthdayPlayers.filter(bp => bp.status === "today").length;
-  const tomorrowCount = birthdayPlayers.filter(bp => bp.status === "tomorrow").length;
-  const yesterdayCount = birthdayPlayers.filter(bp => bp.status === "yesterday").length;
+  const todayCount = activeBirthdayPlayers.filter(bp => bp.status === "today").length;
+  const tomorrowCount = activeBirthdayPlayers.filter(bp => bp.status === "tomorrow").length;
+  const yesterdayCount = activeBirthdayPlayers.filter(bp => bp.status === "yesterday").length;
 
   return (
     <Card className="border-2 border-pink-200 dark:border-pink-800 bg-gradient-to-br from-pink-50/50 via-purple-50/30 to-blue-50/20 dark:from-pink-950/20 dark:via-purple-950/10 dark:to-blue-950/10 shadow-lg">
@@ -134,7 +183,7 @@ export function BirthdayReminders() {
               <CardTitle className="flex items-center gap-2">
                 Birthday Reminders
                 <Badge className="bg-pink-600 dark:bg-pink-700 text-white border-0">
-                  {birthdayPlayers.length}
+                  {activeBirthdayPlayers.length}
                 </Badge>
               </CardTitle>
               <p className="text-sm text-muted-foreground">
@@ -161,7 +210,7 @@ export function BirthdayReminders() {
       {isExpanded && (
         <CardContent className="pt-6">
           <div className="space-y-2">
-            {birthdayPlayers.map((birthdayPlayer) => {
+            {activeBirthdayPlayers.map((birthdayPlayer) => {
               const config = getStatusConfig(birthdayPlayer.status);
               const age = calculateAge(birthdayPlayer.player.dob!);
               const turningAge = birthdayPlayer.status === "tomorrow" ? age + 1 : age;
@@ -201,17 +250,29 @@ export function BirthdayReminders() {
                       </div>
                     </div>
 
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      asChild
-                      className="border-2 gap-1.5 shrink-0"
-                    >
-                      <Link href={`/player/${birthdayPlayer.player.id}`}>
-                        View Player
-                        <ExternalLink className="w-3 h-3" />
-                      </Link>
-                    </Button>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        asChild
+                        className="border-2 gap-1.5"
+                      >
+                        <Link href={`/player/${birthdayPlayer.player.id}`}>
+                          View Player
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </Button>
+                      
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => dismissBirthday(birthdayPlayer.player.id)}
+                        className="gap-1.5 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
+                      >
+                        <Check className="w-3 h-3" />
+                        Ok, got it!
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );
