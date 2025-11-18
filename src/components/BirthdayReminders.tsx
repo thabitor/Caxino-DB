@@ -17,7 +17,7 @@ interface BirthdayPlayer {
 export function BirthdayReminders() {
   const [birthdayPlayers, setBirthdayPlayers] = useState<BirthdayPlayer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     fetchBirthdayReminders();
