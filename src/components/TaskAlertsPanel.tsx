@@ -24,7 +24,7 @@ export function TaskAlertsPanel() {
   const [todayCalls, setTodayCalls] = useState<TaskWithPlayer[]>([]);
   const [regularTasks, setRegularTasks] = useState<TaskWithPlayer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [completingCallId, setCompletingCallId] = useState<string | null>(null);
   const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
