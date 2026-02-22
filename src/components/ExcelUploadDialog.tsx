@@ -76,52 +76,88 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
           const worksheet = workbook.Sheets[sheetName];
           const jsonData: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet);
 
+          if (jsonData.length === 0) {
+            resolve([]);
+            return;
+          }
+
+          // Get available columns from first row
+          const availableColumns = new Set(
+            Object.keys(jsonData[0]).map(k => k.toLowerCase())
+          );
+
           const players = jsonData.map((row) => {
             const player: any = {};
 
-            // Handle Name splitting
-            const fullName = getColumnValue(row, "name", "full name", "fullname");
-            if (fullName) {
-              const parts = fullName.split(/\s+/);
-              if (parts.length > 0) {
-                player.firstname = parts[0];
-                player.lastname = parts.length > 1 ? parts.slice(1).join(" ") : "";
+            // Only process Name if it exists
+            if (availableColumns.has("name") || availableColumns.has("full name") || availableColumns.has("fullname")) {
+              const fullName = getColumnValue(row, "name", "full name", "fullname");
+              if (fullName) {
+                const parts = fullName.split(/\s+/);
+                if (parts.length > 0) {
+                  player.firstname = parts[0];
+                  player.lastname = parts.length > 1 ? parts.slice(1).join(" ") : "";
+                }
               }
-            } else {
-              // Try direct firstname/lastname columns
+            }
+
+            // Try direct firstname/lastname only if those columns exist
+            if (availableColumns.has("firstname") || availableColumns.has("first name") || availableColumns.has("first_name")) {
               const firstname = getColumnValue(row, "firstname", "first name", "first_name");
-              const lastname = getColumnValue(row, "lastname", "last name", "last_name");
               if (firstname) player.firstname = firstname;
+            }
+
+            if (availableColumns.has("lastname") || availableColumns.has("last name") || availableColumns.has("last_name")) {
+              const lastname = getColumnValue(row, "lastname", "last name", "last_name");
               if (lastname) player.lastname = lastname;
             }
 
-            // Basic fields
-            const phone = getColumnValue(row, "phone", "telephone", "mobile");
-            if (phone) player.phone = phone;
+            // Only process phone if it exists
+            if (availableColumns.has("phone") || availableColumns.has("telephone") || availableColumns.has("mobile")) {
+              const phone = getColumnValue(row, "phone", "telephone", "mobile");
+              if (phone) player.phone = phone;
+            }
 
-            const email = getColumnValue(row, "email", "e-mail", "email address");
-            if (email) player.email = email;
+            // Only process email if it exists
+            if (availableColumns.has("email") || availableColumns.has("e-mail") || availableColumns.has("email address")) {
+              const email = getColumnValue(row, "email", "e-mail", "email address");
+              if (email) player.email = email;
+            }
 
-            const dob = getColumnValue(row, "dob", "birthday", "date of birth", "birthdate");
-            if (dob) player.dob = dob;
+            // Only process dob if it exists
+            if (availableColumns.has("dob") || availableColumns.has("birthday") || availableColumns.has("date of birth") || availableColumns.has("birthdate")) {
+              const dob = getColumnValue(row, "dob", "birthday", "date of birth", "birthdate");
+              if (dob) player.dob = dob;
+            }
 
-            const notes = getColumnValue(row, "notes", "note", "comments", "comment");
-            if (notes) player.notes = notes;
+            // Only process notes if it exists
+            if (availableColumns.has("notes") || availableColumns.has("note") || availableColumns.has("comments") || availableColumns.has("comment")) {
+              const notes = getColumnValue(row, "notes", "note", "comments", "comment");
+              if (notes) player.notes = notes;
+            }
 
-            // Preferences (stored as JSON)
+            // Preferences - only process if columns exist
             const preferences: Record<string, any> = {};
             
-            const depositAmount = getColumnValue(row, "deposit_amount", "deposit amount", "deposit");
-            if (depositAmount) preferences.deposit_amount = depositAmount;
+            if (availableColumns.has("deposit_amount") || availableColumns.has("deposit amount") || availableColumns.has("deposit")) {
+              const depositAmount = getColumnValue(row, "deposit_amount", "deposit amount", "deposit");
+              if (depositAmount) preferences.deposit_amount = depositAmount;
+            }
 
-            const frequency = getColumnValue(row, "frequency", "contact frequency");
-            if (frequency) preferences.frequency = frequency;
+            if (availableColumns.has("frequency") || availableColumns.has("contact frequency")) {
+              const frequency = getColumnValue(row, "frequency", "contact frequency");
+              if (frequency) preferences.frequency = frequency;
+            }
 
-            const lastContactDate = getColumnValue(row, "last_contact_date", "last contact date", "last_contact");
-            if (lastContactDate) preferences.last_contact_date = lastContactDate;
+            if (availableColumns.has("last_contact_date") || availableColumns.has("last contact date") || availableColumns.has("last_contact")) {
+              const lastContactDate = getColumnValue(row, "last_contact_date", "last contact date", "last_contact");
+              if (lastContactDate) preferences.last_contact_date = lastContactDate;
+            }
 
-            const preferredTime = getColumnValue(row, "preferred_time", "preferred time", "best time");
-            if (preferredTime) preferences.preferred_time = preferredTime;
+            if (availableColumns.has("preferred_time") || availableColumns.has("preferred time") || availableColumns.has("best time")) {
+              const preferredTime = getColumnValue(row, "preferred_time", "preferred time", "best time");
+              if (preferredTime) preferences.preferred_time = preferredTime;
+            }
 
             if (Object.keys(preferences).length > 0) {
               player.preferences = preferences;
