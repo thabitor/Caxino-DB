@@ -232,3 +232,33 @@ export const playerService = {
     return data || [];
   },
 };
+
+export async function bulkCreatePlayers(
+  players: Partial<PlayerInsert>[]
+): Promise<{ success: number; failed: number; errors: string[] }> {
+  const results = {
+    success: 0,
+    failed: 0,
+    errors: [] as string[],
+  };
+
+  for (let i = 0; i < players.length; i++) {
+    try {
+      const playerData = players[i];
+      
+      // Skip empty rows
+      if (!playerData.name && !playerData.phone && !playerData.email) {
+        continue;
+      }
+
+      await playerService.createPlayer(playerData as PlayerInsert);
+      results.success++;
+    } catch (error) {
+      results.failed++;
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      results.errors.push(`Row ${i + 1}: ${errorMessage}`);
+    }
+  }
+
+  return results;
+}
