@@ -236,6 +236,9 @@ export const playerService = {
 export async function bulkCreatePlayers(
   players: Partial<PlayerInsert>[]
 ): Promise<{ success: number; failed: number; errors: string[] }> {
+  console.log("=== BULK CREATE PLAYERS START ===");
+  console.log("Total players to process:", players.length);
+  
   const results = {
     success: 0,
     failed: 0,
@@ -245,20 +248,32 @@ export async function bulkCreatePlayers(
   for (let i = 0; i < players.length; i++) {
     try {
       const playerData = players[i];
+      console.log(`\n=== Processing player ${i + 1}/${players.length} ===`);
+      console.log("Player data:", JSON.stringify(playerData, null, 2));
       
-      // Skip empty rows (check for firstname/lastname instead of name)
-      if (!playerData.firstname && !playerData.lastname && !playerData.phone && !playerData.email) {
+      // Check if row has ANY data (not completely empty)
+      const hasAnyData = Object.values(playerData).some(value => 
+        value !== null && value !== undefined && value !== ""
+      );
+      
+      if (!hasAnyData) {
+        console.log(`Skipping row ${i + 1}: completely empty`);
         continue;
       }
 
+      console.log(`Attempting to create player ${i + 1}...`);
       await playerService.createPlayer(playerData as PlayerInsert);
       results.success++;
+      console.log(`✓ Successfully created player ${i + 1}`);
     } catch (error) {
       results.failed++;
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error(`✗ Failed to create player ${i + 1}:`, errorMessage);
       results.errors.push(`Row ${i + 1}: ${errorMessage}`);
     }
   }
 
+  console.log("\n=== BULK CREATE PLAYERS COMPLETE ===");
+  console.log("Results:", results);
   return results;
 }
