@@ -177,6 +177,8 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
       return;
     }
 
+    console.log("=== UPLOAD STARTED ===");
+    console.log("File:", file.name, file.size, "bytes");
     setIsProcessing(true);
     setUploadResult(null);
 
@@ -184,8 +186,10 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
       console.log("Starting file parse...");
       const players = await parseExcelFile(file);
       console.log("Parsed players:", players);
+      console.log("Number of players:", players.length);
       
       if (players.length === 0) {
+        console.log("No valid players found in Excel file");
         toast({
           title: "No data found",
           description: "The Excel file contains no valid player data. Please check that your file has data rows with at least one column filled.",
@@ -228,6 +232,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
       });
     } finally {
       setIsProcessing(false);
+      console.log("=== UPLOAD FINISHED ===");
     }
   };
 
