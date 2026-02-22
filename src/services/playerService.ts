@@ -246,8 +246,8 @@ export async function bulkCreatePlayers(
     try {
       const playerData = players[i];
       
-      // Skip empty rows
-      if (!playerData.name && !playerData.phone && !playerData.email) {
+      // Skip empty rows (check for firstname/lastname instead of name)
+      if (!playerData.firstname && !playerData.lastname && !playerData.phone && !playerData.email) {
         continue;
       }
 

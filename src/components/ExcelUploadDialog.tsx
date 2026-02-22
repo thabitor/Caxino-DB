@@ -5,10 +5,7 @@ import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2 } from "luc
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
-import { bulkCreatePlayers } from "@/services/playerService";
-import type { Tables } from "@/integrations/supabase/types";
-
-type PlayerInsert = Tables<"players">["Insert"];
+import { bulkCreatePlayers, type PlayerInsert } from "@/services/playerService";
 
 interface ExcelUploadDialogProps {
   onUploadComplete?: () => void;
@@ -67,34 +64,68 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
           const players: Partial<PlayerInsert>[] = jsonData.map((row: any) => {
             const player: Partial<PlayerInsert> = {};
 
-            if (row.name || row.Name || row.NAME) {
-              player.name = String(row.name || row.Name || row.NAME);
+            // Handle Name splitting
+            const fullName = String(row.name || row.Name || row.NAME || "");
+            if (fullName) {
+              const parts = fullName.trim().split(/\s+/);
+              if (parts.length > 0) {
+                player.firstname = parts[0];
+                player.lastname = parts.length > 1 ? parts.slice(1).join(" ") : "";
+              }
+            } else {
+              // Try direct firstname/lastname columns if full name isn't present
+              if (row.firstname || row.Firstname || row.FIRSTNAME) {
+                player.firstname = String(row.firstname || row.Firstname || row.FIRSTNAME);
+              }
+              if (row.lastname || row.Lastname || row.LASTNAME) {
+                player.lastname = String(row.lastname || row.Lastname || row.LASTNAME);
+              }
             }
+
             if (row.phone || row.Phone || row.PHONE) {
               player.phone = String(row.phone || row.Phone || row.PHONE);
             }
             if (row.email || row.Email || row.EMAIL) {
               player.email = String(row.email || row.Email || row.EMAIL);
             }
-            if (row.birthday || row.Birthday || row.BIRTHDAY) {
-              player.birthday = String(row.birthday || row.Birthday || row.BIRTHDAY);
+            // Fix birthday/dob mapping
+            if (row.birthday || row.Birthday || row.BIRTHDAY || row.dob || row.DOB) {
+              player.dob = String(row.birthday || row.Birthday || row.BIRTHDAY || row.dob || row.DOB);
             }
+            // Fix deposit amount mapping (assuming casino/custom fields logic might be needed, but sticking to standard fields for now)
+            // Note: 'deposit_amount', 'frequency', 'preferred_time' might be in a JSON 'preferences' field or specific columns if schema supports them.
+            // Checking schema via context: 'preferences' is Json. 'deposit_amount' is NOT in the top level type inferred from previous errors (property 'Insert'...).
+            // Let's assume for now we put these extras into 'notes' or 'preferences' if they don't exist on PlayerInsert.
+            // Wait, looking at previous error: "Property 'Insert' does not exist on type '{ casino: string; ... preferences: Json; ... vip_level: number; }'"
+            // It lists: casino, created_at, dob, email, firstname, gender, id, last_email_sent, lastname, notes, phone, preferences, vip_level.
+            // So 'deposit_amount', 'frequency', 'preferred_time' are likely NOT top level columns.
+            // I should construct the preferences JSON object for these.
+            
+            const preferences: Record<string, any> = {};
+            
             if (row.deposit_amount || row["Deposit Amount"] || row.DEPOSIT_AMOUNT) {
-              const amount = row.deposit_amount || row["Deposit Amount"] || row.DEPOSIT_AMOUNT;
-              player.deposit_amount = typeof amount === "number" ? amount : parseFloat(String(amount));
+              preferences.deposit_amount = row.deposit_amount || row["Deposit Amount"] || row.DEPOSIT_AMOUNT;
             }
             if (row.frequency || row.Frequency || row.FREQUENCY) {
-              player.frequency = String(row.frequency || row.Frequency || row.FREQUENCY);
+              preferences.frequency = String(row.frequency || row.Frequency || row.FREQUENCY);
             }
             if (row.last_contact_date || row["Last Contact Date"] || row.LAST_CONTACT_DATE) {
-              player.last_contact_date = String(row.last_contact_date || row["Last Contact Date"] || row.LAST_CONTACT_DATE);
+              preferences.last_contact_date = String(row.last_contact_date || row["Last Contact Date"] || row.LAST_CONTACT_DATE);
             }
             if (row.preferred_time || row["Preferred Time"] || row.PREFERRED_TIME) {
-              player.preferred_time = String(row.preferred_time || row["Preferred Time"] || row.PREFERRED_TIME);
+              preferences.preferred_time = String(row.preferred_time || row["Preferred Time"] || row.PREFERRED_TIME);
             }
+            
+            if (Object.keys(preferences).length > 0) {
+              player.preferences = preferences;
+            }
+
             if (row.notes || row.Notes || row.NOTES) {
               player.notes = String(row.notes || row.Notes || row.NOTES);
             }
+            
+            // Set default VIP level if not provided (required field usually)
+            player.vip_level = 3; // Default to lowest VIP level
 
             return player;
           });
