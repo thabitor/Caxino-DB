@@ -6,14 +6,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { bulkCreatePlayers } from "@/services/playerService";
+import type { Database } from "@/integrations/supabase/types";
 
 interface ExcelUploadDialogProps {
   onUploadComplete?: () => void;
 }
 
-interface ExcelRow {
-  [key: string]: any;
-}
+type PlayerInsert = Database["public"]["Tables"]["players"]["Insert"];
 
 export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,7 +52,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
     e.preventDefault();
   };
 
-  const parseExcelFile = async (file: File): Promise<any[]> => {
+  const parseExcelFile = async (file: File): Promise<Partial<PlayerInsert>[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -71,35 +70,37 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             return;
           }
 
-          // Get all available columns from the first row
-          const firstRow = jsonData[0] as Record<string, any>;
-          const availableColumns = Object.keys(firstRow);
-          console.log("Available columns:", availableColumns);
-
-          // Column mapping - maps various column name formats to database fields
-          const columnMap: Record<string, string[]> = {
-            user_id: ["user_id", "userid", "id", "player_id", "playerid"],
-            username: ["username", "user_name", "player_name", "playername", "name"],
-            casino: ["casino", "casino_name", "casinoname", "site"],
-            firstname: ["firstname", "first_name", "first name", "fname"],
-            lastname: ["lastname", "last_name", "last name", "lname"],
-            phone: ["phone", "phonenumber", "phone_number", "mobile", "telephone"],
-            email: ["email", "e-mail", "emailaddress", "mail"],
-            birthday: ["birthday", "dob", "date_of_birth", "dateofbirth", "birthdate"],
-            vip_level: ["vip_level", "viplevel", "vip", "level"],
+          // Column mapping - maps Excel column names to database field names
+          // Each database field maps to multiple possible Excel header variations
+          const columnMapping: Record<string, string[]> = {
+            user_id: ["user_id", "userid", "id"],
+            username: ["username", "user_name"],
+            casino: ["casino"],
+            firstname: ["firstname", "first_name"],
+            lastname: ["lastname", "last_name"],
+            phone: ["phone"],
+            email: ["email"],
+            dob: ["dob", "birthday", "date_of_birth"],
+            gender: ["gender"],
+            vip_level: ["vip_level", "viplevel", "vip"],
             total_deposits: ["total_deposits", "totaldeposits", "deposits"],
-            last_deposit_date: ["last_deposit_date", "lastdepositdate", "last_deposit"],
-            status: ["status", "player_status", "playerstatus", "account_status"],
-            notes: ["notes", "note", "comments", "comment", "description"],
-            last_contact_date: ["last_contact_date", "lastcontactdate", "last_contact"],
-            preferred_contact_time: ["preferred_contact_time", "preferredcontacttime", "preferred_time", "contact_time"]
+            last_email_sent: ["last_email_sent", "lastemailsent"],
+            account_status: ["account_status", "accountstatus"],
+            notes: ["notes"],
+            preferred_time_from: ["preferred_time_from", "preferredtimefrom"],
+            preferred_time_to: ["preferred_time_to", "preferredtimeto"],
           };
 
           // Helper to find column value with flexible matching
           const getColumnValue = (row: Record<string, any>, dbField: string): any => {
-            const possibleNames = columnMap[dbField] || [dbField];
-            for (const name of possibleNames) {
-              const key = Object.keys(row).find(k => k.toLowerCase().trim() === name.toLowerCase().trim());
+            const possibleHeaders = columnMapping[dbField] || [dbField];
+            
+            for (const header of possibleHeaders) {
+              // Find key in row that matches (case-insensitive, trimmed)
+              const key = Object.keys(row).find(k => 
+                k.toLowerCase().trim().replace(/\s+/g, "_") === header.toLowerCase().trim().replace(/\s+/g, "_")
+              );
+              
               if (key !== undefined && row[key] !== null && row[key] !== undefined && row[key] !== "") {
                 return row[key];
               }
@@ -110,7 +111,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
           const players = jsonData.map((row: any, index: number) => {
             console.log(`Processing row ${index + 1}:`, row);
 
-            const player: any = {};
+            const player: Partial<PlayerInsert> = {};
 
             // Map all possible fields
             const user_id = getColumnValue(row, "user_id");
@@ -120,14 +121,15 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             const lastname = getColumnValue(row, "lastname");
             const phone = getColumnValue(row, "phone");
             const email = getColumnValue(row, "email");
-            const birthday = getColumnValue(row, "birthday");
+            const dob = getColumnValue(row, "dob");
+            const gender = getColumnValue(row, "gender");
             const vip_level = getColumnValue(row, "vip_level");
             const total_deposits = getColumnValue(row, "total_deposits");
-            const last_deposit_date = getColumnValue(row, "last_deposit_date");
-            const status = getColumnValue(row, "status");
+            const last_email_sent = getColumnValue(row, "last_email_sent");
+            const account_status = getColumnValue(row, "account_status");
             const notes = getColumnValue(row, "notes");
-            const last_contact_date = getColumnValue(row, "last_contact_date");
-            const preferred_contact_time = getColumnValue(row, "preferred_contact_time");
+            const preferred_time_from = getColumnValue(row, "preferred_time_from");
+            const preferred_time_to = getColumnValue(row, "preferred_time_to");
 
             // Add fields only if they have values
             if (user_id !== null) player.user_id = String(user_id).trim();
@@ -137,14 +139,15 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             if (lastname !== null) player.lastname = String(lastname).trim();
             if (phone !== null) player.phone = String(phone).trim();
             if (email !== null) player.email = String(email).trim();
-            if (birthday !== null) player.birthday = String(birthday).trim();
-            if (vip_level !== null) player.vip_level = Number(vip_level) || 1;
-            if (total_deposits !== null) player.total_deposits = Number(total_deposits) || 0;
-            if (last_deposit_date !== null) player.last_deposit_date = String(last_deposit_date).trim();
-            if (status !== null) player.status = String(status).trim();
+            if (dob !== null) player.dob = String(dob).trim();
+            if (gender !== null) player.gender = String(gender).trim();
+            if (vip_level !== null) player.vip_level = Number(vip_level) || 3;
+            if (total_deposits !== null) player.total_deposits = String(Number(total_deposits) || 0);
+            if (last_email_sent !== null) player.last_email_sent = String(last_email_sent).trim();
+            if (account_status !== null) player.account_status = String(account_status).trim();
             if (notes !== null) player.notes = String(notes).trim();
-            if (last_contact_date !== null) player.last_contact_date = String(last_contact_date).trim();
-            if (preferred_contact_time !== null) player.preferred_contact_time = String(preferred_contact_time).trim();
+            if (preferred_time_from !== null) player.preferred_time_from = Number(preferred_time_from);
+            if (preferred_time_to !== null) player.preferred_time_to = Number(preferred_time_to);
 
             console.log(`Parsed player ${index + 1}:`, player);
             return player;
@@ -325,9 +328,9 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             <p className="text-sm font-medium mb-2">Supported columns (all optional):</p>
             <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
               <p>• <strong>Identity:</strong> user_id, username, casino</p>
-              <p>• <strong>Personal:</strong> firstname, lastname, phone, email, birthday</p>
-              <p>• <strong>Account:</strong> vip_level, total_deposits, last_deposit_date, status</p>
-              <p>• <strong>Contact:</strong> last_contact_date, preferred_contact_time, notes</p>
+              <p>• <strong>Personal:</strong> firstname, lastname, phone, email, dob (date of birth), gender</p>
+              <p>• <strong>Account:</strong> vip_level, total_deposits, last_email_sent, account_status</p>
+              <p>• <strong>Contact:</strong> preferred_time_from, preferred_time_to, notes</p>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-600 mt-2">
               Column names are flexible and case-insensitive (e.g., "user_id" = "UserID" = "User ID")
