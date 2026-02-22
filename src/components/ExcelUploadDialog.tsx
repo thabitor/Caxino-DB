@@ -142,7 +142,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             if (dob !== null) player.dob = String(dob).trim();
             if (gender !== null) player.gender = String(gender).trim();
             if (vip_level !== null) player.vip_level = Number(vip_level) || 3;
-            if (total_deposits !== null) player.total_deposits = String(Number(total_deposits) || 0);
+            if (total_deposits !== null) player.total_deposits = Number(total_deposits) || 0;
             if (last_email_sent !== null) player.last_email_sent = String(last_email_sent).trim();
             if (account_status !== null) player.account_status = String(account_status).trim();
             if (notes !== null) player.notes = String(notes).trim();

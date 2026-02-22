@@ -98,15 +98,16 @@ export type Database = {
       }
       players: {
         Row: {
+          account_status: string | null
           casino: string | null
           created_at: string | null
           dob: string | null
-          email: string
-          firstname: string
+          email: string | null
+          firstname: string | null
           gender: string | null
           id: string
           last_email_sent: string | null
-          lastname: string
+          lastname: string | null
           notes: string | null
           phone: string | null
           preferences: Json | null
@@ -119,15 +120,16 @@ export type Database = {
           vip_level: number | null
         }
         Insert: {
+          account_status?: string | null
           casino?: string | null
           created_at?: string | null
           dob?: string | null
-          email: string
-          firstname: string
+          email?: string | null
+          firstname?: string | null
           gender?: string | null
           id?: string
           last_email_sent?: string | null
-          lastname: string
+          lastname?: string | null
           notes?: string | null
           phone?: string | null
           preferences?: Json | null
@@ -140,15 +142,16 @@ export type Database = {
           vip_level?: number | null
         }
         Update: {
+          account_status?: string | null
           casino?: string | null
           created_at?: string | null
           dob?: string | null
-          email?: string
-          firstname?: string
+          email?: string | null
+          firstname?: string | null
           gender?: string | null
           id?: string
           last_email_sent?: string | null
-          lastname?: string
+          lastname?: string | null
           notes?: string | null
           phone?: string | null
           preferences?: Json | null
