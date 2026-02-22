@@ -16,6 +16,7 @@ import { TaskAlertsPanel } from "@/components/TaskAlertsPanel";
 import { TaskFormDialog } from "@/components/TaskFormDialog";
 import { CallReminderNotification } from "@/components/CallReminderNotification";
 import { BirthdayReminders } from "@/components/BirthdayReminders";
+import { ExcelUploadDialog } from "@/components/ExcelUploadDialog";
 
 export default function Home() {
   const [players, setPlayers] = useState<PlayerWithTasks[]>([]);
@@ -221,12 +222,15 @@ export default function Home() {
                     Manage and view all casino players
                   </p>
                 </div>
-                <Button 
-                  onClick={() => setIsFormOpen(true)}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-                >
-                  Add New Player
-                </Button>
+                <div className="flex items-center gap-2">
+                  <ExcelUploadDialog onUploadComplete={fetchDashboardData} />
+                  <Button 
+                    onClick={() => setIsFormOpen(true)}
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                  >
+                    Add New Player
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 
