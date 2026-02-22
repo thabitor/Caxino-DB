@@ -76,6 +76,8 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
           const worksheet = workbook.Sheets[sheetName];
           const jsonData: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet);
 
+          console.log("Raw Excel data:", jsonData);
+
           if (jsonData.length === 0) {
             resolve([]);
             return;
@@ -86,7 +88,9 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             Object.keys(jsonData[0]).map(k => k.toLowerCase())
           );
 
-          const players = jsonData.map((row) => {
+          console.log("Available columns:", Array.from(availableColumns));
+
+          const players = jsonData.map((row, index) => {
             const player: any = {};
 
             // Only process Name if it exists
@@ -166,10 +170,15 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             // Set default VIP level
             player.vip_level = 3;
 
+            console.log(`Row ${index + 1} parsed:`, player);
             return player;
           });
 
-          resolve(players.filter(p => p.firstname || p.lastname || p.phone || p.email));
+          // Filter out completely empty rows - accept any player with at least one field
+          const validPlayers = players.filter(p => Object.keys(p).length > 1); // More than just vip_level
+          console.log("Valid players after filtering:", validPlayers);
+          
+          resolve(validPlayers);
         } catch (error) {
           console.error("Parse error:", error);
           reject(error);
