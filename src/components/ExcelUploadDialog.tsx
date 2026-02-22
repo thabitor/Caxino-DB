@@ -73,66 +73,90 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
 
           // Get all available columns from the first row
           const firstRow = jsonData[0] as Record<string, any>;
-          const availableColumns = Object.keys(firstRow).map(k => k.toLowerCase());
+          const availableColumns = Object.keys(firstRow);
           console.log("Available columns:", availableColumns);
 
-          // Helper to get value from row with case-insensitive column matching
-          const getColumnValue = (row: Record<string, any>, ...possibleNames: string[]): string => {
-            for (const name of possibleNames) {
-              const key = Object.keys(row).find(k => k.toLowerCase() === name.toLowerCase());
-              if (key && row[key]) {
-                return String(row[key]).trim();
-              }
-            }
-            return "";
+          // Column mapping - maps various column name formats to database fields
+          const columnMap: Record<string, string[]> = {
+            user_id: ["user_id", "userid", "id", "player_id", "playerid"],
+            username: ["username", "user_name", "player_name", "playername", "name"],
+            casino: ["casino", "casino_name", "casinoname", "site"],
+            firstname: ["firstname", "first_name", "first name", "fname"],
+            lastname: ["lastname", "last_name", "last name", "lname"],
+            phone: ["phone", "phonenumber", "phone_number", "mobile", "telephone"],
+            email: ["email", "e-mail", "emailaddress", "mail"],
+            birthday: ["birthday", "dob", "date_of_birth", "dateofbirth", "birthdate"],
+            vip_level: ["vip_level", "viplevel", "vip", "level"],
+            total_deposits: ["total_deposits", "totaldeposits", "deposits"],
+            last_deposit_date: ["last_deposit_date", "lastdepositdate", "last_deposit"],
+            status: ["status", "player_status", "playerstatus", "account_status"],
+            notes: ["notes", "note", "comments", "comment", "description"],
+            last_contact_date: ["last_contact_date", "lastcontactdate", "last_contact"],
+            preferred_contact_time: ["preferred_contact_time", "preferredcontacttime", "preferred_time", "contact_time"]
           };
 
-          const players = jsonData.map((row: any) => {
-            console.log("Processing row:", row);
-
-            const firstname = getColumnValue(row, "firstname", "first_name", "first name", "name");
-            const lastname = getColumnValue(row, "lastname", "last_name", "last name");
-            const phone = getColumnValue(row, "phone", "phonenumber", "phone_number", "mobile");
-            const email = getColumnValue(row, "email", "e-mail", "emailaddress");
-            const birthday = getColumnValue(row, "birthday", "dob", "dateofbirth", "date_of_birth", "birthdate");
-            
-            // Preferences fields
-            const depositAmount = getColumnValue(row, "deposit_amount", "depositamount", "deposit");
-            const frequency = getColumnValue(row, "frequency", "deposit_frequency");
-            const lastContactDate = getColumnValue(row, "last_contact_date", "lastcontactdate", "last_contact");
-            const preferredTime = getColumnValue(row, "preferred_time", "preferredtime", "preferred_contact_time");
-            const notes = getColumnValue(row, "notes", "note", "comments");
-
-            const player: any = {
-              firstname: firstname || undefined,
-              lastname: lastname || undefined,
-              phone: phone || undefined,
-              email: email || undefined,
-              birthday: birthday || undefined,
-              vip_level: 1,
-              preferences: {} as Record<string, any>
-            };
-
-            // Only add preferences if they exist
-            if (depositAmount) player.preferences.deposit_amount = depositAmount;
-            if (frequency) player.preferences.frequency = frequency;
-            if (lastContactDate) player.preferences.last_contact_date = lastContactDate;
-            if (preferredTime) player.preferences.preferred_time = preferredTime;
-            if (notes) player.preferences.notes = notes;
-
-            // If no preferences were added, remove the empty object
-            if (Object.keys(player.preferences).length === 0) {
-              delete player.preferences;
+          // Helper to find column value with flexible matching
+          const getColumnValue = (row: Record<string, any>, dbField: string): any => {
+            const possibleNames = columnMap[dbField] || [dbField];
+            for (const name of possibleNames) {
+              const key = Object.keys(row).find(k => k.toLowerCase().trim() === name.toLowerCase().trim());
+              if (key !== undefined && row[key] !== null && row[key] !== undefined && row[key] !== "") {
+                return row[key];
+              }
             }
+            return null;
+          };
 
-            console.log("Parsed player:", player);
+          const players = jsonData.map((row: any, index: number) => {
+            console.log(`Processing row ${index + 1}:`, row);
+
+            const player: any = {};
+
+            // Map all possible fields
+            const user_id = getColumnValue(row, "user_id");
+            const username = getColumnValue(row, "username");
+            const casino = getColumnValue(row, "casino");
+            const firstname = getColumnValue(row, "firstname");
+            const lastname = getColumnValue(row, "lastname");
+            const phone = getColumnValue(row, "phone");
+            const email = getColumnValue(row, "email");
+            const birthday = getColumnValue(row, "birthday");
+            const vip_level = getColumnValue(row, "vip_level");
+            const total_deposits = getColumnValue(row, "total_deposits");
+            const last_deposit_date = getColumnValue(row, "last_deposit_date");
+            const status = getColumnValue(row, "status");
+            const notes = getColumnValue(row, "notes");
+            const last_contact_date = getColumnValue(row, "last_contact_date");
+            const preferred_contact_time = getColumnValue(row, "preferred_contact_time");
+
+            // Add fields only if they have values
+            if (user_id !== null) player.user_id = String(user_id).trim();
+            if (username !== null) player.username = String(username).trim();
+            if (casino !== null) player.casino = String(casino).trim();
+            if (firstname !== null) player.firstname = String(firstname).trim();
+            if (lastname !== null) player.lastname = String(lastname).trim();
+            if (phone !== null) player.phone = String(phone).trim();
+            if (email !== null) player.email = String(email).trim();
+            if (birthday !== null) player.birthday = String(birthday).trim();
+            if (vip_level !== null) player.vip_level = Number(vip_level) || 1;
+            if (total_deposits !== null) player.total_deposits = Number(total_deposits) || 0;
+            if (last_deposit_date !== null) player.last_deposit_date = String(last_deposit_date).trim();
+            if (status !== null) player.status = String(status).trim();
+            if (notes !== null) player.notes = String(notes).trim();
+            if (last_contact_date !== null) player.last_contact_date = String(last_contact_date).trim();
+            if (preferred_contact_time !== null) player.preferred_contact_time = String(preferred_contact_time).trim();
+
+            console.log(`Parsed player ${index + 1}:`, player);
             return player;
           });
 
           console.log("All parsed players:", players);
           
-          // NO FILTERING - send everything to database
-          resolve(players);
+          // Filter out completely empty rows
+          const validPlayers = players.filter(p => Object.keys(p).length > 0);
+          console.log(`Valid players after filtering: ${validPlayers.length}`);
+          
+          resolve(validPlayers);
         } catch (error) {
           console.error("Error parsing Excel:", error);
           reject(error);
@@ -164,7 +188,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
       if (players.length === 0) {
         toast({
           title: "No data found",
-          description: "The Excel file appears to be empty or contains no valid player data",
+          description: "The Excel file contains no valid player data. Please check that your file has data rows with at least one column filled.",
           variant: "destructive",
         });
         setIsProcessing(false);
@@ -293,14 +317,15 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
           )}
 
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-            <p className="text-sm font-medium mb-2">Expected columns (all optional):</p>
+            <p className="text-sm font-medium mb-2">Supported columns (all optional):</p>
             <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-              <p>• <strong>Basic:</strong> name (or firstname/lastname), phone, email, birthday/dob</p>
-              <p>• <strong>Preferences:</strong> deposit_amount, frequency, last_contact_date, preferred_time</p>
-              <p>• <strong>Other:</strong> notes</p>
+              <p>• <strong>Identity:</strong> user_id, username, casino</p>
+              <p>• <strong>Personal:</strong> firstname, lastname, phone, email, birthday</p>
+              <p>• <strong>Account:</strong> vip_level, total_deposits, last_deposit_date, status</p>
+              <p>• <strong>Contact:</strong> last_contact_date, preferred_contact_time, notes</p>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-600 mt-2">
-              Column names are case-insensitive and flexible (e.g., "Email" = "email" = "E-mail")
+              Column names are flexible and case-insensitive (e.g., "user_id" = "UserID" = "User ID")
             </p>
           </div>
         </div>
