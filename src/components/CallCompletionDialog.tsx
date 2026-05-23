@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Phone, Clock } from "lucide-react";
+import { Phone, Clock, FileText } from "lucide-react";
 
 interface CallCompletionDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (notes?: string, durationMinutes?: number) => void;
+  onComplete: (notes?: string, durationMinutes?: number, callTopic?: string) => void;
   callTopic?: string | null;
   phoneNumber?: string | null;
+  title?: string;
+  confirmLabel?: string;
 }
 
 export function CallCompletionDialog({ 
@@ -20,22 +22,27 @@ export function CallCompletionDialog({
   onClose, 
   onComplete,
   callTopic,
-  phoneNumber
+  phoneNumber,
+  title = "Complete Call",
+  confirmLabel = "Complete Call",
 }: CallCompletionDialogProps) {
   const [notes, setNotes] = useState("");
   const [duration, setDuration] = useState("");
+  const [topic, setTopic] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const durationMinutes = duration ? parseInt(duration, 10) : undefined;
-    onComplete(notes || undefined, durationMinutes);
+    onComplete(notes || undefined, durationMinutes, (topic || callTopic || "").trim() || undefined);
     setNotes("");
     setDuration("");
+    setTopic("");
   };
 
   const handleClose = () => {
     setNotes("");
     setDuration("");
+    setTopic("");
     onClose();
   };
 
@@ -45,7 +52,7 @@ export function CallCompletionDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
             <Phone className="w-5 h-5" />
-            Complete Call
+            {title}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -56,12 +63,23 @@ export function CallCompletionDialog({
             </div>
           )}
 
-          {callTopic && (
-            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-muted-foreground mb-1">Topic</p>
-              <p className="font-semibold">{callTopic}</p>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="call-topic" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Call Topic
+            </Label>
+            <Input
+              id="call-topic"
+              placeholder="e.g., Bonus follow-up, birthday offer, account check"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+            />
+            {callTopic && (
+              <p className="text-xs text-muted-foreground">
+                Scheduled topic: {callTopic}
+              </p>
+            )}
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="duration" className="flex items-center gap-2">
@@ -97,7 +115,7 @@ export function CallCompletionDialog({
             </Button>
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700 gap-2">
               <Phone className="w-4 h-4" />
-              Complete Call
+              {confirmLabel}
             </Button>
           </DialogFooter>
         </form>

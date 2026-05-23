@@ -3,6 +3,10 @@ import { createRequire } from "module";
 
 // Check if element-tagger is available
 function isElementTaggerAvailable() {
+  if (process.env.SOFTGEN_ELEMENT_TAGGER !== "true") {
+    return false;
+  }
+
   try {
     const require = createRequire(import.meta.url);
     require.resolve("@softgenai/element-tagger");
@@ -33,10 +37,8 @@ function getTurboRules() {
 
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    turbo: {
-      rules: getTurboRules(),
-    },
+  turbopack: {
+    rules: getTurboRules(),
   },
   images: {
     remotePatterns: [

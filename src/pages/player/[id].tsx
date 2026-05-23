@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Phone, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User, ListPlus, CalendarCheck } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -27,6 +27,10 @@ import { getBirthdayStatus, getBirthdayBadge } from "@/lib/utils";
 import { CallCompletionDialog } from "@/components/CallCompletionDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PreferencesEditor } from "@/components/PreferencesEditor";
+import { markFollowUpContacted, markFollowUpViewed, notifyDashboardRefresh } from "@/lib/dashboardSync";
+import { ManualFollowUpDialog } from "@/components/ManualFollowUpDialog";
+import { manualFollowUpService } from "@/services/manualFollowUpService";
+import { followUpViewedService } from "@/services/followUpViewedService";
 
 interface PlayerPreferences {
   communication?: {
@@ -75,12 +79,17 @@ export default function PlayerDetailPage() {
   const [editedCallTopic, setEditedCallTopic] = useState("");
   const [editedCallNotes, setEditedCallNotes] = useState("");
   const [isSavingCallLog, setIsSavingCallLog] = useState(false);
+  const [isManualCallLogOpen, setIsManualCallLogOpen] = useState(false);
+  const [isManualFollowUpOpen, setIsManualFollowUpOpen] = useState(false);
+  const [followUpViewedAt, setFollowUpViewedAt] = useState<string | null>(null);
 
-  const fetchPlayerData = async () => {
+  const fetchPlayerData = async (options?: { background?: boolean }) => {
     if (!id || typeof id !== "string") return;
 
     try {
-      setLoading(true);
+      if (!options?.background) {
+        setLoading(true);
+      }
       const [playerData, tasksData, callLogsData] = await Promise.all([
         playerService.getPlayerById(id),
         taskService.getTasksByPlayerId(id),
@@ -96,21 +105,6 @@ export default function PlayerDetailPage() {
         router.push("/");
         return;
       }
-
-      console.log("=== PLAYER DATA FETCHED ===");
-      console.log("Full player object:", playerData);
-      console.log("preferred_time_from:", playerData.preferred_time_from, "Type:", typeof playerData.preferred_time_from);
-      console.log("preferred_time_to:", playerData.preferred_time_to, "Type:", typeof playerData.preferred_time_to);
-      
-      // Check if they're actually integers
-      console.log("Is preferred_time_from an integer?", Number.isInteger(playerData.preferred_time_from));
-      console.log("Is preferred_time_to an integer?", Number.isInteger(playerData.preferred_time_to));
-      
-      // Check the actual values in detail
-      console.log("preferred_time_from === null?", playerData.preferred_time_from === null);
-      console.log("preferred_time_from === undefined?", playerData.preferred_time_from === undefined);
-      console.log("preferred_time_to === null?", playerData.preferred_time_to === null);
-      console.log("preferred_time_to === undefined?", playerData.preferred_time_to === undefined);
 
       setPlayer(playerData);
       setNotesValue(playerData.notes || "");
@@ -134,14 +128,46 @@ export default function PlayerDetailPage() {
     fetchPlayerData();
   }, [id]);
 
+  useEffect(() => {
+    router.prefetch("/");
+  }, [router]);
+
+  useEffect(() => {
+    if (!player?.id) return;
+
+    const viewedTimer = window.setTimeout(() => {
+      markFollowUpViewed(player.id);
+      setFollowUpViewedAt(new Date().toISOString());
+      followUpViewedService.markViewed(player.id, user?.id || null)
+        .then((viewed) => {
+          setFollowUpViewedAt(viewed.last_viewed_at);
+          notifyDashboardRefresh();
+        })
+        .catch((error) => {
+          console.error("Error persisting follow-up viewed state:", error);
+        });
+    }, 10000);
+
+    return () => window.clearTimeout(viewedTimer);
+  }, [player?.id, user?.id]);
+
+  useEffect(() => {
+    if (!player?.id) return;
+
+    followUpViewedService.getViewedPlayer(player.id, user?.id || null)
+      .then((viewed) => setFollowUpViewedAt(viewed?.last_viewed_at || null))
+      .catch((error) => console.error("Error loading follow-up viewed state:", error));
+  }, [player?.id, user?.id]);
+
   const handleTaskCreate = async (taskData: any) => {
     if (!player) return;
 
     try {
       await taskService.createTask({ ...taskData, player_id: player.id });
+      notifyDashboardRefresh();
       toast({ title: "Task created", description: "New task has been added successfully." });
       setIsTaskFormOpen(false);
-      fetchPlayerData();
+      fetchPlayerData({ background: true });
     } catch (error) {
       console.error("Error creating task:", error);
       toast({ title: "Error", description: "Could not create task.", variant: "destructive" });
@@ -153,10 +179,11 @@ export default function PlayerDetailPage() {
 
     try {
       await taskService.updateTask(editingTask.id, taskData);
+      notifyDashboardRefresh();
       toast({ title: "Task updated", description: "Task has been updated successfully." });
       setIsTaskFormOpen(false);
       setEditingTask(null);
-      fetchPlayerData();
+      fetchPlayerData({ background: true });
     } catch (error) {
       console.error("Error updating task:", error);
       toast({ title: "Error", description: "Could not update task.", variant: "destructive" });
@@ -166,8 +193,9 @@ export default function PlayerDetailPage() {
   const handleTaskDelete = async (taskId: string) => {
     try {
       await taskService.deleteTask(taskId);
+      notifyDashboardRefresh();
       toast({ title: "Task deleted", description: "Task has been removed successfully." });
-      fetchPlayerData();
+      fetchPlayerData({ background: true });
     } catch (error) {
       console.error("Error deleting task:", error);
       toast({ title: "Error", description: "Could not delete task.", variant: "destructive" });
@@ -177,6 +205,7 @@ export default function PlayerDetailPage() {
   const handleTaskComplete = async (taskId: string) => {
     try {
       await taskService.completeTask(taskId);
+      notifyDashboardRefresh();
       toast({ title: "Task completed", description: "Task marked as completed." });
       // Remove from checked tasks and refresh
       setCheckedAlertTasks(prev => {
@@ -184,7 +213,7 @@ export default function PlayerDetailPage() {
         next.delete(taskId);
         return next;
       });
-      fetchPlayerData();
+      fetchPlayerData({ background: true });
     } catch (error) {
       console.error("Error completing task:", error);
       toast({ title: "Error", description: "Could not complete task.", variant: "destructive" });
@@ -197,14 +226,18 @@ export default function PlayerDetailPage() {
     }
   };
 
-  const handleCallComplete = async (taskId: string, notes?: string, durationMinutes?: number) => {
+  const handleCallComplete = async (taskId: string, notes?: string, durationMinutes?: number, callTopic?: string) => {
     if (!user) {
       toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
       return;
     }
 
     try {
-      await taskService.completeCallTask(taskId, user.id, notes, durationMinutes);
+      await taskService.completeCallTask(taskId, user.id, notes, durationMinutes, callTopic);
+      if (player?.id) {
+        markFollowUpContacted(player.id);
+      }
+      notifyDashboardRefresh();
       toast({ 
         title: "Call completed", 
         description: "Call task marked as completed and logged successfully.",
@@ -219,7 +252,7 @@ export default function PlayerDetailPage() {
       if (completingCallId) {
         setCompletingCallId(null);
       }
-      fetchPlayerData();
+      fetchPlayerData({ background: true });
     } catch (error) {
       console.error("Error completing call task:", error);
       toast({ 
@@ -238,9 +271,73 @@ export default function PlayerDetailPage() {
     }
   };
 
-  const handleDialogCallComplete = async (notes?: string, durationMinutes?: number) => {
+  const handleManualCallLog = async (notes?: string, durationMinutes?: number, callTopic?: string) => {
+    if (!user || !player) {
+      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const completedAt = new Date().toISOString();
+      const callLog = await callLogService.createCallLog({
+        user_id: user.id,
+        player_id: player.id,
+        phone_number: player.phone || "",
+        call_topic: callTopic || "Relationship call",
+        call_time: completedAt,
+        completed_at: completedAt,
+        notes: notes || null,
+        duration_minutes: durationMinutes || null,
+      });
+
+      setCallLogs((current) => [callLog, ...current]);
+      markFollowUpContacted(player.id);
+      notifyDashboardRefresh();
+      setIsManualCallLogOpen(false);
+      toast({
+        title: "Call logged",
+        description: "The call has been added to this player's history.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Error logging call:", error);
+      toast({
+        title: "Error",
+        description: "Could not log the call. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDialogCallComplete = async (notes?: string, durationMinutes?: number, callTopic?: string) => {
     if (!completingCallId) return;
-    await handleCallComplete(completingCallId, notes, durationMinutes);
+    await handleCallComplete(completingCallId, notes, durationMinutes, callTopic);
+  };
+
+  const handleManualFollowUpCreate = async (note: string) => {
+    if (!player) return;
+
+    try {
+      await manualFollowUpService.createManualFollowUp({
+        player_id: player.id,
+        manager_id: user?.id || null,
+        note,
+        status: "active",
+      });
+      notifyDashboardRefresh();
+      setIsManualFollowUpOpen(false);
+      toast({
+        title: "Added to follow-up queue",
+        description: "The note will appear on this player's follow-up card.",
+      });
+    } catch (error) {
+      console.error("Error creating manual follow-up:", error);
+      toast({
+        title: "Error",
+        description: "Could not add this player to the follow-up queue.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCallDialogClose = () => {
@@ -287,9 +384,10 @@ export default function PlayerDetailPage() {
 
     try {
       await playerService.updatePlayer(player.id, playerData);
+      notifyDashboardRefresh();
       toast({ title: "Player updated", description: "Player information has been updated successfully." });
       setIsPlayerFormOpen(false);
-      fetchPlayerData();
+      fetchPlayerData({ background: true });
     } catch (error) {
       console.error("Error updating player:", error);
       toast({ title: "Error", description: "Could not update player.", variant: "destructive" });
@@ -302,9 +400,10 @@ export default function PlayerDetailPage() {
     try {
       setIsSavingNotes(true);
       await playerService.updatePlayer(player.id, { notes: notesValue });
+      notifyDashboardRefresh();
       toast({ title: "Notes saved", description: "Player notes have been updated successfully." });
       setIsEditingNotes(false);
-      fetchPlayerData();
+      fetchPlayerData({ background: true });
     } catch (error) {
       console.error("Error saving notes:", error);
       toast({ title: "Error", description: "Could not save notes.", variant: "destructive" });
@@ -326,12 +425,6 @@ export default function PlayerDetailPage() {
     const timeFrom = player?.preferred_time_from ?? 9;
     const timeTo = player?.preferred_time_to ?? 21;
     
-    console.log("=== INITIALIZING PREFERENCES EDIT ===");
-    console.log("Current player.preferred_time_from:", player?.preferred_time_from);
-    console.log("Current player.preferred_time_to:", player?.preferred_time_to);
-    console.log("Using timeFrom:", timeFrom);
-    console.log("Using timeTo:", timeTo);
-    
     setDraftPreferences({
       ...currentPrefs,
       preferred_time_from: timeFrom,
@@ -344,28 +437,19 @@ export default function PlayerDetailPage() {
     if (!player) return;
 
     try {
-      console.log("=== SAVING PREFERENCES ===");
-      console.log("Current draftPreferences:", draftPreferences);
-      
       // Extract the time preferences - these go in SEPARATE database columns
       const timeFrom = draftPreferences.preferred_time_from ?? 9;
       const timeTo = draftPreferences.preferred_time_to ?? 21;
       
-      console.log("Time From (extracted):", timeFrom, "Type:", typeof timeFrom);
-      console.log("Time To (extracted):", timeTo, "Type:", typeof timeTo);
-      
       // CRITICAL: Remove time fields from preferences object - they belong in separate columns
-      const { preferred_time_from, preferred_time_to, ...preferencesForJson } = draftPreferences;
-      
-      console.log("Preferences JSON (WITHOUT time fields):", preferencesForJson);
-      console.log("Time fields will be saved as SEPARATE columns");
-      
+      const preferencesForJson = { ...draftPreferences };
+      delete preferencesForJson.preferred_time_from;
+      delete preferencesForJson.preferred_time_to;
+
+
       // CRITICAL FIX: Ensure we're sending integers, not strings or other types
       const timeFromInt = typeof timeFrom === 'number' ? timeFrom : parseInt(String(timeFrom), 10) || 9;
       const timeToInt = typeof timeTo === 'number' ? timeTo : parseInt(String(timeTo), 10) || 21;
-      
-      console.log("FINAL Integer values - timeFrom:", timeFromInt, "timeTo:", timeToInt);
-      console.log("Are they integers?", Number.isInteger(timeFromInt), Number.isInteger(timeToInt));
       
       // Build update object with proper typing
       const updateData = { 
@@ -374,17 +458,13 @@ export default function PlayerDetailPage() {
         preferred_time_to: timeToInt            // Separate integer column
       };
       
-      console.log("=== FINAL UPDATE PAYLOAD ===");
-      console.log(JSON.stringify(updateData, null, 2));
-      
       await playerService.updatePlayer(player.id, updateData);
+      notifyDashboardRefresh();
       
       toast({ title: "Preferences saved", description: "Player preferences have been updated successfully." });
       setIsEditingPreferences(false);
       
-      // Fetch fresh data
-      console.log("Fetching fresh player data...");
-      await fetchPlayerData();
+      await fetchPlayerData({ background: true });
     } catch (error) {
       console.error("Error saving preferences:", error);
       toast({ title: "Error", description: "Could not save preferences.", variant: "destructive" });
@@ -413,6 +493,7 @@ export default function PlayerDetailPage() {
         call_topic: editedCallTopic,
         notes: editedCallNotes,
       });
+      notifyDashboardRefresh();
 
       // Optimistically update UI
       const updatedCallLogs = callLogs.map(log => 
@@ -493,6 +574,7 @@ export default function PlayerDetailPage() {
 
   const pendingTasks = tasks.filter(t => t.status !== "completed" && t.status !== "cancelled" && !t.is_call);
   const pendingCalls = tasks.filter(t => t.status !== "completed" && t.status !== "cancelled" && t.is_call);
+  const lastCallAt = callLogs[0]?.completed_at || callLogs[0]?.call_time || null;
 
   return (
     <ProtectedRoute>
@@ -511,6 +593,23 @@ export default function PlayerDetailPage() {
                   Back to Players
                 </Link>
               </Button>
+              <Button
+                size="default"
+                onClick={() => setIsManualCallLogOpen(true)}
+                className="gap-2 bg-blue-600 hover:bg-blue-700"
+              >
+                <Phone className="w-4 h-4" />
+                Log Call
+              </Button>
+              <Button
+                variant="outline"
+                size="default"
+                onClick={() => setIsManualFollowUpOpen(true)}
+                className="gap-2 border-primary/40"
+              >
+                <ListPlus className="w-4 h-4" />
+                Add to Queue
+              </Button>
               <div>
                 <div className="flex items-center gap-2">
                   <div>
@@ -520,6 +619,18 @@ export default function PlayerDetailPage() {
                       <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
                         {player.vip_level} - {vipInfo.name}
                       </Badge>
+                      {followUpViewedAt && (
+                        <Badge variant="outline" className="gap-1 border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300">
+                          <CalendarCheck className="h-3.5 w-3.5" />
+                          Followed up {formatDistanceToNow(new Date(followUpViewedAt), { addSuffix: true })}
+                        </Badge>
+                      )}
+                      {lastCallAt && (
+                        <Badge variant="outline" className="gap-1 border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
+                          <Phone className="h-3.5 w-3.5" />
+                          Called {formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-muted-foreground">@{player.username}</p>
@@ -553,6 +664,19 @@ export default function PlayerDetailPage() {
         </header>
 
         <main className="flex-1 p-6 space-y-6">
+          {followUpViewedAt && (
+            <Alert className="border-2 border-green-300 bg-green-50/80 dark:border-green-800 dark:bg-green-950/30">
+              <CalendarCheck className="h-5 w-5 text-green-700 dark:text-green-300" />
+              <AlertTitle className="font-bold text-green-900 dark:text-green-100">
+                Follow-up attention recorded
+              </AlertTitle>
+              <AlertDescription className="text-green-800 dark:text-green-200">
+                This player is marked as followed up. Last follow-up{" "}
+                {formatDistanceToNow(new Date(followUpViewedAt), { addSuffix: true })}.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {(() => {
             const birthdayStatus = getBirthdayStatus(player.dob);
             const birthdayBadge = getBirthdayBadge(birthdayStatus);
@@ -681,8 +805,8 @@ export default function PlayerDetailPage() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-4">
-              <Card className="border-2 hover:shadow-lg transition-all">
-                <CardHeader className="border-b border-border/40 bg-muted/20 py-3">
+              <Card className="border-border shadow-md transition-all hover:shadow-lg">
+                <CardHeader className="border-b-2 border-border/60 bg-muted/20 py-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-base">Player Information</CardTitle>
@@ -705,21 +829,21 @@ export default function PlayerDetailPage() {
                 </CardHeader>
                 <CardContent className="py-3">
                   <div className="grid gap-2 md:grid-cols-2">
-                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+                    <div className="flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-slate-50/50 p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/20">
                       <User className="w-3 h-3 text-slate-600 dark:text-slate-400 flex-shrink-0" />
                       <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">User ID:</span>
                       <span className="font-mono text-sm font-bold text-foreground truncate">{player.user_id}</span>
                       <CopyButton text={player.user_id} label="User ID" size="sm" />
                     </div>
 
-                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+                    <div className="flex items-center gap-1.5 rounded-lg border-2 border-purple-200 bg-purple-50/50 p-1.5 shadow-sm dark:border-purple-800 dark:bg-purple-950/20">
                       <User className="w-3 h-3 text-purple-600 dark:text-purple-400 flex-shrink-0" />
                       <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Gender:</span>
                       <span className="text-sm font-bold text-foreground capitalize truncate">{player.gender || "Not specified"}</span>
                       <CopyButton text={player.gender || "Not specified"} label="Gender" size="sm" />
                     </div>
 
-                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                    <div className="flex items-center gap-1.5 rounded-lg border-2 border-blue-200 bg-blue-50/50 p-1.5 shadow-sm dark:border-blue-800 dark:bg-blue-950/20">
                       <Mail className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                       <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Email:</span>
                       <span className="text-sm font-medium text-foreground truncate">{player.email}</span>
@@ -727,7 +851,7 @@ export default function PlayerDetailPage() {
                     </div>
 
                     {player.phone && (
-                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+                      <div className="flex items-center gap-1.5 rounded-lg border-2 border-green-200 bg-green-50/50 p-1.5 shadow-sm dark:border-green-800 dark:bg-green-950/20">
                         <Phone className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0" />
                         <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Phone:</span>
                         <span className="text-sm font-medium text-foreground truncate">{player.phone}</span>
@@ -736,7 +860,7 @@ export default function PlayerDetailPage() {
                     )}
 
                     {player.dob && (
-                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-pink-950/20">
+                      <div className="flex items-center gap-1.5 rounded-lg border-2 border-pink-200 bg-pink-50/50 p-1.5 shadow-sm dark:border-pink-800 dark:bg-pink-950/20">
                         <Calendar className="w-3 h-3 text-pink-600 dark:text-pink-400 flex-shrink-0" />
                         <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">DOB:</span>
                         <span className="text-sm font-medium text-foreground truncate">{format(new Date(player.dob), "PPP")}</span>
@@ -745,7 +869,7 @@ export default function PlayerDetailPage() {
                     )}
 
                     {player.casino && (
-                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                      <div className="flex items-center gap-1.5 rounded-lg border-2 border-amber-200 bg-amber-50/50 p-1.5 shadow-sm dark:border-amber-800 dark:bg-amber-950/20">
                         <Crown className="w-3 h-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                         <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Casino:</span>
                         <span className="text-sm font-medium text-foreground truncate">{player.casino}</span>
@@ -754,7 +878,7 @@ export default function PlayerDetailPage() {
                     )}
 
                     {player.last_email_sent && (
-                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
+                      <div className="flex items-center gap-1.5 rounded-lg border-2 border-indigo-200 bg-indigo-50/50 p-1.5 shadow-sm dark:border-indigo-800 dark:bg-indigo-950/20">
                         <Mail className="w-3 h-3 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
                         <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Last Email:</span>
                         <span className="text-sm font-medium text-foreground truncate">{format(new Date(player.last_email_sent), "PPP")}</span>
@@ -765,8 +889,8 @@ export default function PlayerDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-2 hover:shadow-lg transition-all">
-                <CardHeader className="border-b border-border/40 bg-muted/20 py-3">
+              <Card className="border-border shadow-md transition-all hover:shadow-lg">
+                <CardHeader className="border-b-2 border-border/60 bg-muted/20 py-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Preferences</CardTitle>
                     {!isEditingPreferences && (
@@ -811,7 +935,7 @@ export default function PlayerDetailPage() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-3 rounded-lg border border-border/40 bg-muted/10">
+                      <div className="rounded-lg border-2 border-border/60 bg-muted/10 p-3 shadow-sm">
                         <h4 className="text-sm font-bold mb-2 flex items-center gap-2">
                           <Mail className="w-4 h-4" />
                           Communication Channels
@@ -852,7 +976,7 @@ export default function PlayerDetailPage() {
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-lg border border-border/40 bg-muted/10">
+                      <div className="rounded-lg border-2 border-border/60 bg-muted/10 p-3 shadow-sm">
                         <h4 className="text-sm font-bold mb-2 flex items-center gap-2">
                           <Clock className="w-4 h-4" />
                           Contact Settings
@@ -862,10 +986,6 @@ export default function PlayerDetailPage() {
                             <span className="text-muted-foreground">Preferred Time:</span>
                             <span className="font-medium">
                               {(() => {
-                                console.log("=== RENDERING PREFERRED TIME ===");
-                                console.log("player.preferred_time_from:", player.preferred_time_from, "Type:", typeof player.preferred_time_from);
-                                console.log("player.preferred_time_to:", player.preferred_time_to, "Type:", typeof player.preferred_time_to);
-                                
                                 if (player.preferred_time_from && player.preferred_time_to) {
                                   return `${player.preferred_time_from}h to ${player.preferred_time_to}h`;
                                 }
@@ -887,8 +1007,8 @@ export default function PlayerDetailPage() {
               </Card>
 
               {/* Tasks & Reminders moved here to align with left column */}
-              <Card className="border-2 hover:shadow-xl transition-all hover:border-primary/20">
-                <CardHeader className="border-b-2 border-border/40 bg-muted/30">
+              <Card className="border-primary/30 shadow-md shadow-primary/5 transition-all hover:border-primary/45 hover:shadow-xl">
+                <CardHeader className="border-b-2 border-primary/15 bg-muted/30">
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle>Tasks & Reminders</CardTitle>
@@ -915,8 +1035,8 @@ export default function PlayerDetailPage() {
             </div>
 
             <div className="space-y-4">
-              <Card className="border-2 hover:shadow-lg transition-all">
-                <CardHeader className="border-b border-border/40 bg-muted/20 py-3">
+              <Card className="border-border shadow-md transition-all hover:shadow-lg">
+                <CardHeader className="border-b-2 border-border/60 bg-muted/20 py-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Notes</CardTitle>
                     {!isEditingNotes && (
@@ -967,7 +1087,7 @@ export default function PlayerDetailPage() {
                   ) : (
                     <div className="space-y-2">
                       {player.notes ? (
-                        <div className="p-3 rounded-lg border border-border/40 bg-muted/10 relative group">
+                        <div className="group relative rounded-lg border-2 border-border/60 bg-muted/10 p-3 shadow-sm">
                           <p className="text-sm whitespace-pre-wrap min-h-[100px] text-foreground">
                             {player.notes}
                           </p>
@@ -986,8 +1106,8 @@ export default function PlayerDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-2 hover:shadow-lg transition-all">
-                <CardHeader className="border-b border-border/40 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/30 py-3">
+              <Card className="border-blue-300/80 shadow-md shadow-blue-500/5 transition-all hover:shadow-lg dark:border-blue-800">
+                <CardHeader className="border-b-2 border-blue-200/70 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 py-3 dark:border-blue-900/70 dark:from-blue-950/30 dark:to-indigo-950/30">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -998,6 +1118,16 @@ export default function PlayerDetailPage() {
                         </Badge>
                       </CardTitle>
                     </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsManualCallLogOpen(true)}
+                        className="h-7 px-2 text-xs border-blue-300 text-blue-700 dark:border-blue-800 dark:text-blue-300"
+                      >
+                        <Phone className="w-3 h-3 mr-1" />
+                        Log
+                      </Button>
                     {callLogs.length > 5 && (
                       <Button
                         variant="ghost"
@@ -1018,6 +1148,7 @@ export default function PlayerDetailPage() {
                         )}
                       </Button>
                     )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="py-3">
@@ -1032,7 +1163,7 @@ export default function PlayerDetailPage() {
                         <button
                           key={log.id}
                           onClick={() => setSelectedCallLog(log)}
-                          className="w-full text-left p-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-100/70 dark:hover:bg-blue-900/30 transition-all hover:shadow-sm hover:scale-[1.01] active:scale-[0.99]"
+                          className="w-full rounded-lg border-2 border-blue-200 bg-blue-50/50 p-1.5 text-left shadow-sm transition-all hover:scale-[1.01] hover:bg-blue-100/70 hover:shadow-md active:scale-[0.99] dark:border-blue-800 dark:bg-blue-950/20 dark:hover:bg-blue-900/30"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex-1 min-w-0">
@@ -1054,7 +1185,7 @@ export default function PlayerDetailPage() {
                               </p>
                             </div>
                             <div className="text-[11px] text-muted-foreground whitespace-nowrap">
-                              {formatDistanceToNow(new Date(log.completed_at), { addSuffix: true })}
+                                {formatDistanceToNow(new Date(log.completed_at || log.call_time), { addSuffix: true })}
                             </div>
                           </div>
                         </button>
@@ -1102,6 +1233,22 @@ export default function PlayerDetailPage() {
           onComplete={handleDialogCallComplete}
           callTopic={tasks.find(t => t.id === completingCallId)?.call_topic}
           phoneNumber={tasks.find(t => t.id === completingCallId)?.phone_number}
+        />
+
+        <CallCompletionDialog
+          isOpen={isManualCallLogOpen}
+          onClose={() => setIsManualCallLogOpen(false)}
+          onComplete={handleManualCallLog}
+          phoneNumber={player.phone}
+          title="Log Call"
+          confirmLabel="Save Call Log"
+        />
+
+        <ManualFollowUpDialog
+          isOpen={isManualFollowUpOpen}
+          onClose={() => setIsManualFollowUpOpen(false)}
+          onSubmit={handleManualFollowUpCreate}
+          playerName={getFullName(player)}
         />
 
         <Dialog open={selectedCallLog !== null} onOpenChange={handleCloseCallLogDialog}>
@@ -1203,7 +1350,7 @@ export default function PlayerDetailPage() {
                       <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span className="font-semibold">Completed At</span>
                     </div>
-                    <p className="text-sm pl-6">{format(new Date(selectedCallLog.completed_at), "PPPP 'at' p")}</p>
+                    <p className="text-sm pl-6">{format(new Date(selectedCallLog.completed_at || selectedCallLog.call_time), "PPPP 'at' p")}</p>
                   </div>
                 </div>
 

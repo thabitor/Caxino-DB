@@ -6,10 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, Clock, ChevronDown, ChevronUp, ExternalLink, Calendar, User, Phone, X } from "lucide-react";
+import { AlertCircle, Clock, ExternalLink, Calendar, User, Phone, X } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CopyButton } from "@/components/CopyButton";
 import { CallCompletionDialog } from "@/components/CallCompletionDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -26,7 +25,6 @@ export function TaskAlertsPanel() {
   const [todayCalls, setTodayCalls] = useState<TaskWithPlayer[]>([]);
   const [regularTasks, setRegularTasks] = useState<TaskWithPlayer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [completingCallId, setCompletingCallId] = useState<string | null>(null);
   const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set());
   const [dismissedTasks, setDismissedTasks] = useState<Set<string>>(new Set());
@@ -261,7 +259,7 @@ export function TaskAlertsPanel() {
     return (
       <div
         key={task.id}
-        className={`p-4 rounded-lg border-2 ${cardBorderColor} transition-all hover:shadow-md relative`}
+        className={`relative rounded-lg border-2 p-4 shadow-sm ${cardBorderColor} transition-all hover:shadow-md`}
       >
         <Button
           size="sm"
@@ -315,7 +313,7 @@ export function TaskAlertsPanel() {
               </h4>
 
               {isCall && task.phone_number && (
-                <div className="flex items-center gap-2 p-2 rounded bg-blue-100/50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-2 rounded border-2 border-blue-200 bg-blue-100/50 p-2 dark:border-blue-800 dark:bg-blue-900/20">
                   <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   <span className="font-mono text-sm font-medium">{task.phone_number}</span>
                   <CopyButton text={task.phone_number} label="Phone" />
@@ -373,11 +371,11 @@ export function TaskAlertsPanel() {
 
   if (loading) {
     return (
-      <Card className="border-2">
-        <CardHeader>
+      <Card className="h-full border-2">
+        <CardHeader className="min-h-[80px]">
           <Skeleton className="h-6 w-48" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="h-[calc(100%-80px)]">
           <Skeleton className="h-20 w-full" />
         </CardContent>
       </Card>
@@ -388,52 +386,40 @@ export function TaskAlertsPanel() {
   const visibleRegularTasks = regularTasks.filter(task => !dismissedTasks.has(task.id));
   const totalAlerts = visibleCalls.length + visibleRegularTasks.length;
 
-  if (totalAlerts === 0) {
-    return (
-      <Alert className="border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
-        <Clock className="h-4 w-4 text-green-600 dark:text-green-400" />
-        <AlertDescription className="text-green-700 dark:text-green-300 font-medium">
-          All caught up! No urgent tasks or upcoming reminders.
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
   return (
     <>
-      <Card className="border-2 border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50/50 via-orange-50/30 to-red-50/20 dark:from-amber-950/20 dark:via-orange-950/10 dark:to-red-950/10 shadow-lg">
-        <CardHeader className="border-b-2 border-amber-200/60 dark:border-amber-800/60 bg-gradient-to-r from-amber-100/50 to-orange-100/50 dark:from-amber-950/30 dark:to-orange-950/30">
+      <Card className="h-full border-2 border-amber-200 bg-amber-50/30 shadow-md shadow-amber-500/5 dark:border-amber-800 dark:bg-amber-950/10">
+        <CardHeader className="min-h-[80px] border-b-2 border-amber-200/60 bg-amber-100/50 py-2.5 dark:border-amber-800/60 dark:bg-amber-950/30">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-md animate-pulse">
-                <AlertCircle className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-amber-600 shadow-sm">
+                <AlertCircle className="h-4 w-4 text-white" />
               </div>
               <div>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   Task Alerts & Reminders
-                  <Badge className="bg-red-600 dark:bg-red-700 text-white border-0 animate-pulse">
+                  <Badge className="border-0 bg-red-600 text-white dark:bg-red-700">
                     {totalAlerts}
                   </Badge>
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {visibleCalls.length} calls today, {visibleRegularTasks.length} other tasks
                 </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="gap-2"
-            >
-              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              {isExpanded ? "Collapse" : "Expand"}
-            </Button>
           </div>
         </CardHeader>
 
-        {isExpanded && (
-          <CardContent className="pt-6 space-y-6">
+          <CardContent className="h-[calc(100%-80px)] space-y-4 overflow-y-auto p-3">
+            {totalAlerts === 0 && (
+              <div className="flex h-full items-center justify-center rounded-md border-2 border-dashed border-green-200 bg-green-50/50 p-4 text-center text-green-700 shadow-sm dark:border-green-900 dark:bg-green-950/20 dark:text-green-300">
+                <div>
+                  <Clock className="mx-auto mb-2 h-5 w-5" />
+                  <p className="font-medium">All caught up.</p>
+                  <p className="mt-1 text-xs opacity-80">No urgent tasks or upcoming reminders need attention right now.</p>
+                </div>
+              </div>
+            )}
             {visibleCalls.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -462,7 +448,6 @@ export function TaskAlertsPanel() {
               </div>
             )}
           </CardContent>
-        )}
       </Card>
 
       <CallCompletionDialog

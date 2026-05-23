@@ -96,6 +96,47 @@ export type Database = {
           },
         ]
       }
+      manual_follow_ups: {
+        Row: {
+          created_at: string
+          id: string
+          manager_id: string | null
+          note: string
+          player_id: string
+          resolved_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          manager_id?: string | null
+          note: string
+          player_id: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          manager_id?: string | null
+          note?: string
+          player_id?: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_follow_ups_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       players: {
         Row: {
           account_status: string | null

@@ -166,7 +166,13 @@ export const taskService = {
     return data;
   },
 
-  async completeCallTask(id: string, userId: string, notes?: string, durationMinutes?: number): Promise<{ task: Task; callLog: any }> {
+  async completeCallTask(
+    id: string,
+    userId: string,
+    notes?: string,
+    durationMinutes?: number,
+    callTopic?: string
+  ): Promise<{ task: Task; callLog: any }> {
     const task = await this.getTaskById(id);
     if (!task) {
       throw new Error("Task not found");
@@ -177,14 +183,16 @@ export const taskService = {
     }
 
     const completedTask = await this.completeTask(id);
+    const completedAt = completedTask.completed_at || new Date().toISOString();
 
     const callLog = await callLogService.createCallLog({
       user_id: userId,
       player_id: task.player_id,
       task_id: id,
       phone_number: task.phone_number || "",
-      call_topic: task.call_topic || null,
-      call_time: task.due_date || new Date().toISOString(),
+      call_topic: callTopic || task.call_topic || null,
+      call_time: completedAt,
+      completed_at: completedAt,
       notes: notes || task.description || null,
       duration_minutes: durationMinutes || null,
     });

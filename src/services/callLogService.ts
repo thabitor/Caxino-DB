@@ -7,10 +7,28 @@ export type CallLogInsert = Database["public"]["Tables"]["call_logs"]["Insert"];
 export type CallLogUpdate = Database["public"]["Tables"]["call_logs"]["Update"];
 
 export const callLogService = {
-  async createCallLog(callData: CallLogInsert): Promise<CallLog> {
+  async getAllCallLogs(): Promise<CallLog[]> {
     const { data, error } = await supabase
       .from("call_logs")
-      .insert([callData])
+      .select("*")
+      .order("completed_at", { ascending: false, nullsFirst: false });
+
+    if (error) {
+      console.error("Error fetching call logs:", error);
+      throw error;
+    }
+    return data || [];
+  },
+
+  async createCallLog(callData: CallLogInsert): Promise<CallLog> {
+    const payload = {
+      ...callData,
+      completed_at: callData.completed_at || new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("call_logs")
+      .insert([payload])
       .select()
       .single();
 
@@ -26,6 +44,7 @@ export const callLogService = {
       .from("call_logs")
       .select("*")
       .eq("player_id", playerId)
+      .order("completed_at", { ascending: false, nullsFirst: false })
       .order("call_time", { ascending: false });
 
     if (error) {
@@ -40,6 +59,7 @@ export const callLogService = {
       .from("call_logs")
       .select("*")
       .eq("user_id", userId)
+      .order("completed_at", { ascending: false, nullsFirst: false })
       .order("call_time", { ascending: false });
 
     if (error) {

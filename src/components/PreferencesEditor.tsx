@@ -51,7 +51,7 @@ export function PreferencesEditor({ preferences: initialPreferences, onUpdate }:
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card className="shadow-md">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Communication Channels</CardTitle>
           <CardDescription className="text-xs">Allowed contact methods</CardDescription>
@@ -76,7 +76,7 @@ export function PreferencesEditor({ preferences: initialPreferences, onUpdate }:
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="shadow-md">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Preferences</CardTitle>
           <CardDescription className="text-xs">Contact and language settings</CardDescription>

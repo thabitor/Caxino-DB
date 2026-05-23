@@ -1,13 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
-import { supabaseConfig } from "@/config/supabase.config";
 
-// Use config file credentials directly (bypasses .env.local persistence issues)
-const supabaseUrl = supabaseConfig.url;
-const supabaseAnonKey = supabaseConfig.anonKey;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase configuration. Please check src/config/supabase.config.ts");
+  throw new Error(
+    "Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+  );
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);

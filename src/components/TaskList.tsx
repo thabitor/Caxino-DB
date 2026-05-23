@@ -14,7 +14,7 @@ interface TaskListProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onComplete: (id: string) => void;
-  onCompleteCall?: (id: string, notes?: string, durationMinutes?: number) => void;
+  onCompleteCall?: (id: string, notes?: string, durationMinutes?: number, callTopic?: string) => void;
 }
 
 const statusIcons: Record<TaskStatus, ReactNode> = {
@@ -35,9 +35,9 @@ export function TaskList({ tasks, onEdit, onDelete, onComplete, onCompleteCall }
     }
   };
 
-  const handleCallComplete = (notes?: string, durationMinutes?: number) => {
+  const handleCallComplete = (notes?: string, durationMinutes?: number, callTopic?: string) => {
     if (completingCallTask && onCompleteCall) {
-      onCompleteCall(completingCallTask.id, notes, durationMinutes);
+      onCompleteCall(completingCallTask.id, notes, durationMinutes, callTopic);
     }
     setCompletingCallTask(null);
   };
@@ -62,7 +62,7 @@ export function TaskList({ tasks, onEdit, onDelete, onComplete, onCompleteCall }
           return (
             <Card 
               key={task.id} 
-              className={`flex flex-col ${isCallTask ? 'border-2 border-blue-300 dark:border-blue-700 bg-blue-50/30 dark:bg-blue-950/20' : ''}`}
+              className={`flex flex-col shadow-md ${isCallTask ? 'border-blue-300 bg-blue-50/30 shadow-blue-500/5 dark:border-blue-700 dark:bg-blue-950/20' : ''}`}
             >
               <CardHeader>
                 <div className="flex justify-between items-start">
