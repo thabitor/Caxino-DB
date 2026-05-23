@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { DragEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CalendarClock, Check, CheckCircle2, Clock, Eye, ListPlus, Phone, UserRound, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarClock, Check, CheckCircle2, Clock, Eye, GripVertical, ListPlus, Phone, UserRound, X } from "lucide-react";
 import { format } from "date-fns";
 import type { FollowUpItem, FollowUpStatus } from "@/lib/followup";
 import { getFullName } from "@/services/playerService";
@@ -45,6 +45,7 @@ const statusStyles: Record<FollowUpStatus, { label: string; className: string }>
 };
 
 const NEW_FOLLOW_UP_MS = 60 * 60 * 1000;
+const FOLLOW_UP_QUEUE_ORDER_KEY = "followUpQueueOrder";
 
 const reasonBadgeStyles: Record<string, string> = {
   Manual: "border-yellow-400 bg-yellow-100 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-300",
@@ -71,13 +72,34 @@ function isNewFollowUp(queueCreatedAt?: string | null) {
   return Number.isFinite(createdAt) && Date.now() - createdAt < NEW_FOLLOW_UP_MS;
 }
 
+function getStoredQueueOrder() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const stored = JSON.parse(localStorage.getItem(FOLLOW_UP_QUEUE_ORDER_KEY) || "[]");
+    return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    localStorage.removeItem(FOLLOW_UP_QUEUE_ORDER_KEY);
+    return [];
+  }
+}
+
+function saveStoredQueueOrder(playerIds: string[]) {
+  if (typeof window === "undefined") return;
+
+  localStorage.setItem(FOLLOW_UP_QUEUE_ORDER_KEY, JSON.stringify(playerIds));
+}
+
 export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewedPlayers, setViewedPlayers] = useState<Record<string, string>>({});
   const [dismissedPlayers, setDismissedPlayers] = useState<Record<string, string>>({});
   const [contactedPlayers, setContactedPlayers] = useState<Record<string, string>>({});
-  const pageSize = 6;
-  const visibleItems = useMemo(() => {
+  const [orderedPlayerIds, setOrderedPlayerIds] = useState<string[]>([]);
+  const [draggedPlayerId, setDraggedPlayerId] = useState<string | null>(null);
+  const [dragOverPlayerId, setDragOverPlayerId] = useState<string | null>(null);
+  const pageSize = 4;
+  const visibleItemsByState = useMemo(() => {
     const now = Date.now();
     const unviewed: FollowUpItem[] = [];
     const recentlyViewed: FollowUpItem[] = [];
@@ -103,6 +125,20 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
 
     return [...unviewed, ...recentlyViewed];
   }, [items, dismissedPlayers, viewedPlayers]);
+  const visibleItems = useMemo(() => {
+    if (visibleItemsByState.length === 0) return [];
+
+    const itemById = new Map(visibleItemsByState.map((item) => [item.player.id, item]));
+    const orderedIdsInQueue = orderedPlayerIds.filter((id) => itemById.has(id));
+    const newIds = visibleItemsByState
+      .map((item) => item.player.id)
+      .filter((id) => !orderedIdsInQueue.includes(id));
+    const nextIds = [...orderedIdsInQueue, ...newIds];
+
+    return nextIds
+      .map((id) => itemById.get(id))
+      .filter((item): item is FollowUpItem => Boolean(item));
+  }, [orderedPlayerIds, visibleItemsByState]);
   const overdueCount = visibleItems.filter((item) => item.status === "overdue" && !viewedPlayers[item.player.id]).length;
   const todayCount = visibleItems.filter((item) => item.status === "today" && !viewedPlayers[item.player.id]).length;
   const totalPages = Math.max(1, Math.ceil(visibleItems.length / pageSize));
@@ -131,12 +167,82 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
   }, []);
 
   useEffect(() => {
+    setOrderedPlayerIds(getStoredQueueOrder());
+  }, []);
+
+  useEffect(() => {
+    const visibleIds = visibleItemsByState.map((item) => item.player.id);
+    setOrderedPlayerIds((currentOrder) => {
+      const currentVisibleOrder = currentOrder.filter((id) => visibleIds.includes(id));
+      const newIds = visibleIds.filter((id) => !currentVisibleOrder.includes(id));
+      const nextOrder = [...currentVisibleOrder, ...newIds];
+
+      if (
+        nextOrder.length === currentOrder.length &&
+        nextOrder.every((id, index) => id === currentOrder[index])
+      ) {
+        return currentOrder;
+      }
+
+      saveStoredQueueOrder(nextOrder);
+      return nextOrder;
+    });
+  }, [visibleItemsByState]);
+
+  useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
   }, [totalPages]);
 
   const handleDismiss = (playerId: string) => {
     dismissFollowUp(playerId);
     setDismissedPlayers(getDismissedFollowUps());
+  };
+
+  const handleDragStart = (event: DragEvent<HTMLDivElement>, playerId: string) => {
+    setDraggedPlayerId(playerId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", playerId);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>, playerId: string) => {
+    if (!draggedPlayerId || draggedPlayerId === playerId) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDragOverPlayerId(playerId);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>, targetPlayerId: string) => {
+    event.preventDefault();
+    const sourcePlayerId = draggedPlayerId || event.dataTransfer.getData("text/plain");
+
+    setDraggedPlayerId(null);
+    setDragOverPlayerId(null);
+
+    if (!sourcePlayerId || sourcePlayerId === targetPlayerId) return;
+
+    setOrderedPlayerIds((currentOrder) => {
+      const visibleIds = visibleItems.map((item) => item.player.id);
+      const baseOrder = [
+        ...currentOrder.filter((id) => visibleIds.includes(id)),
+        ...visibleIds.filter((id) => !currentOrder.includes(id)),
+      ];
+      const fromIndex = baseOrder.indexOf(sourcePlayerId);
+      const toIndex = baseOrder.indexOf(targetPlayerId);
+
+      if (fromIndex === -1 || toIndex === -1) return currentOrder;
+
+      const nextOrder = [...baseOrder];
+      const [movedId] = nextOrder.splice(fromIndex, 1);
+      nextOrder.splice(toIndex, 0, movedId);
+      saveStoredQueueOrder(nextOrder);
+      return nextOrder;
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedPlayerId(null);
+    setDragOverPlayerId(null);
   };
 
   return (
@@ -206,20 +312,38 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
               return (
                 <div
                   key={item.player.id}
+                  draggable
+                  onDragStart={(event) => handleDragStart(event, item.player.id)}
+                  onDragOver={(event) => handleDragOver(event, item.player.id)}
+                  onDrop={(event) => handleDrop(event, item.player.id)}
+                  onDragEnd={handleDragEnd}
                   className={`flex min-h-0 flex-col justify-between rounded-md border-2 p-2 shadow-sm transition-colors hover:border-primary/45 ${
                     cardStateClassName
+                  } ${
+                    draggedPlayerId === item.player.id ? "opacity-60 ring-2 ring-primary/40" : ""
+                  } ${
+                    dragOverPlayerId === item.player.id ? "ring-2 ring-primary ring-offset-2" : ""
                   }`}
                 >
                   <div className="space-y-1.5">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <Link
-                          href={`/player/${item.player.id}`}
-                          className="block truncate text-sm font-bold leading-tight text-indigo-700 hover:text-indigo-800 hover:underline dark:text-indigo-300 dark:hover:text-indigo-200"
+                      <div className="flex min-w-0 items-start gap-1.5">
+                        <span
+                          className="mt-0.5 flex h-6 w-5 shrink-0 cursor-grab items-center justify-center rounded border border-border/70 bg-background/80 text-muted-foreground active:cursor-grabbing"
+                          title="Drag to reorder"
+                          aria-label="Drag to reorder"
                         >
-                          {getFullName(item.player)}
-                        </Link>
-                        <p className="truncate text-xs text-muted-foreground">@{item.player.username}</p>
+                          <GripVertical className="h-3.5 w-3.5" />
+                        </span>
+                        <div className="min-w-0">
+                          <Link
+                            href={`/player/${item.player.id}`}
+                            className="block truncate text-sm font-bold leading-tight text-indigo-700 hover:text-indigo-800 hover:underline dark:text-indigo-300 dark:hover:text-indigo-200"
+                          >
+                            {getFullName(item.player)}
+                          </Link>
+                          <p className="truncate text-xs text-muted-foreground">@{item.player.username}</p>
+                        </div>
                       </div>
                       {wasContactedRecently ? (
                         <Badge variant="outline" className="gap-1 border-blue-300 bg-blue-100 px-1.5 py-0 text-[11px] text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300">

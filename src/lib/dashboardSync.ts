@@ -5,8 +5,18 @@ export const FOLLOW_UP_VIEWED_KEY = "viewedFollowUpPlayers";
 export const FOLLOW_UP_HIGHLIGHT_KEY = "followUpHighlightedPlayers";
 export const FOLLOW_UP_DISMISSED_KEY = "dismissedFollowUpPlayers";
 export const FOLLOW_UP_CONTACTED_KEY = "contactedFollowUpPlayers";
+export const FOLLOW_UP_RECENT_ACTIVITY_KEY = "recentFollowUpActivity";
 export const FOLLOW_UP_TTL_MS = 60 * 60 * 1000;
 export const FOLLOW_UP_HIGHLIGHT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const FOLLOW_UP_RECENT_ACTIVITY_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+
+export type FollowUpRecentActivityType = "opened" | "dismissed";
+
+export interface FollowUpRecentActivity {
+  playerId: string;
+  type: FollowUpRecentActivityType;
+  timestamp: string;
+}
 
 export function notifyDashboardRefresh() {
   if (typeof window === "undefined") return;
@@ -55,6 +65,41 @@ function saveFollowUpState(key: string, playerId: string, ttlMs = FOLLOW_UP_TTL_
   window.dispatchEvent(new CustomEvent(FOLLOW_UP_VIEWED_EVENT, { detail: { playerId } }));
 }
 
+function getValidRecentActivity() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const stored = JSON.parse(localStorage.getItem(FOLLOW_UP_RECENT_ACTIVITY_KEY) || "[]") as FollowUpRecentActivity[];
+    const now = Date.now();
+    const current = stored.filter((activity) => {
+      const savedAt = new Date(activity.timestamp).getTime();
+      return activity.playerId && (activity.type === "opened" || activity.type === "dismissed") && Number.isFinite(savedAt) && now - savedAt < FOLLOW_UP_RECENT_ACTIVITY_TTL_MS;
+    });
+
+    localStorage.setItem(FOLLOW_UP_RECENT_ACTIVITY_KEY, JSON.stringify(current));
+    return current;
+  } catch {
+    localStorage.removeItem(FOLLOW_UP_RECENT_ACTIVITY_KEY);
+    return [];
+  }
+}
+
+function saveRecentActivity(playerId: string, type: FollowUpRecentActivityType) {
+  if (typeof window === "undefined") return;
+
+  const activity = {
+    playerId,
+    type,
+    timestamp: new Date().toISOString(),
+  };
+  const existing = getValidRecentActivity().filter(
+    (item) => !(item.playerId === playerId && item.type === type)
+  );
+
+  localStorage.setItem(FOLLOW_UP_RECENT_ACTIVITY_KEY, JSON.stringify([activity, ...existing]));
+  window.dispatchEvent(new CustomEvent(FOLLOW_UP_VIEWED_EVENT, { detail: { playerId } }));
+}
+
 export function getViewedFollowUps() {
   return getValidFollowUpState(FOLLOW_UP_VIEWED_KEY);
 }
@@ -71,9 +116,30 @@ export function getContactedFollowUps() {
   return getValidFollowUpState(FOLLOW_UP_CONTACTED_KEY);
 }
 
+export function getRecentFollowUpActivity() {
+  return getValidRecentActivity();
+}
+
+export function restoreDismissedFollowUp(playerId: string) {
+  if (typeof window === "undefined") return;
+
+  const dismissed = getValidFollowUpState(FOLLOW_UP_DISMISSED_KEY);
+  delete dismissed[playerId];
+  localStorage.setItem(FOLLOW_UP_DISMISSED_KEY, JSON.stringify(dismissed));
+
+  const recentActivity = getValidRecentActivity().filter(
+    (activity) => !(activity.playerId === playerId && activity.type === "dismissed")
+  );
+  localStorage.setItem(FOLLOW_UP_RECENT_ACTIVITY_KEY, JSON.stringify(recentActivity));
+
+  notifyDashboardRefresh();
+  window.dispatchEvent(new CustomEvent(FOLLOW_UP_VIEWED_EVENT, { detail: { playerId } }));
+}
+
 export function markFollowUpViewed(playerId: string) {
   saveFollowUpState(FOLLOW_UP_VIEWED_KEY, playerId);
   saveFollowUpState(FOLLOW_UP_HIGHLIGHT_KEY, playerId, FOLLOW_UP_HIGHLIGHT_TTL_MS);
+  saveRecentActivity(playerId, "opened");
 }
 
 export function markFollowUpContacted(playerId: string) {
@@ -82,4 +148,5 @@ export function markFollowUpContacted(playerId: string) {
 
 export function dismissFollowUp(playerId: string) {
   saveFollowUpState(FOLLOW_UP_DISMISSED_KEY, playerId);
+  saveRecentActivity(playerId, "dismissed");
 }

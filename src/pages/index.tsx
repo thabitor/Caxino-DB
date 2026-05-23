@@ -23,11 +23,12 @@ import { UpcomingBirthdaysPanel } from "@/components/UpcomingBirthdaysPanel";
 import { ExcelUploadDialog } from "@/components/ExcelUploadDialog";
 import { FollowUpQueue } from "@/components/FollowUpQueue";
 import { buildFollowUpQueue, FollowUpItem } from "@/lib/followup";
-import { DASHBOARD_REFRESH_EVENT, getDashboardRefreshToken, getHighlightedFollowUps } from "@/lib/dashboardSync";
+import { DASHBOARD_REFRESH_EVENT, FOLLOW_UP_RECENT_ACTIVITY_TTL_MS, FOLLOW_UP_VIEWED_EVENT, FollowUpRecentActivity, getDashboardRefreshToken, getHighlightedFollowUps, getRecentFollowUpActivity, restoreDismissedFollowUp } from "@/lib/dashboardSync";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManualFollowUpDialog } from "@/components/ManualFollowUpDialog";
 import { ManualFollowUpPickerDialog } from "@/components/ManualFollowUpPickerDialog";
+import { RecentFollowUpsPanel } from "@/components/RecentFollowUpsPanel";
 
 export default function Home() {
   const [players, setPlayers] = useState<PlayerWithTasks[]>([]);
@@ -37,6 +38,7 @@ export default function Home() {
   const [followUpItems, setFollowUpItems] = useState<FollowUpItem[]>([]);
   const [followUpViewedAtByPlayer, setFollowUpViewedAtByPlayer] = useState<Record<string, string>>({});
   const [lastCallAtByPlayer, setLastCallAtByPlayer] = useState<Record<string, string>>({});
+  const [recentFollowUpActivity, setRecentFollowUpActivity] = useState<FollowUpRecentActivity[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<PlayerWithTasks | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,44 @@ export default function Home() {
   const [followUpPlayer, setFollowUpPlayer] = useState<PlayerWithTasks | null>(null);
   const [isQueueFollowUpOpen, setIsQueueFollowUpOpen] = useState(false);
   const [isDirectoryOpen, setIsDirectoryOpen] = useState(true);
+
+  const mergeRecentFollowUpActivity = useCallback((persistedOpened: { player_id: string; last_viewed_at: string }[]) => {
+    const cutoff = Date.now() - FOLLOW_UP_RECENT_ACTIVITY_TTL_MS;
+    const openedFromDb = persistedOpened
+      .filter((viewed) => {
+        const timestamp = new Date(viewed.last_viewed_at).getTime();
+        return Number.isFinite(timestamp) && timestamp >= cutoff;
+      })
+      .map((viewed): FollowUpRecentActivity => ({
+        playerId: viewed.player_id,
+        type: "opened",
+        timestamp: viewed.last_viewed_at,
+      }));
+
+    const merged = [...getRecentFollowUpActivity(), ...openedFromDb];
+    const latestByKey = new Map<string, FollowUpRecentActivity>();
+
+    merged.forEach((activity) => {
+      const key = `${activity.playerId}:${activity.type}`;
+      const existing = latestByKey.get(key);
+      if (!existing || new Date(activity.timestamp).getTime() > new Date(existing.timestamp).getTime()) {
+        latestByKey.set(key, activity);
+      }
+    });
+
+    return Array.from(latestByKey.values()).sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  }, []);
+
+  const getPersistedOpenedForRecent = useCallback(
+    () =>
+      Object.entries(followUpViewedAtByPlayer).map(([player_id, last_viewed_at]) => ({
+        player_id,
+        last_viewed_at,
+      })),
+    [followUpViewedAtByPlayer]
+  );
 
   const fetchDashboardData = useCallback(async (options?: { background?: boolean }) => {
     try {
@@ -86,6 +126,7 @@ export default function Home() {
       setFollowUpItems(buildFollowUpQueue(playersData, tasks, callLogs, manualFollowUps));
       setFollowUpViewedAtByPlayer({ ...localViewed, ...persistedViewed });
       setLastCallAtByPlayer(latestCallsByPlayer);
+      setRecentFollowUpActivity(mergeRecentFollowUpActivity(viewedPlayers));
       hasLoadedDashboard.current = true;
       lastRefreshToken.current = getDashboardRefreshToken();
     } catch (error) {
@@ -98,7 +139,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [toast, user?.id]);
+  }, [mergeRecentFollowUpActivity, toast, user?.id]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -111,6 +152,9 @@ export default function Home() {
         fetchDashboardData({ background: true });
       }
     };
+    const refreshRecentActivity = () => {
+      setRecentFollowUpActivity(mergeRecentFollowUpActivity(getPersistedOpenedForRecent()));
+    };
 
     const refreshOnVisible = () => {
       if (document.visibilityState === "visible") {
@@ -119,15 +163,25 @@ export default function Home() {
     };
 
     window.addEventListener(DASHBOARD_REFRESH_EVENT, refreshIfChanged);
+    window.addEventListener(FOLLOW_UP_VIEWED_EVENT, refreshRecentActivity);
     window.addEventListener("focus", refreshIfChanged);
+    window.addEventListener("focus", refreshRecentActivity);
     document.addEventListener("visibilitychange", refreshOnVisible);
 
     return () => {
       window.removeEventListener(DASHBOARD_REFRESH_EVENT, refreshIfChanged);
+      window.removeEventListener(FOLLOW_UP_VIEWED_EVENT, refreshRecentActivity);
       window.removeEventListener("focus", refreshIfChanged);
+      window.removeEventListener("focus", refreshRecentActivity);
       document.removeEventListener("visibilitychange", refreshOnVisible);
     };
-  }, [fetchDashboardData]);
+  }, [fetchDashboardData, getPersistedOpenedForRecent, mergeRecentFollowUpActivity]);
+
+  const handleRestoreDismissedFollowUp = (playerId: string) => {
+    restoreDismissedFollowUp(playerId);
+    setRecentFollowUpActivity(mergeRecentFollowUpActivity(getPersistedOpenedForRecent()));
+    fetchDashboardData({ background: true });
+  };
 
   const handleEdit = (player: PlayerWithTasks) => {
     setEditingPlayer(player);
@@ -361,7 +415,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="grid h-[560px] gap-3 p-3 min-[520px]:grid-cols-[minmax(0,1fr)_220px] lg:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="grid grid-rows-[560px_220px_560px] gap-3 p-3 lg:h-[560px] lg:grid-cols-[minmax(0,1fr)_230px_260px] lg:grid-rows-none 2xl:grid-cols-[minmax(0,1fr)_280px_340px]">
                 <div className="min-h-0 min-w-0">
                   <TabsContent value="followups" className="m-0 h-full">
                     <FollowUpQueue items={followUpItems} onAddFollowUp={() => setIsQueueFollowUpOpen(true)} />
@@ -372,6 +426,10 @@ export default function Home() {
                   <TabsContent value="birthdays" className="m-0 h-full">
                     <BirthdayReminders />
                   </TabsContent>
+                </div>
+
+                <div className="min-h-0">
+                  <RecentFollowUpsPanel activities={recentFollowUpActivity} players={players} onRestore={handleRestoreDismissedFollowUp} />
                 </div>
 
                 <div className="grid min-h-0 gap-3 min-[520px]:grid-rows-[300px_minmax(0,1fr)]">
