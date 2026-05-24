@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { taskService, Task } from "@/services/taskService";
-import { playerService, getFullName } from "@/services/playerService";
+import { playerService, Player, getFullName } from "@/services/playerService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ const DISMISSED_TASKS_KEY = "dismissedTaskReminders";
 export function TaskAlertsPanel() {
   const [todayCalls, setTodayCalls] = useState<TaskWithPlayer[]>([]);
   const [regularTasks, setRegularTasks] = useState<TaskWithPlayer[]>([]);
+  const [closureReminders, setClosureReminders] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [completingCallId, setCompletingCallId] = useState<string | null>(null);
   const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set());
@@ -85,7 +86,10 @@ export function TaskAlertsPanel() {
   const fetchAlerts = async () => {
     try {
       setLoading(true);
-      const allTasks = await taskService.getAllTasks();
+      const [allTasks, allPlayers] = await Promise.all([
+        taskService.getAllTasks(),
+        playerService.getPlayers(),
+      ]);
       const activeTasks = allTasks.filter(task => 
         task.status !== "completed" && task.status !== "cancelled"
       );
@@ -123,6 +127,18 @@ export function TaskAlertsPanel() {
 
       setTodayCalls(todaysCallsList);
       setRegularTasks(urgentRegularTasks);
+      setClosureReminders(
+        allPlayers
+          .filter((player) => (
+            player.account_status === "closed" &&
+            player.account_closure_type === "break" &&
+            Boolean(player.account_closure_until) &&
+            new Date(player.account_closure_until!).getTime() <= Date.now()
+          ))
+          .sort((a, b) => (
+            new Date(a.account_closure_until!).getTime() - new Date(b.account_closure_until!).getTime()
+          ))
+      );
       
       setCheckedTasks(new Set());
     } catch (error) {
@@ -322,7 +338,7 @@ export function TaskAlertsPanel() {
 
               {isCall && task.call_topic && (
                 <div className="text-sm text-muted-foreground">
-                  <span className="font-medium">Topic:</span> {task.call_topic}
+                  <span className="font-medium">Reason:</span> {task.call_topic}
                 </div>
               )}
 
@@ -384,7 +400,7 @@ export function TaskAlertsPanel() {
 
   const visibleCalls = todayCalls.filter(task => !dismissedTasks.has(task.id));
   const visibleRegularTasks = regularTasks.filter(task => !dismissedTasks.has(task.id));
-  const totalAlerts = visibleCalls.length + visibleRegularTasks.length;
+  const totalAlerts = visibleCalls.length + visibleRegularTasks.length + closureReminders.length;
 
   return (
     <>
@@ -403,7 +419,7 @@ export function TaskAlertsPanel() {
                   </Badge>
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  {visibleCalls.length} calls today, {visibleRegularTasks.length} other tasks
+                  {visibleCalls.length} calls today, {visibleRegularTasks.length} other tasks, {closureReminders.length} closures
                 </p>
               </div>
             </div>
@@ -430,6 +446,44 @@ export function TaskAlertsPanel() {
                 </div>
                 <div className="space-y-2">
                   {visibleCalls.map((task) => renderTaskCard(task, true))}
+                </div>
+              </div>
+            )}
+
+            {closureReminders.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <h3 className="text-lg font-bold text-red-700 dark:text-red-400">
+                    Account Breaks Ended ({closureReminders.length})
+                  </h3>
+                </div>
+                <div className="space-y-2">
+                  {closureReminders.map((player) => (
+                    <div
+                      key={player.id}
+                      className="rounded-lg border-2 border-red-200 bg-red-50/80 p-3 shadow-sm dark:border-red-900 dark:bg-red-950/20"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{getFullName(player)}</p>
+                          <p className="truncate text-xs text-muted-foreground">@{player.username}</p>
+                          <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+                            Break ended {formatDistanceToNow(new Date(player.account_closure_until!), { addSuffix: true })}.
+                            Send the reopening email, then reopen the account from the player page.
+                          </p>
+                        </div>
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 border-2 border-red-300 text-red-700 dark:border-red-800 dark:text-red-300"
+                        >
+                          <Link href={`/player/${player.id}`}>Open</Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

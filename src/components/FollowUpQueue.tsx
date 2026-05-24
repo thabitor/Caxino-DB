@@ -1,5 +1,4 @@
-import { DragEvent, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, CalendarClock, Check, CheckCircle2, Clock, Eye, GripVertical, ListPlus, Phone, UserRound, X } from "lucide-react";
 import { format } from "date-fns";
 import type { FollowUpItem, FollowUpStatus } from "@/lib/followup";
@@ -7,6 +6,7 @@ import { getFullName } from "@/services/playerService";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   dismissFollowUp,
   FOLLOW_UP_TTL_MS,
@@ -19,6 +19,7 @@ import {
 interface FollowUpQueueProps {
   items: FollowUpItem[];
   onAddFollowUp?: () => void;
+  onOpenPlayer?: (playerId: string) => void;
 }
 
 const statusStyles: Record<FollowUpStatus, { label: string; className: string }> = {
@@ -45,7 +46,11 @@ const statusStyles: Record<FollowUpStatus, { label: string; className: string }>
 };
 
 const NEW_FOLLOW_UP_MS = 60 * 60 * 1000;
-const FOLLOW_UP_QUEUE_ORDER_KEY = "followUpQueueOrder";
+const LEGACY_FOLLOW_UP_QUEUE_ORDER_KEY = "followUpQueueOrder";
+const FOLLOW_UP_QUEUE_ORDER_KEY = "followUpQueueOrder:v2";
+const FOLLOW_UP_QUEUE_PAGE_KEY = "followUpQueuePage";
+const CARD_MIN_HEIGHT = 150;
+const CARD_GAP = 8;
 
 const reasonBadgeStyles: Record<string, string> = {
   Manual: "border-yellow-400 bg-yellow-100 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-300",
@@ -76,6 +81,7 @@ function getStoredQueueOrder() {
   if (typeof window === "undefined") return [];
 
   try {
+    localStorage.removeItem(LEGACY_FOLLOW_UP_QUEUE_ORDER_KEY);
     const stored = JSON.parse(localStorage.getItem(FOLLOW_UP_QUEUE_ORDER_KEY) || "[]");
     return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string") : [];
   } catch {
@@ -90,40 +96,51 @@ function saveStoredQueueOrder(playerIds: string[]) {
   localStorage.setItem(FOLLOW_UP_QUEUE_ORDER_KEY, JSON.stringify(playerIds));
 }
 
-export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
+function getStoredQueuePage() {
+  if (typeof window === "undefined") return 1;
+
+  const stored = Number(localStorage.getItem(FOLLOW_UP_QUEUE_PAGE_KEY));
+  return Number.isInteger(stored) && stored > 0 ? stored : 1;
+}
+
+function saveStoredQueuePage(page: number) {
+  if (typeof window === "undefined") return;
+
+  localStorage.setItem(FOLLOW_UP_QUEUE_PAGE_KEY, String(page));
+}
+
+export function FollowUpQueue({ items, onAddFollowUp, onOpenPlayer }: FollowUpQueueProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
+  const [gridRowCount, setGridRowCount] = useState(2);
   const [viewedPlayers, setViewedPlayers] = useState<Record<string, string>>({});
   const [dismissedPlayers, setDismissedPlayers] = useState<Record<string, string>>({});
   const [contactedPlayers, setContactedPlayers] = useState<Record<string, string>>({});
   const [orderedPlayerIds, setOrderedPlayerIds] = useState<string[]>([]);
   const [draggedPlayerId, setDraggedPlayerId] = useState<string | null>(null);
   const [dragOverPlayerId, setDragOverPlayerId] = useState<string | null>(null);
-  const pageSize = 4;
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
+  const gridRef = useRef<HTMLDivElement | null>(null);
   const visibleItemsByState = useMemo(() => {
     const now = Date.now();
-    const unviewed: FollowUpItem[] = [];
-    const recentlyViewed: FollowUpItem[] = [];
 
-    items.forEach((item) => {
+    return items.filter((item) => {
       if (dismissedPlayers[item.player.id]) {
-        return;
+        return false;
       }
 
       const viewedAt = viewedPlayers[item.player.id];
       if (!viewedAt) {
-        unviewed.push(item);
-        return;
+        return true;
       }
 
       const viewedTime = new Date(viewedAt).getTime();
       if (!Number.isFinite(viewedTime) || now - viewedTime >= FOLLOW_UP_TTL_MS) {
-        return;
+        return false;
       }
 
-      recentlyViewed.push(item);
+      return true;
     });
-
-    return [...unviewed, ...recentlyViewed];
   }, [items, dismissedPlayers, viewedPlayers]);
   const visibleItems = useMemo(() => {
     if (visibleItemsByState.length === 0) return [];
@@ -148,6 +165,32 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
     const start = (safePage - 1) * pageSize;
     return visibleItems.slice(start, start + pageSize);
   }, [visibleItems, safePage]);
+  const selectedVisibleCount = visibleItems.filter((item) => selectedPlayerIds.has(item.player.id)).length;
+  const selectedPageCount = pageItems.filter((item) => selectedPlayerIds.has(item.player.id)).length;
+  const isPageSelected = pageItems.length > 0 && selectedPageCount === pageItems.length;
+
+  useEffect(() => {
+    const gridElement = gridRef.current;
+    if (!gridElement) return;
+
+    const updateBatchSize = () => {
+      const width = gridElement.clientWidth;
+      const height = gridElement.clientHeight;
+      const columns = width >= 1100 ? 3 : width >= 760 ? 2 : 1;
+      const rows = Math.max(1, Math.floor((height + CARD_GAP) / (CARD_MIN_HEIGHT + CARD_GAP)));
+      const nextPageSize = Math.max(6, columns * rows);
+
+      setGridRowCount(rows);
+      setPageSize(nextPageSize);
+    };
+
+    updateBatchSize();
+
+    const resizeObserver = new ResizeObserver(updateBatchSize);
+    resizeObserver.observe(gridElement);
+
+    return () => resizeObserver.disconnect();
+  }, [visibleItems.length]);
 
   useEffect(() => {
     const loadFollowUpState = () => {
@@ -168,6 +211,7 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
 
   useEffect(() => {
     setOrderedPlayerIds(getStoredQueueOrder());
+    setCurrentPage(getStoredQueuePage());
   }, []);
 
   useEffect(() => {
@@ -190,12 +234,87 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
   }, [visibleItemsByState]);
 
   useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages));
+    setCurrentPage((page) => {
+      const nextPage = Math.min(Math.max(1, page), totalPages);
+      saveStoredQueuePage(nextPage);
+      return nextPage;
+    });
   }, [totalPages]);
+
+  const updateCurrentPage = (getNextPage: (page: number) => number) => {
+    setCurrentPage((page) => {
+      const nextPage = Math.min(Math.max(1, getNextPage(page)), totalPages);
+      saveStoredQueuePage(nextPage);
+      return nextPage;
+    });
+  };
+
+  useEffect(() => {
+    const visibleIds = new Set(visibleItems.map((item) => item.player.id));
+    setSelectedPlayerIds((currentSelection) => {
+      const nextSelection = new Set(
+        Array.from(currentSelection).filter((playerId) => visibleIds.has(playerId))
+      );
+
+      if (nextSelection.size === currentSelection.size) {
+        return currentSelection;
+      }
+
+      return nextSelection;
+    });
+  }, [visibleItems]);
 
   const handleDismiss = (playerId: string) => {
     dismissFollowUp(playerId);
     setDismissedPlayers(getDismissedFollowUps());
+    setSelectedPlayerIds((currentSelection) => {
+      const nextSelection = new Set(currentSelection);
+      nextSelection.delete(playerId);
+      return nextSelection;
+    });
+  };
+
+  const handleBulkDismiss = (playerIds: string[]) => {
+    if (playerIds.length === 0) return;
+
+    playerIds.forEach((playerId) => dismissFollowUp(playerId));
+    setDismissedPlayers(getDismissedFollowUps());
+    setSelectedPlayerIds((currentSelection) => {
+      const dismissedIds = new Set(playerIds);
+      return new Set(Array.from(currentSelection).filter((playerId) => !dismissedIds.has(playerId)));
+    });
+  };
+
+  const handleToggleSelection = (playerId: string, checked: boolean) => {
+    setSelectedPlayerIds((currentSelection) => {
+      const nextSelection = new Set(currentSelection);
+
+      if (checked) {
+        nextSelection.add(playerId);
+      } else {
+        nextSelection.delete(playerId);
+      }
+
+      return nextSelection;
+    });
+  };
+
+  const handleTogglePageSelection = (checked: boolean) => {
+    const pageIds = pageItems.map((item) => item.player.id);
+
+    setSelectedPlayerIds((currentSelection) => {
+      const nextSelection = new Set(currentSelection);
+
+      pageIds.forEach((playerId) => {
+        if (checked) {
+          nextSelection.add(playerId);
+        } else {
+          nextSelection.delete(playerId);
+        }
+      });
+
+      return nextSelection;
+    });
   };
 
   const handleDragStart = (event: DragEvent<HTMLDivElement>, playerId: string) => {
@@ -246,19 +365,19 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
   };
 
   return (
-    <Card className="h-full border-primary/35 shadow-md shadow-primary/5">
-      <CardHeader className="min-h-[80px] border-b-2 border-primary/15 bg-muted/25 py-2.5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
+    <Card className="h-full border-2 border-cyan-300/80 bg-cyan-50/20 shadow-md shadow-cyan-500/5 dark:border-cyan-800 dark:bg-cyan-950/10">
+      <CardHeader className="min-h-[80px] border-b-2 border-cyan-200/80 bg-cyan-100/40 py-2.5 dark:border-cyan-900/70 dark:bg-cyan-950/30">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
             <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarClock className="h-4 w-4 text-primary" />
+              <CalendarClock className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
               Follow-Up Queue
             </CardTitle>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Ordered by when each follow-up entered the queue.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
             {onAddFollowUp && (
               <Button size="sm" variant="outline" onClick={onAddFollowUp} className="h-7 gap-1.5 px-2 text-xs">
                 <ListPlus className="h-3.5 w-3.5" />
@@ -281,7 +400,7 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex h-[calc(100%-80px)] flex-col p-3">
+      <CardContent className="flex h-[calc(100%-80px)] min-h-0 flex-col p-3">
         {visibleItems.length === 0 ? (
           <div className="flex h-full items-center justify-center gap-3 rounded-lg border-2 border-green-200 bg-green-50 p-4 text-green-800 shadow-sm dark:border-green-900 dark:bg-green-950/30 dark:text-green-300">
             <CheckCircle2 className="h-5 w-5" />
@@ -292,7 +411,52 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
           </div>
         ) : (
           <>
-          <div className="grid flex-1 grid-cols-1 gap-2 min-[700px]:grid-flow-col min-[700px]:grid-rows-2 min-[700px]:auto-cols-fr">
+          <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border-2 border-cyan-200/80 bg-background/70 px-2 py-1.5 text-xs shadow-sm dark:border-cyan-900/70">
+            <div className="flex min-w-0 items-center gap-2">
+              <Checkbox
+                checked={isPageSelected}
+                onCheckedChange={(checked) => handleTogglePageSelection(checked === true)}
+                aria-label="Select current batch"
+                className="h-3.5 w-3.5"
+              />
+              <span className="truncate font-medium">
+                Select batch
+              </span>
+              {selectedVisibleCount > 0 && (
+                <Badge variant="outline" className="border-cyan-300 px-1.5 py-0 text-[10px] text-cyan-700 dark:border-cyan-800 dark:text-cyan-300">
+                  {selectedVisibleCount} selected
+                </Badge>
+              )}
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 gap-1 px-2 text-xs"
+                disabled={selectedVisibleCount === 0}
+                onClick={() => handleBulkDismiss(Array.from(selectedPlayerIds))}
+              >
+                <X className="h-3 w-3" />
+                Dismiss Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                onClick={() => handleBulkDismiss(visibleItems.map((item) => item.player.id))}
+              >
+                Dismiss All
+              </Button>
+            </div>
+          </div>
+          <div
+            ref={gridRef}
+            className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto pr-1 transition-all duration-300 min-[760px]:grid-cols-2 min-[1100px]:grid-cols-3 min-[1100px]:overflow-hidden"
+            style={{
+              gridAutoRows: `minmax(${CARD_MIN_HEIGHT}px, 1fr)`,
+              gridTemplateRows: `repeat(${gridRowCount}, minmax(${CARD_MIN_HEIGHT}px, 1fr))`,
+            }}
+          >
             {pageItems.map((item) => {
               const status = statusStyles[item.status];
               const dueDate = formatDueDate(item.dueDate);
@@ -302,6 +466,7 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
               const wasContactedRecently =
                 hasLocalContact || (lastCallTime !== null && Number.isFinite(lastCallTime) && Date.now() - lastCallTime < FOLLOW_UP_TTL_MS);
               const isNew = isNewFollowUp(item.queueCreatedAt) && !hasBeenViewed && !wasContactedRecently;
+              const isSelected = selectedPlayerIds.has(item.player.id);
               const reasonClassName = reasonBadgeStyles[item.reasonBadge] || "border-primary/30 bg-primary/5 text-primary";
               const cardStateClassName = isNew
                 ? "border-yellow-400 bg-yellow-50/80 shadow-yellow-500/10 dark:border-yellow-700 dark:bg-yellow-950/25"
@@ -317,17 +482,31 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
                   onDragOver={(event) => handleDragOver(event, item.player.id)}
                   onDrop={(event) => handleDrop(event, item.player.id)}
                   onDragEnd={handleDragEnd}
-                  className={`flex min-h-0 flex-col justify-between rounded-md border-2 p-2 shadow-sm transition-colors hover:border-primary/45 ${
+                  className={`flex min-h-[150px] min-w-0 scroll-mt-2 flex-col justify-between rounded-md border-2 p-2 shadow-sm transition-all duration-200 ease-out hover:border-primary/45 ${
                     cardStateClassName
                   } ${
                     draggedPlayerId === item.player.id ? "opacity-60 ring-2 ring-primary/40" : ""
                   } ${
                     dragOverPlayerId === item.player.id ? "ring-2 ring-primary ring-offset-2" : ""
+                  } ${
+                    isSelected ? "ring-2 ring-cyan-500/70 ring-offset-1" : ""
                   }`}
                 >
                   <div className="space-y-1.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex min-w-0 items-start gap-1.5">
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div className="flex min-w-0 items-start gap-1">
+                        <span
+                          className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center"
+                          draggable={false}
+                          onDragStart={(event) => event.preventDefault()}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => handleToggleSelection(item.player.id, checked === true)}
+                            aria-label={`Select ${getFullName(item.player)}`}
+                            className="h-3.5 w-3.5"
+                          />
+                        </span>
                         <span
                           className="mt-0.5 flex h-6 w-5 shrink-0 cursor-grab items-center justify-center rounded border border-border/70 bg-background/80 text-muted-foreground active:cursor-grabbing"
                           title="Drag to reorder"
@@ -336,12 +515,13 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
                           <GripVertical className="h-3.5 w-3.5" />
                         </span>
                         <div className="min-w-0">
-                          <Link
-                            href={`/player/${item.player.id}`}
-                            className="block truncate text-sm font-bold leading-tight text-indigo-700 hover:text-indigo-800 hover:underline dark:text-indigo-300 dark:hover:text-indigo-200"
+                          <button
+                            type="button"
+                            onClick={() => onOpenPlayer?.(item.player.id)}
+                            className="block max-w-full truncate text-left text-sm font-bold leading-tight text-indigo-700 hover:text-indigo-800 hover:underline dark:text-indigo-300 dark:hover:text-indigo-200"
                           >
                             {getFullName(item.player)}
-                          </Link>
+                          </button>
                           <p className="truncate text-xs text-muted-foreground">@{item.player.username}</p>
                         </div>
                       </div>
@@ -388,7 +568,7 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
                     <p className="line-clamp-1 text-xs font-medium">
                       {wasContactedRecently ? "Call logged recently" : item.manualFollowUpNote || item.primaryReason}
                     </p>
-                    <div className="grid gap-1 text-[11px] text-muted-foreground min-[700px]:grid-cols-2">
+                    <div className="grid gap-1 text-[11px] text-muted-foreground min-[520px]:grid-cols-1 min-[1100px]:grid-cols-2">
                       <span className="inline-flex items-center gap-1 rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
                         <Clock className="h-3 w-3" />
                         {item.lastContactLabel}
@@ -402,11 +582,11 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
                     </div>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between gap-2 border-t-2 border-border/50 pt-1.5">
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5 border-t-2 border-border/50 pt-1.5">
                     <span className="line-clamp-1 text-[11px] font-semibold">
                       {wasContactedRecently ? "Call logged recently" : hasBeenViewed ? "You opened this" : item.nextAction}
                     </span>
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className="ml-auto flex shrink-0 items-center gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -416,11 +596,14 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
                         <X className="h-3 w-3" />
                         Dismiss
                       </Button>
-                      <Button asChild size="sm" variant={hasBeenViewed ? "secondary" : "outline"} className="h-6 gap-1 px-2 text-xs">
-                        <Link href={`/player/${item.player.id}`}>
-                          Open
-                          <ArrowRight className="h-3 w-3" />
-                        </Link>
+                      <Button
+                        size="sm"
+                        variant={hasBeenViewed ? "secondary" : "outline"}
+                        className="h-6 gap-1 px-2 text-xs"
+                        onClick={() => onOpenPlayer?.(item.player.id)}
+                      >
+                        Open
+                        <ArrowRight className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
@@ -428,8 +611,8 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
               );
             })}
           </div>
-          <div className="mt-2 flex items-center justify-between border-t pt-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
+          <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
+            <span className="inline-flex min-w-0 items-center gap-1">
               <Eye className="h-3.5 w-3.5" />
               Batch {safePage} / {totalPages}
               {remainingItems > 0 && (
@@ -438,12 +621,12 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
                 </Badge>
               )}
             </span>
-            <div className="flex items-center gap-1">
+            <div className="ml-auto flex shrink-0 items-center gap-1">
               <Button
                 variant="outline"
                 size="icon"
                 className="h-7 w-7"
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                onClick={() => updateCurrentPage((page) => page - 1)}
                 disabled={safePage <= 1}
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
@@ -452,7 +635,7 @@ export function FollowUpQueue({ items, onAddFollowUp }: FollowUpQueueProps) {
                 variant="outline"
                 size="icon"
                 className={`h-7 w-7 ${remainingItems > 0 ? "border-primary text-primary" : ""}`}
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                onClick={() => updateCurrentPage((page) => page + 1)}
                 disabled={safePage >= totalPages}
               >
                 <ArrowRight className="h-3.5 w-3.5" />

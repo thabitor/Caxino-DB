@@ -85,7 +85,7 @@ export function TaskList({ tasks, onEdit, onDelete, onComplete, onCompleteCall }
                     )}
                     {isCallTask && task.call_topic && (
                       <p className="text-xs text-muted-foreground">
-                        <span className="font-semibold">Topic:</span> {task.call_topic}
+                        <span className="font-semibold">Reason:</span> {task.call_topic}
                       </p>
                     )}
                   </div>

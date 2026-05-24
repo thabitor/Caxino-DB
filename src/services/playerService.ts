@@ -6,24 +6,24 @@ import * as z from "zod";
 export type Player = Database["public"]["Tables"]["players"]["Row"];
 export type PlayerInsert = Database["public"]["Tables"]["players"]["Insert"];
 export type PlayerUpdate = Database["public"]["Tables"]["players"]["Update"];
-export type PlayerWithTasks = Player & { 
+export type PlayerWithTasks = Player & {
   tasks: { count: number; call_count: number }[];
   earliest_task_due_date?: string | null;
 };
 
-export type VipLevel = 3 | 4 | 5;
+export type VipLevel = 1 | 2 | 3 | 4 | 5;
 
 export const playerSchema = z.object({
   user_id: z.string().min(1, "User ID is required"),
   username: z.string().min(3, "Username must be at least 3 characters"),
-  firstname: z.string().min(1, "First name is required"),
-  lastname: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+  firstname: z.string().optional(),
+  lastname: z.string().optional(),
+  email: z.string().email("Invalid email address").or(z.literal("")).optional(),
   phone: z.string().optional(),
   dob: z.date().optional(),
   gender: z.enum(["male", "female", "other"]).optional(),
   casino: z.string().optional(),
-  vip_level: z.coerce.number().min(3).max(5) as z.ZodType<VipLevel>,
+  vip_level: z.coerce.number().min(1).max(5) as z.ZodType<VipLevel>,
   last_email_sent: z.date().optional(),
   preferences: z.string().optional().refine((val) => {
     if (!val || val.trim() === "") return true;
@@ -40,6 +40,8 @@ export const playerSchema = z.object({
 export type PlayerFormData = z.infer<typeof playerSchema>;
 
 export const vipConfig: Record<VipLevel, { name: string; color: string; bgColor: string }> = {
+  1: { name: "Bronze", color: "text-orange-700 dark:text-orange-300", bgColor: "bg-orange-100 dark:bg-orange-900/30" },
+  2: { name: "Silver", color: "text-slate-700 dark:text-slate-300", bgColor: "bg-slate-100 dark:bg-slate-800/60" },
   3: { name: "Gold", color: "text-yellow-700 dark:text-yellow-300", bgColor: "bg-yellow-100 dark:bg-yellow-900/30" },
   4: { name: "Platinum", color: "text-cyan-700 dark:text-cyan-300", bgColor: "bg-cyan-100 dark:bg-cyan-900/30" },
   5: { name: "Diamond", color: "text-indigo-700 dark:text-indigo-300", bgColor: "bg-indigo-100 dark:bg-indigo-900/30" },
@@ -48,6 +50,33 @@ export const vipConfig: Record<VipLevel, { name: string; color: string; bgColor:
 export const getFullName = (player: { firstname: string | null; lastname: string | null }): string => {
   return `${player.firstname || ""} ${player.lastname || ""}`.trim() || "Unknown";
 };
+
+function isPresent(value: unknown): boolean {
+  return value !== null && value !== undefined && !(typeof value === "string" && value.trim() === "");
+}
+
+function cleanIncomingPlayer(playerData: Partial<PlayerInsert>): Partial<PlayerInsert> {
+  return Object.fromEntries(
+    Object.entries(playerData).filter(([, value]) => isPresent(value))
+  ) as Partial<PlayerInsert>;
+}
+
+function getImportErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybeError = error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown };
+    const parts = [maybeError.message, maybeError.details, maybeError.hint, maybeError.code]
+      .filter((part): part is string => typeof part === "string" && part.trim().length > 0);
+
+    if (parts.length > 0) return parts.join(" ");
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Unknown error";
+  }
+}
 
 export const playerService = {
   async getPlayers(): Promise<PlayerWithTasks[]> {
@@ -71,19 +100,11 @@ export const playerService = {
 
     const playersWithCounts = (data || []).map((player: any) => {
       const tasks = player.tasks || [];
-      
-      // Filter only active tasks (not completed or cancelled)
-      const activeTasks = tasks.filter((task: any) => 
+      const activeTasks = tasks.filter((task: any) =>
         task.status !== "completed" && task.status !== "cancelled"
       );
-      
-      // Count normal tasks (is_call is false or null)
       const taskCount = activeTasks.filter((task: any) => !task.is_call).length;
-      
-      // Count call tasks (is_call is true)
       const callCount = activeTasks.filter((task: any) => task.is_call === true).length;
-
-      // Find earliest due date among active tasks
       const tasksWithDates = activeTasks.filter((task: any) => task.due_date);
       const earliestDueDate = tasksWithDates.length > 0
         ? tasksWithDates.reduce((earliest: any, task: any) => {
@@ -133,12 +154,6 @@ export const playerService = {
   },
 
   async updatePlayer(id: string, playerData: PlayerUpdate): Promise<Player> {
-    console.log("=== PLAYER SERVICE UPDATE ===");
-    console.log("Player ID:", id);
-    console.log("Update data being sent to Supabase:", JSON.stringify(playerData, null, 2));
-    console.log("preferred_time_from in update:", playerData.preferred_time_from, "Type:", typeof playerData.preferred_time_from);
-    console.log("preferred_time_to in update:", playerData.preferred_time_to, "Type:", typeof playerData.preferred_time_to);
-    
     const { data, error } = await supabase
       .from("players")
       .update(playerData)
@@ -150,12 +165,7 @@ export const playerService = {
       console.error(`Error updating player ${id}:`, error);
       throw error;
     }
-    
-    console.log("=== PLAYER SERVICE UPDATE RESPONSE ===");
-    console.log("Returned player data:", JSON.stringify(data, null, 2));
-    console.log("preferred_time_from in response:", data.preferred_time_from, "Type:", typeof data.preferred_time_from);
-    console.log("preferred_time_to in response:", data.preferred_time_to, "Type:", typeof data.preferred_time_to);
-    
+
     return data;
   },
 
@@ -197,8 +207,7 @@ export const playerService = {
   },
 
   async getVipLevelDistribution(): Promise<Record<VipLevel, number>> {
-    const distribution: Record<VipLevel, number> = { 3: 0, 4: 0, 5: 0 };
-    
+    const distribution: Record<VipLevel, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     const { data, error } = await supabase
       .from("players")
       .select("vip_level");
@@ -210,7 +219,7 @@ export const playerService = {
 
     data?.forEach((player) => {
       const level = player.vip_level as VipLevel;
-      if (level >= 3 && level <= 5) {
+      if (level >= 1 && level <= 5) {
         distribution[level]++;
       }
     });
@@ -236,44 +245,64 @@ export const playerService = {
 export async function bulkCreatePlayers(
   players: Partial<PlayerInsert>[]
 ): Promise<{ success: number; failed: number; errors: string[] }> {
-  console.log("=== BULK CREATE PLAYERS START ===");
-  console.log("Total players to process:", players.length);
-  
   const results = {
     success: 0,
     failed: 0,
     errors: [] as string[],
   };
 
+  const { data: existingPlayers, error: existingError } = await supabase
+    .from("players")
+    .select("*");
+
+  if (existingError) {
+    console.error("Error fetching existing players before merge:", existingError);
+    throw existingError;
+  }
+
+  const byUserId = new Map((existingPlayers || []).map((player) => [player.user_id, player]));
+  const byUsername = new Map((existingPlayers || []).map((player) => [player.username.toLowerCase(), player]));
+
   for (let i = 0; i < players.length; i++) {
     try {
-      const playerData = players[i];
-      console.log(`\n=== Processing player ${i + 1}/${players.length} ===`);
-      console.log("Player data:", JSON.stringify(playerData, null, 2));
-      
-      // Check if row has ANY data (not completely empty)
-      const hasAnyData = Object.values(playerData).some(value => 
-        value !== null && value !== undefined && value !== ""
-      );
-      
-      if (!hasAnyData) {
-        console.log(`Skipping row ${i + 1}: completely empty`);
+      const playerData = cleanIncomingPlayer(players[i]);
+
+      if (!Object.values(playerData).some(isPresent)) {
         continue;
       }
 
-      console.log(`Attempting to create player ${i + 1}...`);
-      await playerService.createPlayer(playerData as PlayerInsert);
+      const userIdMatch = playerData.user_id ? byUserId.get(playerData.user_id) : undefined;
+      const usernameMatch = playerData.username ? byUsername.get(playerData.username.toLowerCase()) : undefined;
+
+      if (userIdMatch && usernameMatch && userIdMatch.id !== usernameMatch.id) {
+        throw new Error(`User ID matches @${userIdMatch.username}, but username matches user ID ${usernameMatch.user_id}. Resolve this identity conflict before import.`);
+      }
+
+      const existingPlayer = userIdMatch || usernameMatch;
+
+      if (existingPlayer) {
+        const updates = { ...playerData } as PlayerUpdate;
+        delete updates.id;
+        const updatedPlayer = await playerService.updatePlayer(existingPlayer.id, updates);
+        byUserId.set(updatedPlayer.user_id, updatedPlayer);
+        byUsername.set(updatedPlayer.username.toLowerCase(), updatedPlayer);
+      } else {
+        if (!playerData.user_id || !playerData.username) {
+          throw new Error("New players require both user_id and username.");
+        }
+
+        const createdPlayer = await playerService.createPlayer(playerData as PlayerInsert);
+        byUserId.set(createdPlayer.user_id, createdPlayer);
+        byUsername.set(createdPlayer.username.toLowerCase(), createdPlayer);
+      }
+
       results.success++;
-      console.log(`✓ Successfully created player ${i + 1}`);
     } catch (error) {
       results.failed++;
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      console.error(`✗ Failed to create player ${i + 1}:`, errorMessage);
+      const errorMessage = getImportErrorMessage(error);
       results.errors.push(`Row ${i + 1}: ${errorMessage}`);
     }
   }
 
-  console.log("\n=== BULK CREATE PLAYERS COMPLETE ===");
-  console.log("Results:", results);
   return results;
 }

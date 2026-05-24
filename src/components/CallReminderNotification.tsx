@@ -138,7 +138,7 @@ export function CallReminderNotification() {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="w-4 h-4" />
-                <span className="font-medium">Call Topic:</span>
+                <span className="font-medium">Call Reason:</span>
               </div>
               <div className="p-3 rounded-lg bg-white/50 dark:bg-black/20 border-2 border-blue-200 dark:border-blue-800">
                 <p className="text-sm">{activeReminder.task.call_topic}</p>

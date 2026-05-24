@@ -15,6 +15,18 @@ interface DismissedBirthdays {
 
 const STORAGE_KEY = "dismissed_birthday_reminders";
 
+function getTimingBadgeClass(daysUntil: number) {
+  if (daysUntil === 0) {
+    return "birthday-timing-badge birthday-timing-today";
+  }
+
+  if (daysUntil === 1) {
+    return "birthday-timing-badge birthday-timing-tomorrow";
+  }
+
+  return "birthday-timing-badge birthday-timing-week";
+}
+
 export function BirthdayReminders() {
   const [birthdayPlayers, setBirthdayPlayers] = useState<UpcomingBirthday[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,7 +135,7 @@ export function BirthdayReminders() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge className={birthday.daysUntil === 0 ? "border-0 bg-pink-600 text-white" : "border-0 bg-purple-600 text-white"}>
+                      <Badge className={getTimingBadgeClass(birthday.daysUntil)}>
                         {getBirthdayTimingLabel(birthday.daysUntil)}
                       </Badge>
                       <Badge variant="outline" className="border-2">

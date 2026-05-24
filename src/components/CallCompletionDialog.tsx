@@ -1,10 +1,11 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Phone, Clock, FileText } from "lucide-react";
 
 interface CallCompletionDialogProps {
@@ -15,6 +16,13 @@ interface CallCompletionDialogProps {
   phoneNumber?: string | null;
   title?: string;
   confirmLabel?: string;
+}
+
+const CALL_REASONS = ["Reward", "Payment", "Tech issue"] as const;
+
+function parseCallReasons(value?: string | null) {
+  if (!value) return [];
+  return CALL_REASONS.filter((reason) => value.split(",").map((item) => item.trim()).includes(reason));
 }
 
 export function CallCompletionDialog({ 
@@ -28,22 +36,40 @@ export function CallCompletionDialog({
 }: CallCompletionDialogProps) {
   const [notes, setNotes] = useState("");
   const [duration, setDuration] = useState("");
-  const [topic, setTopic] = useState("");
+  const [reasons, setReasons] = useState<string[]>(parseCallReasons(callTopic));
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setReasons(parseCallReasons(callTopic));
+  }, [callTopic, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (reasons.length === 0) return;
+
     const durationMinutes = duration ? parseInt(duration, 10) : undefined;
-    onComplete(notes || undefined, durationMinutes, (topic || callTopic || "").trim() || undefined);
+    onComplete(notes || undefined, durationMinutes, reasons.join(", "));
     setNotes("");
     setDuration("");
-    setTopic("");
+    setReasons([]);
   };
 
   const handleClose = () => {
     setNotes("");
     setDuration("");
-    setTopic("");
+    setReasons([]);
     onClose();
+  };
+
+  const handleReasonToggle = (callReason: string, checked: boolean) => {
+    setReasons((currentReasons) => {
+      if (checked) {
+        return currentReasons.includes(callReason) ? currentReasons : [...currentReasons, callReason];
+      }
+
+      return currentReasons.filter((reason) => reason !== callReason);
+    });
   };
 
   return (
@@ -64,19 +90,24 @@ export function CallCompletionDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="call-topic" className="flex items-center gap-2">
+            <Label htmlFor="call-reason" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Call Topic
+              Call Reason
             </Label>
-            <Input
-              id="call-topic"
-              placeholder="e.g., Bonus follow-up, birthday offer, account check"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
-            {callTopic && (
+            <div id="call-reason" className="grid gap-2 rounded-md border-2 border-blue-200 bg-blue-50/40 p-2 dark:border-blue-900 dark:bg-blue-950/20">
+              {CALL_REASONS.map((callReason) => (
+                <label key={callReason} className="flex cursor-pointer items-center gap-2 rounded border border-blue-100 bg-background/70 px-2 py-1.5 text-sm dark:border-blue-900">
+                  <Checkbox
+                    checked={reasons.includes(callReason)}
+                    onCheckedChange={(checked) => handleReasonToggle(callReason, checked === true)}
+                  />
+                  <span className="font-medium">{callReason}</span>
+                </label>
+              ))}
+            </div>
+            {callTopic && parseCallReasons(callTopic).length === 0 && (
               <p className="text-xs text-muted-foreground">
-                Scheduled topic: {callTopic}
+                Previous scheduled reason: {callTopic}
               </p>
             )}
           </div>
@@ -113,7 +144,7 @@ export function CallCompletionDialog({
             <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 gap-2">
+            <Button type="submit" disabled={reasons.length === 0} className="bg-blue-600 hover:bg-blue-700 gap-2">
               <Phone className="w-4 h-4" />
               {confirmLabel}
             </Button>

@@ -1,12 +1,11 @@
 import { useState, useMemo } from "react";
-import Link from "next/link";
 import { PlayerWithTasks, VipLevel, getFullName, vipConfig } from "@/services/playerService";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, ArrowUpDown, Trash2, Edit, Plus, Bell, ListPlus, Phone, Users, CalendarCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpDown, Trash2, Edit, Plus, Bell, ListPlus, Phone, Users, CalendarCheck, X, Star } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { TaskCountBadge } from "./TaskCountBadge";
 import { CopyButton } from "./CopyButton";
@@ -22,11 +21,27 @@ interface PlayersTableProps {
   onDelete: (id: string) => void;
   onAddTask?: (playerId: string) => void;
   onAddFollowUp?: (player: PlayerWithTasks) => void;
+  onOpenPlayer?: (playerId: string) => void;
   followUpViewedAtByPlayer?: Record<string, string>;
   lastCallAtByPlayer?: Record<string, string>;
+  monthlyCallCountByPlayer?: Record<string, number>;
 }
 
 const compactCell = "px-2 py-1.5 align-middle";
+
+function getClosureKind(player: PlayerWithTasks) {
+  return player.account_closure_type === "break" ? "temporary" : "permanent";
+}
+
+function getClosureLabel(player: PlayerWithTasks) {
+  return getClosureKind(player) === "temporary" ? "Temporary break" : "Permanent";
+}
+
+function getClosureMarkerClass(player: PlayerWithTasks) {
+  return getClosureKind(player) === "temporary"
+    ? "border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+    : "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300";
+}
 
 const SortableHeader = ({ children, field, sortField, sortDirection, onSort }: { children: React.ReactNode; field: SortField; sortField: SortField; sortDirection: SortDirection; onSort: (field: SortField) => void; }) => {
   const isSorted = sortField === field;
@@ -40,15 +55,16 @@ const SortableHeader = ({ children, field, sortField, sortDirection, onSort }: {
   );
 };
 
-export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollowUp, followUpViewedAtByPlayer = {}, lastCallAtByPlayer = {} }: PlayersTableProps) {
+export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollowUp, onOpenPlayer, followUpViewedAtByPlayer = {}, lastCallAtByPlayer = {}, monthlyCallCountByPlayer = {} }: PlayersTableProps) {
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [filter, setFilter] = useState("");
   const [vipFilter, setVipFilter] = useState<string>("all");
   const [casinoFilter, setCasinoFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [taskFilter, setTaskFilter] = useState<TaskFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(25);
 
   const handleSort = (field: SortField) => {
     setSortDirection(sortField === field && sortDirection === "asc" ? "desc" : "asc");
@@ -68,6 +84,11 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
 
   const handleCasinoFilterChange = (value: string) => {
     setCasinoFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
     setCurrentPage(1);
   };
 
@@ -92,11 +113,43 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
     return Array.from(casinos).sort();
   }, [players]);
 
+  const getAccountStatus = (player: PlayerWithTasks) => (player.account_status || "open").trim().toLowerCase();
+  const isClosedAccount = (player: PlayerWithTasks) => getAccountStatus(player) === "closed";
+
+  const uniqueStatuses = useMemo(() => {
+    const statuses = new Set<string>();
+    players.forEach((player) => statuses.add(getAccountStatus(player)));
+    return Array.from(statuses).sort();
+  }, [players]);
+
+  const getStatusBadgeClass = (status: string, player?: PlayerWithTasks) => {
+    switch (status.toLowerCase()) {
+      case "closed":
+        if (player?.account_closure_type === "break") {
+          return "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300";
+        }
+        return "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300";
+      case "suspended":
+        return "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300";
+      default:
+        return "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300";
+    }
+  };
+
+  const formatStatus = (status: string) => (
+    status
+      .replace("_", " ")
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+  );
+
   const filteredAndSortedPlayers = useMemo(() => {
     const filtered = players.filter((player) => {
       const lowerCaseFilter = filter.toLowerCase();
       const vipLevelMatch = vipFilter === "all" || String(player.vip_level) === vipFilter;
       const casinoMatch = casinoFilter === "all" || player.casino === casinoFilter;
+      const statusMatch = statusFilter === "all" || getAccountStatus(player) === statusFilter.toLowerCase();
       
       const taskCount = player.tasks[0]?.count ?? 0;
       const callCount = player.tasks[0]?.call_count ?? 0;
@@ -116,7 +169,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
         taskFilterMatch = hasBirthday;
       }
 
-      return taskFilterMatch && vipLevelMatch && casinoMatch && (
+      return taskFilterMatch && vipLevelMatch && casinoMatch && statusMatch && (
         player.user_id.toLowerCase().includes(lowerCaseFilter) ||
         getFullName(player).toLowerCase().includes(lowerCaseFilter) ||
         player.username.toLowerCase().includes(lowerCaseFilter) ||
@@ -171,7 +224,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
       
       return 0;
     });
-  }, [players, filter, vipFilter, casinoFilter, taskFilter, sortField, sortDirection]);
+  }, [players, filter, vipFilter, casinoFilter, statusFilter, taskFilter, sortField, sortDirection]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedPlayers.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -184,11 +237,21 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
     const callCount = player.tasks[0]?.call_count ?? 0;
     const birthdayStatus = getBirthdayStatus(player.dob);
     const birthdayBadge = getBirthdayBadge(birthdayStatus);
-    const followUpViewedAt = followUpViewedAtByPlayer[player.id];
+    const followUpViewedAt = isClosedAccount(player) ? null : followUpViewedAtByPlayer[player.id];
     const lastCallAt = lastCallAtByPlayer[player.id];
+    const monthlyCallCount = monthlyCallCountByPlayer[player.id] || 0;
     
     return (
       <div className="flex items-center gap-1.5">
+        {getAccountStatus(player) === "closed" && (
+          <div
+            className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 ${getClosureMarkerClass(player)}`}
+            title={`${getClosureLabel(player)} closure${player.account_closure_reason ? `: ${player.account_closure_reason}` : ""}`}
+          >
+            <X className="h-3 w-3" />
+            <span className="text-[11px] font-semibold">{getClosureLabel(player)}</span>
+          </div>
+        )}
         {birthdayBadge && (
           <div className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] ${birthdayBadge.className}`}>
             <span className="text-[10px] leading-none">{birthdayBadge.emoji}</span>
@@ -216,6 +279,15 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
             <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">Called</span>
           </div>
         )}
+        {monthlyCallCount > 2 && (
+          <div
+            className="flex items-center gap-1 rounded-full border border-fuchsia-300 bg-fuchsia-100 px-1.5 py-0.5 dark:border-fuchsia-800 dark:bg-fuchsia-950/40"
+            title={`${monthlyCallCount} calls logged this month`}
+          >
+            <Star className="h-3 w-3 text-fuchsia-700 dark:text-fuchsia-300" />
+            <span className="text-[11px] font-semibold text-fuchsia-700 dark:text-fuchsia-300">Most contacted</span>
+          </div>
+        )}
         {followUpViewedAt && (
           <div
             className="flex items-center gap-1 rounded-full border border-green-300 bg-green-100 px-1.5 py-0.5 dark:border-green-800 dark:bg-green-950/40"
@@ -233,9 +305,22 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
     const taskCount = player.tasks[0]?.count ?? 0;
     const callCount = player.tasks[0]?.call_count ?? 0;
     const followUpViewedAt = followUpViewedAtByPlayer[player.id];
+    const monthlyCallCount = monthlyCallCountByPlayer[player.id] || 0;
+
+    if (getAccountStatus(player) === "closed") {
+      if (getClosureKind(player) === "temporary") {
+        return "bg-blue-50/60 ring-1 ring-inset ring-blue-200 dark:bg-blue-950/20 dark:ring-blue-900 hover:bg-blue-100/70 dark:hover:bg-blue-950/30";
+      }
+
+      return "bg-red-50/60 ring-1 ring-inset ring-red-200 dark:bg-red-950/20 dark:ring-red-900 hover:bg-red-100/70 dark:hover:bg-red-950/30";
+    }
     
     if (followUpViewedAt) {
       return "bg-green-50/70 ring-1 ring-inset ring-green-200 dark:bg-green-950/20 dark:ring-green-900 hover:bg-green-100/70 dark:hover:bg-green-950/30";
+    }
+
+    if (monthlyCallCount > 2) {
+      return "bg-fuchsia-50/60 ring-1 ring-inset ring-fuchsia-200 dark:bg-fuchsia-950/20 dark:ring-fuchsia-900 hover:bg-fuchsia-100/70 dark:hover:bg-fuchsia-950/30";
     }
     
     if (taskCount > 0 && callCount > 0) {
@@ -251,8 +336,8 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
   };
 
   return (
-    <div className="w-full text-sm">
-      <div className="flex items-center gap-2 py-2 flex-wrap">
+    <div className="flex h-full min-h-0 w-full flex-col text-sm">
+      <div className="shrink-0 flex flex-wrap items-center gap-2 rounded-md border-2 border-border/70 bg-background/70 p-2 shadow-sm">
         <Input placeholder="Filter players..." value={filter} onChange={(e) => handleFilterChange(e.target.value)} className="h-8 max-w-[220px] text-xs" />
         <Select value={vipFilter} onValueChange={handleVipFilterChange}>
           <SelectTrigger className="h-8 w-[135px] text-xs"><SelectValue placeholder="Filter by VIP" /></SelectTrigger>
@@ -275,6 +360,16 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
             ) : (
               <SelectItem value="none" disabled>No casinos yet</SelectItem>
             )}
+          </SelectContent>
+        </Select>
+
+        <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+          <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="Filter by Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            {uniqueStatuses.map((status) => (
+              <SelectItem key={status} value={status}>{formatStatus(status)}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         
@@ -327,9 +422,9 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
           </Button>
         </div>
       </div>
-      <div className="overflow-hidden rounded-md border-2 border-border/70 shadow-sm">
+      <div className="mt-2 min-h-0 flex-1 overflow-auto rounded-md border-2 border-border/70 shadow-sm">
         <Table className="text-xs">
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
               <SortableHeader field="user_id" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>User ID</SortableHeader>
               <SortableHeader field="username" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Username</SortableHeader>
@@ -337,6 +432,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
               <SortableHeader field="email" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Email</SortableHeader>
               <SortableHeader field="phone" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Phone</SortableHeader>
               <SortableHeader field="casino" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Casino</SortableHeader>
+              <TableHead className="h-8 px-2 text-xs">Status</TableHead>
               <SortableHeader field="vip_level" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>VIP Level</SortableHeader>
               <SortableHeader field="task_count" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Tasks</SortableHeader>
               <TableHead className="h-8 px-2 text-xs">Reminders</TableHead>
@@ -346,7 +442,11 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
           <TableBody>
             {paginatedPlayers.length > 0 ? (
               paginatedPlayers.map((player) => (
-                <TableRow key={player.id} className={getRowHighlight(player)}>
+                <TableRow
+                  key={player.id}
+                  className={`${getRowHighlight(player)} cursor-pointer`}
+                  onClick={() => onOpenPlayer?.(player.id)}
+                >
                   <TableCell className={compactCell}>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs text-muted-foreground">{player.user_id}</span>
@@ -355,7 +455,16 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
                   </TableCell>
                   <TableCell className={`${compactCell} font-medium`}>
                     <div className="flex items-center gap-2">
-                      <Link href={`/player/${player.id}`} className="hover:underline text-blue-600 dark:text-blue-400">{player.username}</Link>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onOpenPlayer?.(player.id);
+                        }}
+                        className="text-left text-blue-600 hover:underline dark:text-blue-400"
+                      >
+                        {player.username}
+                      </button>
                       <CopyButton text={player.username} label="Username" />
                     </div>
                   </TableCell>
@@ -389,14 +498,19 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
                     )}
                   </TableCell>
                   <TableCell className={compactCell}>
-                    <Badge className={`${vipConfig[player.vip_level as VipLevel].bgColor} ${vipConfig[player.vip_level as VipLevel].color} px-1.5 py-0 text-[11px] hover:${vipConfig[player.vip_level as VipLevel].bgColor}`}>
-                      {player.vip_level} - {vipConfig[player.vip_level as VipLevel].name}
+                    <Badge variant="outline" className={`capitalize ${getStatusBadgeClass(getAccountStatus(player), player)}`}>
+                      {getAccountStatus(player) === "closed" ? getClosureLabel(player) : formatStatus(getAccountStatus(player))}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className={compactCell}>
+                    <Badge className={`${vipConfig[(player.vip_level || 1) as VipLevel].bgColor} ${vipConfig[(player.vip_level || 1) as VipLevel].color} px-1.5 py-0 text-[11px] hover:${vipConfig[(player.vip_level || 1) as VipLevel].bgColor}`}>
+                      {player.vip_level || 1} - {vipConfig[(player.vip_level || 1) as VipLevel].name}
                     </Badge>
                   </TableCell>
                   <TableCell className={compactCell}><TaskCountBadge count={player.tasks[0]?.count ?? 0} /></TableCell>
                   <TableCell className={compactCell}>{getTaskIndicators(player)}</TableCell>
                   <TableCell className={compactCell}>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
                       {onAddTask && (
                         <Button 
                           variant="ghost" 
@@ -408,7 +522,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
                           <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         </Button>
                       )}
-                      {onAddFollowUp && (
+                      {onAddFollowUp && !isClosedAccount(player) && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -426,12 +540,12 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
                 </TableRow>
               ))
             ) : (
-              <TableRow><TableCell colSpan={10} className="h-24 text-center">No players found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={11} className="h-24 text-center">No players found.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-x border-b px-3 py-2 text-xs text-muted-foreground">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-x border-b px-3 py-2 text-xs text-muted-foreground">
         <div>
           Showing <span className="font-semibold text-foreground">{filteredAndSortedPlayers.length === 0 ? 0 : pageStart + 1}</span>
           {"-"}
@@ -448,6 +562,8 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
               <SelectItem value="10">10</SelectItem>
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+              <SelectItem value="200">200</SelectItem>
             </SelectContent>
           </Select>
           <span className="min-w-16 text-center">

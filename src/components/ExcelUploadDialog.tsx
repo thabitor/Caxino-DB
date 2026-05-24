@@ -85,7 +85,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             vip_level: ["vip_level", "viplevel", "vip"],
             total_deposits: ["total_deposits", "totaldeposits", "deposits"],
             last_email_sent: ["last_email_sent", "lastemailsent"],
-            account_status: ["account_status", "accountstatus"],
+            account_status: ["account_status", "accountstatus", "status"],
             notes: ["notes"],
             preferred_time_from: ["preferred_time_from", "preferredtimefrom"],
             preferred_time_to: ["preferred_time_to", "preferredtimeto"],
@@ -141,10 +141,23 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             if (email !== null) player.email = String(email).trim();
             if (dob !== null) player.dob = String(dob).trim();
             if (gender !== null) player.gender = String(gender).trim();
-            if (vip_level !== null) player.vip_level = Number(vip_level) || 3;
+            if (vip_level !== null) {
+              const parsedVipLevel = Number(vip_level);
+              if (Number.isFinite(parsedVipLevel)) {
+                player.vip_level = Math.min(5, Math.max(1, parsedVipLevel));
+              }
+            }
             if (total_deposits !== null) player.total_deposits = Number(total_deposits) || 0;
             if (last_email_sent !== null) player.last_email_sent = String(last_email_sent).trim();
-            if (account_status !== null) player.account_status = String(account_status).trim();
+            if (account_status !== null) {
+              const normalizedStatus = String(account_status).trim().toLowerCase();
+              player.account_status = normalizedStatus === "closed" ? "closed" : "open";
+              if (normalizedStatus === "closed") {
+                player.account_closure_reason = "Normal";
+                player.account_closure_type = "permanent";
+                player.account_closed_at = new Date().toISOString();
+              }
+            }
             if (notes !== null) player.notes = String(notes).trim();
             if (preferred_time_from !== null) player.preferred_time_from = Number(preferred_time_from);
             if (preferred_time_to !== null) player.preferred_time_to = Number(preferred_time_to);
@@ -211,7 +224,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
       if (result.success > 0) {
         toast({
           title: "Upload complete",
-          description: `Successfully uploaded ${result.success} player(s)`,
+          description: `Successfully merged ${result.success} player(s)`,
         });
         
         if (onUploadComplete) {
@@ -257,7 +270,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
         <DialogHeader>
           <DialogTitle>Import Players from Excel</DialogTitle>
           <DialogDescription>
-            Upload an Excel file (.xlsx or .xls) containing player data. All fields are optional.
+            Upload an Excel file (.xlsx or .xls). Existing players are merged by user ID or username, and blank sheet values will not overwrite saved data.
           </DialogDescription>
         </DialogHeader>
 
@@ -301,7 +314,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
                 <Alert>
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                   <AlertDescription>
-                    Successfully uploaded {uploadResult.success} player(s)
+                    Successfully merged {uploadResult.success} player(s)
                   </AlertDescription>
                 </Alert>
               )}
@@ -333,7 +346,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
               <p>• <strong>Contact:</strong> preferred_time_from, preferred_time_to, notes</p>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-600 mt-2">
-              Column names are flexible and case-insensitive (e.g., "user_id" = "UserID" = "User ID")
+              Column names are flexible and case-insensitive. Extra sheet columns are ignored.
             </p>
           </div>
         </div>

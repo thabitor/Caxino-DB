@@ -28,6 +28,8 @@ export interface FollowUpItem {
 }
 
 const cadenceDaysByVip: Record<VipLevel, number> = {
+  1: 60,
+  2: 45,
   3: 30,
   4: 14,
   5: 7,
@@ -121,6 +123,7 @@ export function buildFollowUpQueue(
   });
 
   const queueItems = players
+    .filter((player) => (player.account_status || "open").trim().toLowerCase() !== "closed")
     .map((player) => {
       const playerTasks = tasksByPlayer.get(player.id) || [];
       const playerCallLogs = callsByPlayer.get(player.id) || [];

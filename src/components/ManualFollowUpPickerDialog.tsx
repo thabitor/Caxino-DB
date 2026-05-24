@@ -19,9 +19,13 @@ export function ManualFollowUpPickerDialog({ isOpen, onClose, onSubmit, players 
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const eligiblePlayers = useMemo(
+    () => players.filter((player) => (player.account_status || "open").trim().toLowerCase() !== "closed"),
+    [players]
+  );
   const selectedPlayer = useMemo(
-    () => players.find((player) => player.id === selectedPlayerId) || null,
-    [players, selectedPlayerId]
+    () => eligiblePlayers.find((player) => player.id === selectedPlayerId) || null,
+    [eligiblePlayers, selectedPlayerId]
   );
 
   const reset = () => {
@@ -65,11 +69,16 @@ export function ManualFollowUpPickerDialog({ isOpen, onClose, onSubmit, players 
                 <SelectValue placeholder="Choose a player" />
               </SelectTrigger>
               <SelectContent className="max-h-72">
-                {players.map((player) => (
+                {eligiblePlayers.map((player) => (
                   <SelectItem key={player.id} value={player.id}>
                     {getFullName(player)} - @{player.username}
                   </SelectItem>
                 ))}
+                {eligiblePlayers.length === 0 && (
+                  <SelectItem value="none" disabled>
+                    No open players available
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

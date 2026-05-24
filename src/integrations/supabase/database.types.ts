@@ -139,6 +139,11 @@ export type Database = {
       }
       players: {
         Row: {
+          account_closed_at: string | null
+          account_closure_reason: string | null
+          account_closure_type: string | null
+          account_closure_until: string | null
+          account_reopened_at: string | null
           account_status: string | null
           casino: string | null
           created_at: string | null
@@ -161,6 +166,11 @@ export type Database = {
           vip_level: number | null
         }
         Insert: {
+          account_closed_at?: string | null
+          account_closure_reason?: string | null
+          account_closure_type?: string | null
+          account_closure_until?: string | null
+          account_reopened_at?: string | null
           account_status?: string | null
           casino?: string | null
           created_at?: string | null
@@ -183,6 +193,11 @@ export type Database = {
           vip_level?: number | null
         }
         Update: {
+          account_closed_at?: string | null
+          account_closure_reason?: string | null
+          account_closure_type?: string | null
+          account_closure_until?: string | null
+          account_reopened_at?: string | null
           account_status?: string | null
           casino?: string | null
           created_at?: string | null
@@ -205,6 +220,53 @@ export type Database = {
           vip_level?: number | null
         }
         Relationships: []
+      }
+      player_touchpoints: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          manager_id: string | null
+          occurred_at: string
+          player_id: string
+          source_id: string | null
+          source_table: string | null
+          title: string
+          touchpoint_type: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          manager_id?: string | null
+          occurred_at?: string
+          player_id: string
+          source_id?: string | null
+          source_table?: string | null
+          title: string
+          touchpoint_type: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          manager_id?: string | null
+          occurred_at?: string
+          player_id?: string
+          source_id?: string | null
+          source_table?: string | null
+          title?: string
+          touchpoint_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_touchpoints_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {

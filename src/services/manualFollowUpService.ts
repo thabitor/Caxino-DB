@@ -21,6 +21,21 @@ export const manualFollowUpService = {
     return data || [];
   },
 
+  async getManualFollowUpsByPlayerId(playerId: string): Promise<ManualFollowUp[]> {
+    const { data, error } = await supabase
+      .from("manual_follow_ups")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(`Error fetching manual follow-ups for player ${playerId}:`, error);
+      throw error;
+    }
+
+    return data || [];
+  },
+
   async createManualFollowUp(followUp: ManualFollowUpInsert): Promise<ManualFollowUp> {
     const { data, error } = await supabase
       .from("manual_follow_ups")
@@ -53,5 +68,21 @@ export const manualFollowUpService = {
     }
 
     return data;
+  },
+
+  async resolveActiveManualFollowUpsForPlayer(playerId: string): Promise<void> {
+    const { error } = await supabase
+      .from("manual_follow_ups")
+      .update({
+        status: "resolved",
+        resolved_at: new Date().toISOString(),
+      })
+      .eq("player_id", playerId)
+      .eq("status", "active");
+
+    if (error) {
+      console.error(`Error resolving active manual follow-ups for player ${playerId}:`, error);
+      throw error;
+    }
   },
 };

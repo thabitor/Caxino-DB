@@ -6,16 +6,31 @@ export const FOLLOW_UP_HIGHLIGHT_KEY = "followUpHighlightedPlayers";
 export const FOLLOW_UP_DISMISSED_KEY = "dismissedFollowUpPlayers";
 export const FOLLOW_UP_CONTACTED_KEY = "contactedFollowUpPlayers";
 export const FOLLOW_UP_RECENT_ACTIVITY_KEY = "recentFollowUpActivity";
+export const FOLLOW_UP_RECENT_ACTIVITY_CLEARED_AT_KEY = "recentFollowUpActivityClearedAt";
 export const FOLLOW_UP_TTL_MS = 60 * 60 * 1000;
 export const FOLLOW_UP_HIGHLIGHT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const FOLLOW_UP_RECENT_ACTIVITY_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
 export type FollowUpRecentActivityType = "opened" | "dismissed";
+export type ActionHistoryActivityType =
+  | "follow_up_opened"
+  | "follow_up_dismissed"
+  | "call_logged"
+  | "account_closed"
+  | "account_reopened"
+  | "player_added";
 
 export interface FollowUpRecentActivity {
   playerId: string;
   type: FollowUpRecentActivityType;
   timestamp: string;
+}
+
+export interface ActionHistoryActivity {
+  playerId: string;
+  type: ActionHistoryActivityType;
+  timestamp: string;
+  detail?: string | null;
 }
 
 export function notifyDashboardRefresh() {
@@ -118,6 +133,21 @@ export function getContactedFollowUps() {
 
 export function getRecentFollowUpActivity() {
   return getValidRecentActivity();
+}
+
+export function getRecentFollowUpActivityClearedAt() {
+  if (typeof window === "undefined") return null;
+
+  return localStorage.getItem(FOLLOW_UP_RECENT_ACTIVITY_CLEARED_AT_KEY);
+}
+
+export function clearRecentFollowUpActivity() {
+  if (typeof window === "undefined") return;
+
+  const timestamp = new Date().toISOString();
+  localStorage.setItem(FOLLOW_UP_RECENT_ACTIVITY_KEY, JSON.stringify([]));
+  localStorage.setItem(FOLLOW_UP_RECENT_ACTIVITY_CLEARED_AT_KEY, timestamp);
+  window.dispatchEvent(new CustomEvent(FOLLOW_UP_VIEWED_EVENT, { detail: { clearedAt: timestamp } }));
 }
 
 export function restoreDismissedFollowUp(playerId: string) {

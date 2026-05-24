@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { CalendarIcon, X, Phone } from "lucide-react";
 import { format } from "date-fns";
@@ -23,6 +24,22 @@ interface TaskFormDialogProps {
   task?: Task | null;
   playerId?: string;
   playerPhone?: string;
+}
+
+const CALL_REASONS = ["Reward", "Payment", "Tech issue"] as const;
+
+function parseCallReasons(value?: string | null) {
+  if (!value) return [];
+  return CALL_REASONS.filter((reason) => value.split(",").map((item) => item.trim()).includes(reason));
+}
+
+function toggleCallReason(currentValue: string | undefined, callReason: typeof CALL_REASONS[number], checked: boolean) {
+  const currentReasons = parseCallReasons(currentValue);
+  const nextReasons = checked
+    ? currentReasons.includes(callReason) ? currentReasons : [...currentReasons, callReason]
+    : currentReasons.filter((reason) => reason !== callReason);
+
+  return nextReasons.join(", ");
 }
 
 const extendedTaskSchema = z.object({
@@ -63,7 +80,7 @@ const extendedTaskSchema = z.object({
     if (!data.call_topic || data.call_topic.trim() === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Call topic is required",
+        message: "Call reason is required",
         path: ["call_topic"],
       });
     }
@@ -141,8 +158,8 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
         missingFields.push("Phone Number");
       }
       if (!data.call_topic || data.call_topic.trim() === "") {
-        console.error("❌ Missing: Call Topic");
-        missingFields.push("Call Topic");
+        console.error("Missing: Call Reason");
+        missingFields.push("Call Reason");
       }
       if (!data.call_time || data.call_time.trim() === "") {
         console.error("❌ Missing: Call Time");
@@ -182,7 +199,7 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
       console.log("✅ Task due date set:", dueDate);
     }
 
-    // For call tasks, use call_topic as the title
+    // For call tasks, use the selected call reason as the title.
     const finalTitle = data.is_call 
       ? (data.call_topic || "Scheduled Call") 
       : (data.title || "Untitled Task");
@@ -249,7 +266,7 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
               Object.entries(errors).forEach(([key, error]) => {
                 if (error && typeof error === "object" && "message" in error) {
                   const fieldName = key === "phone_number" ? "Phone Number" : 
-                                   key === "call_topic" ? "Call Topic" : 
+                                   key === "call_topic" ? "Call Reason" : 
                                    key === "call_time" ? "Call Time" : 
                                    key === "due_date" ? "Call Date" : 
                                    key === "title" ? "Title" : key;
@@ -274,7 +291,7 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                   {Object.entries(form.formState.errors).map(([key, error]) => (
                     <li key={key} className="font-medium">
                       <strong>{key === "phone_number" ? "Phone Number" : 
-                               key === "call_topic" ? "Call Topic" : 
+                               key === "call_topic" ? "Call Reason" : 
                                key === "call_time" ? "Call Time" : 
                                key === "due_date" ? "Call Date" : 
                                key === "title" ? "Title" : key}:</strong>{" "}
@@ -343,16 +360,22 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                   name="call_topic"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-blue-700 dark:text-blue-300">Call Topic *</FormLabel>
+                      <FormLabel className="text-blue-700 dark:text-blue-300">Call Reason *</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="e.g., Account verification, Bonus discussion" 
-                          className="border-blue-300"
-                        />
+                        <div className="grid gap-2 rounded-md border-2 border-blue-200 bg-background/70 p-2 dark:border-blue-900">
+                          {CALL_REASONS.map((callReason) => (
+                            <label key={callReason} className="flex cursor-pointer items-center gap-2 rounded border border-blue-100 bg-blue-50/40 px-2 py-1.5 text-sm dark:border-blue-900 dark:bg-blue-950/20">
+                              <Checkbox
+                                checked={parseCallReasons(field.value).includes(callReason)}
+                                onCheckedChange={(checked) => field.onChange(toggleCallReason(field.value, callReason, checked === true))}
+                              />
+                              <span className="font-medium">{callReason}</span>
+                            </label>
+                          ))}
+                        </div>
                       </FormControl>
                       <FormDescription className="text-xs">
-                        Required - This will be used as the task title
+                        Required - Select one or more reasons. These will be used as the call task title
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
