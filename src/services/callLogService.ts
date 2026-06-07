@@ -6,6 +6,15 @@ export type CallLog = Database["public"]["Tables"]["call_logs"]["Row"];
 export type CallLogInsert = Database["public"]["Tables"]["call_logs"]["Insert"];
 export type CallLogUpdate = Database["public"]["Tables"]["call_logs"]["Update"];
 
+function normalizeCallTopic(value?: string | null) {
+  const topic = value?.trim();
+  if (!topic || topic.toLowerCase() === "no answer") {
+    return null;
+  }
+
+  return topic;
+}
+
 export const callLogService = {
   async getAllCallLogs(): Promise<CallLog[]> {
     const { data, error } = await supabase
@@ -23,6 +32,7 @@ export const callLogService = {
   async createCallLog(callData: CallLogInsert): Promise<CallLog> {
     const payload = {
       ...callData,
+      call_topic: normalizeCallTopic(callData.call_topic),
       completed_at: callData.completed_at || new Date().toISOString(),
     };
 
@@ -70,9 +80,16 @@ export const callLogService = {
   },
 
   async updateCallLog(id: string, updates: CallLogUpdate): Promise<CallLog> {
+    const payload = {
+      ...updates,
+      ...(Object.prototype.hasOwnProperty.call(updates, "call_topic")
+        ? { call_topic: normalizeCallTopic(updates.call_topic) }
+        : {}),
+    };
+
     const { data, error } = await supabase
       .from("call_logs")
-      .update(updates)
+      .update(payload)
       .eq("id", id)
       .select()
       .single();

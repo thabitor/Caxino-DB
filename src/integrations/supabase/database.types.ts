@@ -145,7 +145,10 @@ export type Database = {
           account_closure_until: string | null
           account_reopened_at: string | null
           account_status: string | null
+          bonus_abuser: boolean
+          bonus_abuser_marked_at: string | null
           casino: string | null
+          contact_email_only: boolean
           created_at: string | null
           dob: string | null
           email: string | null
@@ -160,6 +163,7 @@ export type Database = {
           preferred_time_from: number | null
           preferred_time_to: number | null
           total_deposits: number | null
+          telegram_member: boolean
           updated_at: string | null
           user_id: string
           username: string
@@ -172,7 +176,10 @@ export type Database = {
           account_closure_until?: string | null
           account_reopened_at?: string | null
           account_status?: string | null
+          bonus_abuser?: boolean
+          bonus_abuser_marked_at?: string | null
           casino?: string | null
+          contact_email_only?: boolean
           created_at?: string | null
           dob?: string | null
           email?: string | null
@@ -187,6 +194,7 @@ export type Database = {
           preferred_time_from?: number | null
           preferred_time_to?: number | null
           total_deposits?: number | null
+          telegram_member?: boolean
           updated_at?: string | null
           user_id: string
           username: string
@@ -199,7 +207,10 @@ export type Database = {
           account_closure_until?: string | null
           account_reopened_at?: string | null
           account_status?: string | null
+          bonus_abuser?: boolean
+          bonus_abuser_marked_at?: string | null
           casino?: string | null
+          contact_email_only?: boolean
           created_at?: string | null
           dob?: string | null
           email?: string | null
@@ -214,6 +225,7 @@ export type Database = {
           preferred_time_from?: number | null
           preferred_time_to?: number | null
           total_deposits?: number | null
+          telegram_member?: boolean
           updated_at?: string | null
           user_id?: string
           username?: string

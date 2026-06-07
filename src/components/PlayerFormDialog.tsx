@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
@@ -31,6 +32,8 @@ const getResetValues = (player: Player | null): PlayerFormData => {
       dob: undefined,
       gender: "other",
       casino: "",
+      contact_email_only: false,
+      telegram_member: false,
       vip_level: 3,
       last_email_sent: undefined,
       preferences: "{}",
@@ -59,6 +62,8 @@ const getResetValues = (player: Player | null): PlayerFormData => {
     dob: player.dob ? new Date(player.dob) : undefined,
     gender: player.gender as "male" | "female" | "other" | undefined,
     casino: player.casino ?? "",
+    contact_email_only: player.contact_email_only ?? false,
+    telegram_member: player.telegram_member ?? false,
     vip_level: player.vip_level as VipLevel,
     last_email_sent: player.last_email_sent ? new Date(player.last_email_sent) : undefined,
     preferences: preferencesStr,
@@ -154,26 +159,24 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   )}
                 />
                 <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl><Input type="email" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl><Input {...field} value={field.value || ""} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Gender</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || "other"}>
+                                <FormControl>
+                                    <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="male">Male</SelectItem>
+                                    <SelectItem value="female">Female</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )}
                 />
                 <FormField
                   control={form.control}
@@ -198,24 +201,26 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                   )}
                 />
                 <FormField
-                    control={form.control}
-                    name="gender"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Gender</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || "other"}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="male">Male</SelectItem>
-                                    <SelectItem value="female">Female</SelectItem>
-                                    <SelectItem value="other">Other</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )}
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl><Input type="email" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <FormField
                   control={form.control}
@@ -320,6 +325,12 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                       <PreferencesEditor 
                         preferences={currentPreferences} 
                         onUpdate={handlePreferencesUpdate} 
+                        contactEmailOnly={form.watch("contact_email_only") === true}
+                        telegramMember={form.watch("telegram_member") === true}
+                        onContactFlagsUpdate={({ contactEmailOnly, telegramMember }) => {
+                          form.setValue("contact_email_only", contactEmailOnly);
+                          form.setValue("telegram_member", telegramMember);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />

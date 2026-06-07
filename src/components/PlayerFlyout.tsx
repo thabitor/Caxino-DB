@@ -22,7 +22,7 @@ export function PlayerFlyout({ playerId, isOpen, onOpenChange }: PlayerFlyoutPro
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex w-[min(1100px,96vw)] flex-col gap-0 overflow-hidden border-l-2 p-0 sm:max-w-none"
+        className="flex w-[min(1300px,98vw)] flex-col gap-0 overflow-hidden border-l-2 p-0 sm:max-w-none"
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 shadow-sm">
           <SheetHeader className="space-y-0">

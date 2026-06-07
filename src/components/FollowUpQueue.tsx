@@ -49,7 +49,7 @@ const NEW_FOLLOW_UP_MS = 60 * 60 * 1000;
 const LEGACY_FOLLOW_UP_QUEUE_ORDER_KEY = "followUpQueueOrder";
 const FOLLOW_UP_QUEUE_ORDER_KEY = "followUpQueueOrder:v2";
 const FOLLOW_UP_QUEUE_PAGE_KEY = "followUpQueuePage";
-const CARD_MIN_HEIGHT = 150;
+const CARD_MIN_HEIGHT = 170;
 const CARD_GAP = 8;
 
 const reasonBadgeStyles: Record<string, string> = {
@@ -374,7 +374,7 @@ export function FollowUpQueue({ items, onAddFollowUp, onOpenPlayer }: FollowUpQu
               Follow-Up Queue
             </CardTitle>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Ordered by when each follow-up entered the queue.
+              Shows players not called in over 30 days, plus any player manually added by a manager.
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
@@ -482,7 +482,7 @@ export function FollowUpQueue({ items, onAddFollowUp, onOpenPlayer }: FollowUpQu
                   onDragOver={(event) => handleDragOver(event, item.player.id)}
                   onDrop={(event) => handleDrop(event, item.player.id)}
                   onDragEnd={handleDragEnd}
-                  className={`flex min-h-[150px] min-w-0 scroll-mt-2 flex-col justify-between rounded-md border-2 p-2 shadow-sm transition-all duration-200 ease-out hover:border-primary/45 ${
+                  className={`flex h-full min-h-0 min-w-0 scroll-mt-2 flex-col overflow-hidden rounded-md border-2 p-2.5 shadow-sm transition-all duration-200 ease-out hover:border-primary/45 ${
                     cardStateClassName
                   } ${
                     draggedPlayerId === item.player.id ? "opacity-60 ring-2 ring-primary/40" : ""
@@ -492,7 +492,7 @@ export function FollowUpQueue({ items, onAddFollowUp, onOpenPlayer }: FollowUpQu
                     isSelected ? "ring-2 ring-cyan-500/70 ring-offset-1" : ""
                   }`}
                 >
-                  <div className="space-y-1.5">
+                  <div className="min-h-0 flex-1 space-y-1.5 overflow-hidden">
                     <div className="flex items-start justify-between gap-1.5">
                       <div className="flex min-w-0 items-start gap-1">
                         <span
@@ -514,7 +514,7 @@ export function FollowUpQueue({ items, onAddFollowUp, onOpenPlayer }: FollowUpQu
                         >
                           <GripVertical className="h-3.5 w-3.5" />
                         </span>
-                        <div className="min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                           <button
                             type="button"
                             onClick={() => onOpenPlayer?.(item.player.id)}
@@ -522,7 +522,7 @@ export function FollowUpQueue({ items, onAddFollowUp, onOpenPlayer }: FollowUpQu
                           >
                             {getFullName(item.player)}
                           </button>
-                          <p className="truncate text-xs text-muted-foreground">@{item.player.username}</p>
+                          <span className="truncate text-xs font-medium text-muted-foreground">@{item.player.username}</span>
                         </div>
                       </div>
                       {wasContactedRecently ? (
@@ -542,7 +542,7 @@ export function FollowUpQueue({ items, onAddFollowUp, onOpenPlayer }: FollowUpQu
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1">
+                    <div className="flex max-h-[38px] flex-wrap items-center gap-1 overflow-hidden">
                       {isNew && (
                         <Badge variant="outline" className="border-yellow-500 bg-yellow-200 px-1.5 py-0 text-[11px] text-yellow-900 dark:border-yellow-600 dark:bg-yellow-900/60 dark:text-yellow-200">
                           New
@@ -568,29 +568,29 @@ export function FollowUpQueue({ items, onAddFollowUp, onOpenPlayer }: FollowUpQu
                     <p className="line-clamp-1 text-xs font-medium">
                       {wasContactedRecently ? "Call logged recently" : item.manualFollowUpNote || item.primaryReason}
                     </p>
-                    <div className="grid gap-1 text-[11px] text-muted-foreground min-[520px]:grid-cols-1 min-[1100px]:grid-cols-2">
+                    <div className="grid grid-cols-2 gap-1 text-[11px] text-muted-foreground">
                       <span className="inline-flex items-center gap-1 rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
                         <Clock className="h-3 w-3" />
                         {item.lastContactLabel}
                       </span>
                       {dueDate && (
-                      <span className="inline-flex items-center gap-1 rounded border border-purple-200 bg-purple-100 px-1.5 py-0.5 text-purple-700 dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
-                        <UserRound className="h-3 w-3" />
-                        {dueDate}
-                      </span>
+                        <span className="inline-flex items-center justify-end gap-1 rounded border border-purple-200 bg-purple-100 px-1.5 py-0.5 text-right text-purple-700 dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
+                          <UserRound className="h-3 w-3" />
+                          {dueDate}
+                        </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5 border-t-2 border-border/50 pt-1.5">
-                    <span className="line-clamp-1 text-[11px] font-semibold">
+                  <div className="mt-2 flex shrink-0 items-center gap-1.5 border-t-2 border-border/50 pt-2">
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-semibold">
                       {wasContactedRecently ? "Call logged recently" : hasBeenViewed ? "You opened this" : item.nextAction}
                     </span>
-                    <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <div className="flex shrink-0 items-center gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                        className="h-7 gap-1 px-2 text-xs text-muted-foreground"
                         onClick={() => handleDismiss(item.player.id)}
                       >
                         <X className="h-3 w-3" />
@@ -599,7 +599,7 @@ export function FollowUpQueue({ items, onAddFollowUp, onOpenPlayer }: FollowUpQu
                       <Button
                         size="sm"
                         variant={hasBeenViewed ? "secondary" : "outline"}
-                        className="h-6 gap-1 px-2 text-xs"
+                        className="h-7 gap-1 px-2 text-xs"
                         onClick={() => onOpenPlayer?.(item.player.id)}
                       >
                         Open

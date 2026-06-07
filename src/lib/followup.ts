@@ -35,6 +35,7 @@ const cadenceDaysByVip: Record<VipLevel, number> = {
   5: 7,
 };
 const RECENT_CALL_REVIEW_MS = 60 * 60 * 1000;
+const FOLLOW_UP_CALL_THRESHOLD_DAYS = 30;
 
 function getCadenceDays(player: Player): number {
   const vipLevel = player.vip_level as VipLevel;
@@ -130,162 +131,80 @@ export function buildFollowUpQueue(
       const manualFollowUp = manualByPlayer.get(player.id);
       const activeCalls = playerTasks.filter((task) => task.is_call);
       const activeRegularTasks = playerTasks.filter((task) => !task.is_call);
-      const earliestTask = getEarliestDueTask(playerTasks);
       const lastCall = getLastCall(playerCallLogs);
-      const cadenceDays = getCadenceDays(player);
-      const birthdayStatus = getBirthdayStatus(player.dob);
       const reasons: string[] = [];
-      const triggerTimes: number[] = [];
-      let score = 0;
-      let status: FollowUpStatus = "healthy";
-      let nextAction = "Review relationship notes";
-      let recentlyContacted = false;
+      let status: FollowUpStatus = "overdue";
+      let nextAction = activeCalls.length > 0 ? "Complete scheduled call" : "Schedule relationship call";
       let reasonBadge = "Review";
+      let queueCreatedAt: string | null = null;
+      let score = 0;
 
       if (manualFollowUp) {
         score += 160;
         status = "attention";
         reasonBadge = "Manual";
         reasons.push(manualFollowUp.note);
-        triggerTimes.push(getTime(manualFollowUp.created_at) ?? now.getTime());
+        queueCreatedAt = manualFollowUp.created_at;
         nextAction = "Review manual follow-up";
-      }
-
-      if (earliestTask?.due_date) {
-        const dueDate = parseISO(earliestTask.due_date);
-        const daysUntilDue = differenceInCalendarDays(dueDate, now);
-
-        if (daysUntilDue < 0) {
-          score += earliestTask.is_call ? 120 : 95;
-          status = "overdue";
-          if (reasonBadge !== "Manual") reasonBadge = "Overdue";
-          reasons.push(`${earliestTask.is_call ? "Call" : "Task"} overdue by ${formatDistanceToNow(dueDate)}`);
-          triggerTimes.push(getTime(earliestTask.created_at) ?? dueDate.getTime());
-          nextAction = earliestTask.is_call ? "Complete overdue call" : "Complete overdue task";
-        } else if (isToday(dueDate)) {
-          score += earliestTask.is_call ? 100 : 80;
-          status = "today";
-          if (reasonBadge === "Review") reasonBadge = "Due today";
-          reasons.push(`${earliestTask.is_call ? "Call" : "Task"} due today`);
-          triggerTimes.push(getTime(earliestTask.created_at) ?? dueDate.getTime());
-          nextAction = earliestTask.is_call ? "Make scheduled call" : "Handle due task";
-        } else if (isTomorrow(dueDate) || daysUntilDue <= 3) {
-          score += earliestTask.is_call ? 55 : 40;
-          status = status === "healthy" ? "soon" : status;
-          if (reasonBadge === "Review") reasonBadge = "Due soon";
-          reasons.push(`${earliestTask.is_call ? "Call" : "Task"} due in ${daysUntilDue} day${daysUntilDue === 1 ? "" : "s"}`);
-          triggerTimes.push(getTime(earliestTask.created_at) ?? dueDate.getTime());
-          nextAction = "Prepare next touchpoint";
-        }
-      }
-
-      if (birthdayStatus) {
-        const birthdayScore = birthdayStatus === "today" ? 85 : birthdayStatus === "tomorrow" ? 55 : 35;
-        score += birthdayScore;
-        status = status === "healthy" ? (birthdayStatus === "today" ? "today" : "soon") : status;
-        if (reasonBadge === "Review") reasonBadge = "Birthday";
-        reasons.push(
-          birthdayStatus === "today"
-            ? "Birthday today"
-            : birthdayStatus === "tomorrow"
-              ? "Birthday tomorrow"
-              : "Birthday was yesterday"
-        );
-        triggerTimes.push(getBirthdayQueueTime(birthdayStatus, now) ?? now.getTime());
-        nextAction = birthdayStatus === "today" ? "Send birthday outreach" : nextAction;
       }
 
       if (lastCall) {
         const lastContactDate = new Date(lastCall.completed_at || lastCall.call_time);
-        recentlyContacted = now.getTime() - lastContactDate.getTime() < RECENT_CALL_REVIEW_MS;
         const daysSinceContact = differenceInCalendarDays(now, lastContactDate);
-        const daysOverCadence = daysSinceContact - cadenceDays;
 
-        if (recentlyContacted) {
-          score += 140;
-          status = status === "healthy" ? "today" : status;
-          if (reasonBadge === "Review") reasonBadge = "Recent call";
-          reasons.push("Call logged recently");
-          triggerTimes.push(getTime(lastCall.created_at) ?? getTime(lastCall.completed_at) ?? getTime(lastCall.call_time) ?? now.getTime());
-          nextAction = "Review call outcome";
-        } else if (daysOverCadence > 0) {
-          score += Math.min(80, 35 + daysOverCadence * 4);
-          status = status === "healthy" ? "attention" : status;
-          if (reasonBadge === "Review") reasonBadge = "Cadence";
-          reasons.push(`No logged call for ${daysSinceContact} days`);
-          triggerTimes.push(addDays(lastContactDate, cadenceDays).getTime());
-          nextAction = activeCalls.length > 0 ? nextAction : "Schedule relationship call";
+        if (daysSinceContact > FOLLOW_UP_CALL_THRESHOLD_DAYS) {
+          score += Math.min(120, 60 + (daysSinceContact - FOLLOW_UP_CALL_THRESHOLD_DAYS) * 3);
+          if (!manualFollowUp) {
+            status = "overdue";
+            reasonBadge = "Cadence";
+            queueCreatedAt = addDays(lastContactDate, FOLLOW_UP_CALL_THRESHOLD_DAYS).toISOString();
+          }
+          reasons.push(`Last logged call was ${daysSinceContact} days ago`);
         }
       } else {
-        score += 65;
-        status = status === "healthy" ? "attention" : status;
-        if (reasonBadge === "Review") reasonBadge = "No calls";
-        reasons.push("No calls logged yet");
-        triggerTimes.push(getTime(player.created_at) ?? now.getTime());
-        nextAction = activeCalls.length > 0 ? nextAction : "Schedule first logged call";
-      }
+        const createdAt = getTime(player.created_at);
+        const daysSinceCreated = createdAt ? differenceInCalendarDays(now, new Date(createdAt)) : FOLLOW_UP_CALL_THRESHOLD_DAYS + 1;
 
-      if (!player.phone) {
-        score += 20;
-        if (reasonBadge === "Review") reasonBadge = "Missing info";
-        reasons.push("Missing phone number");
-        triggerTimes.push(getTime(player.updated_at) ?? getTime(player.created_at) ?? now.getTime());
-      }
-
-      if (!player.preferences || (typeof player.preferences === "object" && Object.keys(player.preferences).length === 0)) {
-        score += 12;
-        if (reasonBadge === "Review") reasonBadge = "Preferences";
-        reasons.push("Contact preferences incomplete");
-        triggerTimes.push(getTime(player.updated_at) ?? getTime(player.created_at) ?? now.getTime());
-      }
-
-      if (isInsidePreferredWindow(player, now)) {
-        score += 10;
-        if (reasonBadge === "Review") reasonBadge = "Good time";
-        reasons.push("Inside preferred contact window now");
+        if (daysSinceCreated > FOLLOW_UP_CALL_THRESHOLD_DAYS) {
+          score += 75;
+          if (!manualFollowUp) {
+            status = "overdue";
+            reasonBadge = "No calls";
+            queueCreatedAt = getIsoFromTime(createdAt ? addDays(new Date(createdAt), FOLLOW_UP_CALL_THRESHOLD_DAYS).getTime() : null, now);
+          }
+          reasons.push("No logged call for more than 30 days");
+          nextAction = activeCalls.length > 0 ? nextAction : "Schedule first logged call";
+        }
       }
 
       const lastContactLabel = lastCall
         ? `Last call ${formatDistanceToNow(new Date(lastCall.completed_at || lastCall.call_time), { addSuffix: true })}`
         : "No calls logged";
 
-      const title =
-        status === "overdue"
-          ? "Overdue follow-up"
-          : status === "today"
-            ? "Contact today"
-            : status === "soon"
-              ? "Upcoming touchpoint"
-              : status === "attention"
-                ? "Needs attention"
-                : "Healthy";
+      const title = manualFollowUp ? "Manual follow-up" : "Call overdue";
 
       return {
         player,
         status,
         score,
         title,
-        primaryReason: reasons[0] || "Relationship looks current",
+        primaryReason: reasons[0] || "Manual follow-up requested",
         reasons: reasons.slice(0, 4),
         lastContactLabel,
-        cadenceLabel: `VIP ${player.vip_level || 3}: every ${cadenceDays} days`,
+        cadenceLabel: "Call every 30 days",
         nextAction,
         activeTaskCount: activeRegularTasks.length,
         activeCallCount: activeCalls.length,
-        dueDate: earliestTask?.due_date,
+        dueDate: null,
         lastCallAt: lastCall?.completed_at || lastCall?.call_time || null,
         reasonBadge,
-        queueCreatedAt: getIsoFromTime(triggerTimes.length > 0 ? Math.max(...triggerTimes) : null, now),
+        queueCreatedAt: queueCreatedAt || now.toISOString(),
         manualFollowUpId: manualFollowUp?.id || null,
         manualFollowUpNote: manualFollowUp?.note || null,
       };
     })
     .filter((item) => {
-      const lastCallTime = item.lastCallAt ? new Date(item.lastCallAt).getTime() : null;
-      const recentlyContacted =
-        lastCallTime !== null && Number.isFinite(lastCallTime) && now.getTime() - lastCallTime < RECENT_CALL_REVIEW_MS;
-
-      return Boolean(item.manualFollowUpId) || recentlyContacted || item.status !== "healthy" || item.activeCallCount > 0 || item.activeTaskCount > 0;
+      return Boolean(item.manualFollowUpId) || item.reasonBadge === "Cadence" || item.reasonBadge === "No calls";
     })
     .sort((a, b) => {
       const aTime = getTime(a.queueCreatedAt) ?? 0;

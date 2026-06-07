@@ -35,6 +35,15 @@ export const statusConfig: Record<TaskStatus, { label: string; color: string; bg
   cancelled: { label: "Cancelled", color: "text-gray-700 dark:text-gray-300", bgColor: "bg-gray-100 dark:bg-gray-900/30" },
 };
 
+function normalizeCallTopic(value?: string | null) {
+  const topic = value?.trim();
+  if (!topic || topic.toLowerCase() === "no answer") {
+    return null;
+  }
+
+  return topic;
+}
+
 export const taskService = {
   async getAllTasks(): Promise<Task[]> {
     const { data, error } = await supabase
@@ -185,12 +194,14 @@ export const taskService = {
     const completedTask = await this.completeTask(id);
     const completedAt = completedTask.completed_at || new Date().toISOString();
 
+    const normalizedCallTopic = normalizeCallTopic(callTopic) || normalizeCallTopic(task.call_topic);
+
     const callLog = await callLogService.createCallLog({
       user_id: userId,
       player_id: task.player_id,
       task_id: id,
       phone_number: task.phone_number || "",
-      call_topic: callTopic || task.call_topic || null,
+      call_topic: normalizedCallTopic,
       call_time: completedAt,
       completed_at: completedAt,
       notes: notes || task.description || null,

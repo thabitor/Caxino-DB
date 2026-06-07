@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { taskService, Task } from "@/services/taskService";
 import { playerService, getFullName } from "@/services/playerService";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Phone, Clock, User, X } from "lucide-react";
-import { format } from "date-fns";
+import { Ban, Phone, User, X } from "lucide-react";
 import { CopyButton } from "@/components/CopyButton";
 import Link from "next/link";
+import { notifyDashboardRefresh } from "@/lib/dashboardSync";
 
 interface CallReminderData {
   task: Task;
@@ -81,103 +80,99 @@ export function CallReminderNotification() {
     handleDismiss();
   };
 
+  const handleCancelCall = async () => {
+    if (!activeReminder) return;
+
+    try {
+      await taskService.updateTask(activeReminder.task.id, { status: "cancelled" });
+      notifyDashboardRefresh();
+      setDismissedCallIds(prev => new Set(prev).add(activeReminder.task.id));
+      setActiveReminder(null);
+    } catch (error) {
+      console.error("Error cancelling call reminder:", error);
+    }
+  };
+
   if (!activeReminder) return null;
 
   const callTime = new Date(activeReminder.task.due_date!);
   const minutesUntilCall = Math.round((callTime.getTime() - new Date().getTime()) / (60 * 1000));
+  const minutesLabel = minutesUntilCall <= 1 ? "1 minute" : `${minutesUntilCall} minutes`;
+  const callReason = activeReminder.task.call_topic || "the scheduled reason";
+  const logCallHref = activeReminder.task.call_topic
+    ? `/player/${activeReminder.task.player_id}?action=log-call&callTaskId=${activeReminder.task.id}&callReason=${encodeURIComponent(activeReminder.task.call_topic)}`
+    : `/player/${activeReminder.task.player_id}?action=log-call&callTaskId=${activeReminder.task.id}`;
 
   return (
-    <Dialog open={!!activeReminder} onOpenChange={(open) => !open && handleDismiss()}>
-      <DialogContent className="sm:max-w-md border-4 border-blue-500 dark:border-blue-600 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 shadow-2xl">
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg animate-pulse">
-              <Phone className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl text-blue-900 dark:text-blue-100">
-                Upcoming Call Reminder
-              </DialogTitle>
-              <DialogDescription className="text-base font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2 mt-1">
-                <Clock className="w-4 h-4" />
-                {minutesUntilCall <= 5 
-                  ? `Call starts in ${minutesUntilCall} minute${minutesUntilCall !== 1 ? 's' : ''}!`
-                  : `Call scheduled in ${minutesUntilCall} minutes`
-                }
-              </DialogDescription>
-            </div>
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed bottom-4 right-4 z-50 w-[min(360px,calc(100vw-2rem))] rounded-lg border-2 border-sky-400 bg-background/95 p-3 shadow-2xl shadow-sky-950/15 backdrop-blur dark:border-sky-700"
+    >
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={handleDismiss}
+        className="absolute right-1.5 top-1.5 h-7 w-7 rounded-full text-muted-foreground hover:bg-muted"
+        aria-label="Dismiss call reminder"
+      >
+        <X className="h-3.5 w-3.5" />
+      </Button>
+
+      <div className="pr-7">
+        <div className="flex items-start gap-2">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sky-600 shadow-sm">
+            <Phone className="h-4 w-4 text-white" />
           </div>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <User className="w-4 h-4" />
-              <span className="font-medium">Player:</span>
-            </div>
-            <div className="p-3 rounded-lg bg-white/50 dark:bg-black/20 border-2 border-blue-200 dark:border-blue-800">
-              <p className="font-semibold text-lg">{activeReminder.playerName}</p>
-              <p className="text-sm text-muted-foreground">@{activeReminder.playerUsername}</p>
-            </div>
-          </div>
-
-          {activeReminder.task.phone_number && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="w-4 h-4" />
-                <span className="font-medium">Phone Number:</span>
-              </div>
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-300 dark:border-blue-700">
-                <span className="font-mono text-lg font-semibold flex-1">{activeReminder.task.phone_number}</span>
-                <CopyButton text={activeReminder.task.phone_number} label="Phone" />
-              </div>
-            </div>
-          )}
-
-          {activeReminder.task.call_topic && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span className="font-medium">Call Reason:</span>
-              </div>
-              <div className="p-3 rounded-lg bg-white/50 dark:bg-black/20 border-2 border-blue-200 dark:border-blue-800">
-                <p className="text-sm">{activeReminder.task.call_topic}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="w-4 h-4" />
-              <span className="font-medium">Scheduled Time:</span>
-            </div>
-            <div className="p-3 rounded-lg bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-300 dark:border-amber-700">
-              <p className="font-semibold text-lg">{format(callTime, "PPp")}</p>
-            </div>
-          </div>
+          <p className="text-sm leading-5 text-foreground">
+            You have an upcoming call to{" "}
+            <span className="font-bold text-sky-800 dark:text-sky-200">{activeReminder.playerName}</span>{" "}
+            <span className="text-xs font-medium text-muted-foreground">(@{activeReminder.playerUsername})</span>{" "}
+            for <span className="font-bold">{callReason}</span> in{" "}
+            <span className="font-bold text-sky-700 dark:text-sky-300">{minutesLabel}</span>.
+          </p>
         </div>
 
-        <div className="flex gap-2 mt-4">
+        {activeReminder.task.phone_number && (
+          <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-md border border-sky-200 bg-sky-50/70 px-2 py-1 text-xs text-sky-900 dark:border-sky-800 dark:bg-sky-950/35 dark:text-sky-100">
+            <Phone className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate font-mono font-semibold">{activeReminder.task.phone_number}</span>
+            <CopyButton text={activeReminder.task.phone_number} label="Phone" />
+          </div>
+        )}
+
+        <div className="mt-3 grid grid-cols-3 gap-1.5">
           <Button
             variant="outline"
-            onClick={handleDismiss}
-            className="flex-1 gap-2 border-2"
+            asChild
+            onClick={handleOpenPlayer}
+            className="h-8 gap-1.5 border-2 px-2 text-xs"
           >
-            <X className="w-4 h-4" />
-            Dismiss
+            <Link href={`/player/${activeReminder.task.player_id}`}>
+              <User className="h-3.5 w-3.5" />
+              View
+            </Link>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleCancelCall}
+            className="h-8 gap-1.5 border-2 border-red-300 px-2 text-xs text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/30"
+          >
+            <Ban className="h-3.5 w-3.5" />
+            Cancel
           </Button>
           <Button
             asChild
             onClick={handleOpenPlayer}
-            className="flex-1 gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+            className="h-8 gap-1.5 bg-sky-600 px-2 text-xs text-white hover:bg-sky-700"
           >
-            <Link href={`/player/${activeReminder.task.player_id}`}>
-              <User className="w-4 h-4" />
-              View Player
+            <Link href={logCallHref}>
+              <Phone className="h-3.5 w-3.5" />
+              Log
             </Link>
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

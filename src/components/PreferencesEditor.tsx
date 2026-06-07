@@ -17,9 +17,18 @@ export interface PlayerPreferences {
 export interface PreferencesEditorProps {
   preferences: PlayerPreferences;
   onUpdate: (newPreferences: PlayerPreferences) => void;
+  contactEmailOnly?: boolean;
+  telegramMember?: boolean;
+  onContactFlagsUpdate?: (flags: { contactEmailOnly: boolean; telegramMember: boolean }) => void;
 }
 
-export function PreferencesEditor({ preferences: initialPreferences, onUpdate }: PreferencesEditorProps) {
+export function PreferencesEditor({
+  preferences: initialPreferences,
+  onUpdate,
+  contactEmailOnly = false,
+  telegramMember = false,
+  onContactFlagsUpdate,
+}: PreferencesEditorProps) {
   const [preferences, setPreferences] = useState<PlayerPreferences>(initialPreferences);
 
   useEffect(() => {
@@ -49,6 +58,13 @@ export function PreferencesEditor({ preferences: initialPreferences, onUpdate }:
     });
   };
 
+  const updateContactFlag = (flag: "contactEmailOnly" | "telegramMember", value: boolean) => {
+    onContactFlagsUpdate?.({
+      contactEmailOnly: flag === "contactEmailOnly" ? value : contactEmailOnly,
+      telegramMember: flag === "telegramMember" ? value : telegramMember,
+    });
+  };
+
   return (
     <div className="space-y-4">
       <Card className="shadow-md">
@@ -72,6 +88,24 @@ export function PreferencesEditor({ preferences: initialPreferences, onUpdate }:
               checked={preferences.communication?.phone ?? true}
               onCheckedChange={(checked) => updateCommunication("phone", checked)}
             />
+          </div>
+          <div className="grid gap-2 border-t pt-3 sm:grid-cols-2">
+            <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border-2 border-orange-200 bg-orange-50/50 px-3 py-2 dark:border-orange-900 dark:bg-orange-950/20">
+              <Label htmlFor="email-only-toggle" className="text-sm font-medium">Email only</Label>
+              <Switch
+                id="email-only-toggle"
+                checked={contactEmailOnly}
+                onCheckedChange={(checked) => updateContactFlag("contactEmailOnly", checked)}
+              />
+            </div>
+            <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border-2 border-sky-200 bg-sky-50/50 px-3 py-2 dark:border-sky-900 dark:bg-sky-950/20">
+              <Label htmlFor="telegram-toggle" className="text-sm font-medium">Telegram</Label>
+              <Switch
+                id="telegram-toggle"
+                checked={telegramMember}
+                onCheckedChange={(checked) => updateContactFlag("telegramMember", checked)}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

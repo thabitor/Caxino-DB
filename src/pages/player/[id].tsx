@@ -16,8 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Phone, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User, ListPlus, CalendarCheck } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { ArrowLeft, ArrowUp, ArrowDown, Mail, Phone, PhoneOff, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User, ListPlus, CalendarCheck, ShieldAlert, Send } from "lucide-react";
+import { differenceInCalendarDays, format, formatDistanceToNow } from "date-fns";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
@@ -55,6 +55,22 @@ const languageLabels: Record<string, string> = {
   ar: "Arabic",
 };
 
+const getLastCallBadgeClass = (lastCallAt?: string | null) => {
+  if (!lastCallAt) {
+    return "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-300";
+  }
+
+  const callDate = new Date(lastCallAt);
+  if (!Number.isFinite(callDate.getTime())) {
+    return "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-300";
+  }
+
+  const daysSinceCall = differenceInCalendarDays(new Date(), callDate);
+  return daysSinceCall > 30
+    ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
+    : "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-300";
+};
+
 const CALL_REASONS = ["Reward", "Payment", "Tech issue"] as const;
 
 const ACCOUNT_CLOSURE_REASONS = ["GA", "Self harm", "RG", "QL", "LT", "Normal"] as const;
@@ -81,6 +97,19 @@ function toggleCallReason(currentValue: string, callReason: typeof CALL_REASONS[
     : currentReasons.filter((reason) => reason !== callReason);
 
   return nextReasons.join(", ");
+}
+
+function normalizeCallTopic(value?: string | null) {
+  const topic = value?.trim();
+  if (!topic || topic.toLowerCase() === "no answer") {
+    return null;
+  }
+
+  return topic;
+}
+
+function isNoAnswerCallLog(log?: Pick<CallLog, "notes"> | null) {
+  return Boolean(log?.notes?.toLowerCase().includes("no answer. contact attempt recorded at"));
 }
 
 function getCanonicalAccountStatus(status?: string | null) {
@@ -112,6 +141,7 @@ export default function PlayerDetailPage() {
   const [manualFollowUps, setManualFollowUps] = useState<ManualFollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+  const [taskFormDefaultIsCall, setTaskFormDefaultIsCall] = useState(false);
   const [isPlayerFormOpen, setIsPlayerFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [notesValue, setNotesValue] = useState("");
@@ -119,6 +149,8 @@ export default function PlayerDetailPage() {
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
   const [isEditingPreferences, setIsEditingPreferences] = useState(false);
   const [draftPreferences, setDraftPreferences] = useState<PlayerPreferences>({});
+  const [draftContactEmailOnly, setDraftContactEmailOnly] = useState(false);
+  const [draftTelegramMember, setDraftTelegramMember] = useState(false);
   const [completingCallId, setCompletingCallId] = useState<string | null>(null);
   const [checkedAlertTasks, setCheckedAlertTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
@@ -130,17 +162,22 @@ export default function PlayerDetailPage() {
   const [editedCallNotes, setEditedCallNotes] = useState("");
   const [isSavingCallLog, setIsSavingCallLog] = useState(false);
   const [isManualCallLogOpen, setIsManualCallLogOpen] = useState(false);
+  const [prefilledManualCallTopic, setPrefilledManualCallTopic] = useState<string | null>(null);
+  const [prefilledManualCallTaskId, setPrefilledManualCallTaskId] = useState<string | null>(null);
   const [isManualFollowUpOpen, setIsManualFollowUpOpen] = useState(false);
   const [followUpViewedAt, setFollowUpViewedAt] = useState<string | null>(null);
   const [isAccountClosureOpen, setIsAccountClosureOpen] = useState(false);
   const [isExceptionalReopenOpen, setIsExceptionalReopenOpen] = useState(false);
-  const [closureReason, setClosureReason] = useState<AccountClosureReason | "">("");
+  const [closureReasons, setClosureReasons] = useState<AccountClosureReason[]>([]);
   const [closureType, setClosureType] = useState<AccountClosureType>("break");
   const [breakWeeks, setBreakWeeks] = useState<string>("2");
   const [customBreakWeeks, setCustomBreakWeeks] = useState("");
   const [isSavingClosure, setIsSavingClosure] = useState(false);
   const [isDowngradeDialogOpen, setIsDowngradeDialogOpen] = useState(false);
   const [isSavingDowngrade, setIsSavingDowngrade] = useState(false);
+  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [isSavingUpgrade, setIsSavingUpgrade] = useState(false);
+  const [isSavingBonusFlag, setIsSavingBonusFlag] = useState(false);
 
   const fetchPlayerData = async (options?: { background?: boolean }) => {
     if (!id || typeof id !== "string") return;
@@ -196,6 +233,24 @@ export default function PlayerDetailPage() {
   }, [router]);
 
   useEffect(() => {
+    if (!player?.id || router.query.action !== "log-call") return;
+
+    const callReason = typeof router.query.callReason === "string"
+      ? normalizeCallTopic(router.query.callReason)
+      : null;
+    const callTaskId = typeof router.query.callTaskId === "string" ? router.query.callTaskId : null;
+    setPrefilledManualCallTopic(callReason);
+    setPrefilledManualCallTaskId(callTaskId);
+    setIsManualCallLogOpen(true);
+    const { action, callReason: _callReason, callTaskId: _callTaskId, ...restQuery } = router.query;
+    router.replace(
+      { pathname: router.pathname, query: restQuery },
+      undefined,
+      { shallow: true }
+    );
+  }, [player?.id, router]);
+
+  useEffect(() => {
     if (!player?.id) return;
     if (getCanonicalAccountStatus(player.account_status) === "closed") {
       setFollowUpViewedAt(null);
@@ -238,6 +293,7 @@ export default function PlayerDetailPage() {
       notifyDashboardRefresh();
       toast({ title: "Task created", description: "New task has been added successfully." });
       setIsTaskFormOpen(false);
+      setTaskFormDefaultIsCall(false);
       fetchPlayerData({ background: true });
     } catch (error) {
       console.error("Error creating task:", error);
@@ -254,6 +310,7 @@ export default function PlayerDetailPage() {
       toast({ title: "Task updated", description: "Task has been updated successfully." });
       setIsTaskFormOpen(false);
       setEditingTask(null);
+      setTaskFormDefaultIsCall(false);
       fetchPlayerData({ background: true });
     } catch (error) {
       console.error("Error updating task:", error);
@@ -297,6 +354,26 @@ export default function PlayerDetailPage() {
     }
   };
 
+  const handleCallCancel = async (taskId: string) => {
+    try {
+      await taskService.updateTask(taskId, { status: "cancelled" });
+      notifyDashboardRefresh();
+      toast({
+        title: "Scheduled call cancelled",
+        description: "The call reminder has been dismissed and removed from active scheduled calls.",
+      });
+      setCheckedAlertTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+      fetchPlayerData({ background: true });
+    } catch (error) {
+      console.error("Error cancelling scheduled call:", error);
+      toast({ title: "Error", description: "Could not cancel the scheduled call.", variant: "destructive" });
+    }
+  };
+
   const handleCallComplete = async (taskId: string, notes?: string, durationMinutes?: number, callTopic?: string) => {
     if (!user) {
       toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
@@ -309,9 +386,12 @@ export default function PlayerDetailPage() {
         markFollowUpContacted(player.id);
       }
       notifyDashboardRefresh();
+      const isNoAnswer = notes?.toLowerCase().includes("no answer. contact attempt recorded at");
       toast({ 
-        title: "Call completed", 
-        description: "Call task marked as completed and logged successfully.",
+        title: isNoAnswer ? "No answer recorded" : "Call completed", 
+        description: isNoAnswer
+          ? "The unanswered call attempt was added to this player's history."
+          : "Call task marked as completed and logged successfully.",
         duration: 3000
       });
       // Remove from checked tasks, close dialog, and refresh
@@ -353,21 +433,31 @@ export default function PlayerDetailPage() {
       const callLog = await callLogService.createCallLog({
         user_id: user.id,
         player_id: player.id,
+        task_id: prefilledManualCallTaskId,
         phone_number: player.phone || "",
-        call_topic: callReason || null,
+        call_topic: normalizeCallTopic(callReason),
         call_time: completedAt,
         completed_at: completedAt,
         notes: notes || null,
         duration_minutes: durationMinutes || null,
       });
 
+      if (prefilledManualCallTaskId) {
+        await taskService.completeTask(prefilledManualCallTaskId);
+      }
+
       setCallLogs((current) => [callLog, ...current]);
       markFollowUpContacted(player.id);
       notifyDashboardRefresh();
       setIsManualCallLogOpen(false);
+      setPrefilledManualCallTopic(null);
+      setPrefilledManualCallTaskId(null);
+      const isNoAnswer = notes?.toLowerCase().includes("no answer. contact attempt recorded at");
       toast({
-        title: "Call logged",
-        description: "The call has been added to this player's history.",
+        title: isNoAnswer ? "No answer recorded" : "Call logged",
+        description: isNoAnswer
+          ? "The unanswered call attempt was added to this player's history."
+          : "The call has been added to this player's history.",
         duration: 3000,
       });
     } catch (error) {
@@ -452,12 +542,26 @@ export default function PlayerDetailPage() {
 
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
+    setTaskFormDefaultIsCall(false);
+    setIsTaskFormOpen(true);
+  };
+
+  const handleAddTask = () => {
+    setEditingTask(null);
+    setTaskFormDefaultIsCall(false);
+    setIsTaskFormOpen(true);
+  };
+
+  const handleScheduleCall = () => {
+    setEditingTask(null);
+    setTaskFormDefaultIsCall(true);
     setIsTaskFormOpen(true);
   };
 
   const handleTaskFormClose = () => {
     setIsTaskFormOpen(false);
     setEditingTask(null);
+    setTaskFormDefaultIsCall(false);
   };
 
   const handlePlayerUpdate = async (playerData: any) => {
@@ -476,11 +580,14 @@ export default function PlayerDetailPage() {
   };
 
   const handleCloseAccount = async () => {
-    if (!player || !closureReason) return;
+    if (!player || closureReasons.length === 0) return;
 
-    const canChooseBreak = REOPENABLE_REASONS.includes(closureReason as typeof REOPENABLE_REASONS[number]);
+    const canChooseBreak = closureReasons.every((reason) =>
+      REOPENABLE_REASONS.includes(reason as typeof REOPENABLE_REASONS[number])
+    );
     const finalClosureType: AccountClosureType = canChooseBreak ? closureType : "permanent";
     const selectedWeeks = breakWeeks === "custom" ? Number(customBreakWeeks) : Number(breakWeeks);
+    const closureReasonText = closureReasons.join(", ");
 
     if (finalClosureType === "break" && (!Number.isFinite(selectedWeeks) || selectedWeeks <= 0)) {
       toast({
@@ -502,7 +609,7 @@ export default function PlayerDetailPage() {
       await Promise.all([
         playerService.updatePlayer(player.id, {
           account_status: "closed",
-          account_closure_reason: closureReason,
+          account_closure_reason: closureReasonText,
           account_closure_type: finalClosureType,
           account_closure_until: closureUntil,
           account_closed_at: now.toISOString(),
@@ -525,7 +632,7 @@ export default function PlayerDetailPage() {
             : "Permanent closure recorded.",
       });
       setIsAccountClosureOpen(false);
-      setClosureReason("");
+      setClosureReasons([]);
       setClosureType("break");
       setBreakWeeks("2");
       setCustomBreakWeeks("");
@@ -610,6 +717,82 @@ export default function PlayerDetailPage() {
     }
   };
 
+  const handleVipUpgrade = async (newLevel: VipLevel) => {
+    if (!player || !user) return;
+    const currentLevel = (player.vip_level || 1) as VipLevel;
+    if (newLevel <= currentLevel) return;
+
+    try {
+      setIsSavingUpgrade(true);
+      const updatedPlayer = await playerService.updatePlayer(player.id, { vip_level: newLevel });
+      await playerTouchpointService.createTouchpoint({
+        player_id: player.id,
+        manager_id: user.id,
+        touchpoint_type: "note",
+        title: "VIP level upgraded",
+        body: `VIP level changed from ${currentLevel} to ${newLevel}.`,
+        occurred_at: new Date().toISOString(),
+        source_table: "players",
+        source_id: player.id,
+      });
+      setPlayer(updatedPlayer);
+      notifyDashboardRefresh();
+      toast({
+        title: "VIP upgraded",
+        description: `Player moved from VIP ${currentLevel} to VIP ${newLevel}.`,
+      });
+      setIsUpgradeDialogOpen(false);
+      fetchPlayerData({ background: true });
+    } catch (error) {
+      console.error("Error upgrading VIP level:", error);
+      toast({ title: "Error", description: "Could not upgrade the VIP level.", variant: "destructive" });
+    } finally {
+      setIsSavingUpgrade(false);
+    }
+  };
+
+  const handleBonusAbuserToggle = async () => {
+    if (!player) return;
+
+    const nextValue = !player.bonus_abuser;
+    const now = new Date().toISOString();
+
+    try {
+      setIsSavingBonusFlag(true);
+      const updatedPlayer = await playerService.updatePlayer(player.id, {
+        bonus_abuser: nextValue,
+        bonus_abuser_marked_at: nextValue ? now : null,
+      });
+      await playerTouchpointService.createTouchpoint({
+        player_id: player.id,
+        manager_id: user?.id || null,
+        touchpoint_type: "note",
+        title: nextValue ? "Bonus abuser flag added" : "Bonus abuser flag removed",
+        body: nextValue
+          ? "Player marked as a bonus abuser."
+          : "Bonus abuser flag removed from player.",
+        occurred_at: now,
+        source_table: "players",
+        source_id: player.id,
+      });
+
+      setPlayer(updatedPlayer);
+      notifyDashboardRefresh();
+      toast({
+        title: nextValue ? "Bonus abuser marked" : "Bonus abuser removed",
+        description: nextValue
+          ? "This player is now flagged as a bonus abuser."
+          : "The bonus abuser flag has been removed.",
+      });
+      fetchPlayerData({ background: true });
+    } catch (error) {
+      console.error("Error updating bonus abuser flag:", error);
+      toast({ title: "Error", description: "Could not update bonus abuser flag.", variant: "destructive" });
+    } finally {
+      setIsSavingBonusFlag(false);
+    }
+  };
+
   const handleSaveNotes = async () => {
     if (!player || !notesValue.trim()) {
       toast({ title: "Note required", description: "Add a note before saving.", variant: "destructive" });
@@ -663,6 +846,8 @@ export default function PlayerDetailPage() {
       preferred_time_from: timeFrom,
       preferred_time_to: timeTo
     });
+    setDraftContactEmailOnly(player?.contact_email_only ?? false);
+    setDraftTelegramMember(player?.telegram_member ?? false);
     setIsEditingPreferences(true);
   };
 
@@ -688,7 +873,9 @@ export default function PlayerDetailPage() {
       const updateData = { 
         preferences: preferencesForJson as any, // Only comm channels and language
         preferred_time_from: timeFromInt,       // Separate integer column
-        preferred_time_to: timeToInt            // Separate integer column
+        preferred_time_to: timeToInt,           // Separate integer column
+        contact_email_only: draftContactEmailOnly,
+        telegram_member: draftTelegramMember,
       };
       
       await playerService.updatePlayer(player.id, updateData);
@@ -706,6 +893,8 @@ export default function PlayerDetailPage() {
 
   const handleCancelPreferencesEdit = () => {
     setDraftPreferences({});
+    setDraftContactEmailOnly(false);
+    setDraftTelegramMember(false);
     setIsEditingPreferences(false);
   };
 
@@ -722,8 +911,9 @@ export default function PlayerDetailPage() {
 
     try {
       setIsSavingCallLog(true);
+      const normalizedCallTopic = normalizeCallTopic(editedCallTopic);
       await callLogService.updateCallLog(selectedCallLog.id, {
-        call_topic: editedCallTopic,
+        call_topic: normalizedCallTopic,
         notes: editedCallNotes,
       });
       notifyDashboardRefresh();
@@ -731,11 +921,11 @@ export default function PlayerDetailPage() {
       // Optimistically update UI
       const updatedCallLogs = callLogs.map(log => 
         log.id === selectedCallLog.id 
-          ? { ...log, call_topic: editedCallTopic, notes: editedCallNotes } 
+          ? { ...log, call_topic: normalizedCallTopic, notes: editedCallNotes } 
           : log
       );
       setCallLogs(updatedCallLogs);
-      setSelectedCallLog(prev => prev ? { ...prev, call_topic: editedCallTopic, notes: editedCallNotes } : null);
+      setSelectedCallLog(prev => prev ? { ...prev, call_topic: normalizedCallTopic, notes: editedCallNotes } : null);
 
       toast({ 
         title: "Call log updated", 
@@ -821,6 +1011,9 @@ export default function PlayerDetailPage() {
   const isBreakDue = Boolean(isBreakClosure && breakEndsAt && breakEndsAt.getTime() <= Date.now());
   const activeManualFollowUp = isAccountClosed ? null : manualFollowUps.find((followUp) => followUp.status === "active");
   const currentVipLevel = (player.vip_level || 1) as VipLevel;
+  const upgradeLevels = (Object.keys(vipConfig).map(Number) as VipLevel[])
+    .filter((level) => level > currentVipLevel)
+    .sort((a, b) => a - b);
   const downgradeLevels = (Object.keys(vipConfig).map(Number) as VipLevel[])
     .filter((level) => level < currentVipLevel)
     .sort((a, b) => b - a);
@@ -852,6 +1045,24 @@ export default function PlayerDetailPage() {
                       <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
                         {player.vip_level} - {vipInfo.name}
                       </Badge>
+                      {player.bonus_abuser && (
+                        <Badge variant="outline" className="gap-1 border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+                          <ShieldAlert className="h-3.5 w-3.5" />
+                          Bonus abuser
+                        </Badge>
+                      )}
+                      {player.contact_email_only && (
+                        <Badge variant="outline" className="gap-1 border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
+                          <Mail className="h-3.5 w-3.5" />
+                          Email only
+                        </Badge>
+                      )}
+                      {player.telegram_member && (
+                        <Badge variant="outline" className="gap-1 border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+                          <Send className="h-3.5 w-3.5" />
+                          Telegram
+                        </Badge>
+                      )}
                       {isAccountClosed && (
                         <Badge variant="outline" className={`gap-1 ${closureBadgeClass}`}>
                           <X className="h-3.5 w-3.5" />
@@ -865,9 +1076,15 @@ export default function PlayerDetailPage() {
                         </Badge>
                       )}
                       {lastCallAt && (
-                        <Badge variant="outline" className="gap-1 border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
+                        <Badge variant="outline" className={`gap-1 ${getLastCallBadgeClass(lastCallAt)}`}>
                           <Phone className="h-3.5 w-3.5" />
-                          Called {formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}
+                          Last called {formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}
+                        </Badge>
+                      )}
+                      {pendingCalls.length > 0 && (
+                        <Badge variant="outline" className="gap-1 border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300">
+                          <Clock className="h-3.5 w-3.5" />
+                          {pendingCalls.length === 1 ? "Scheduled call" : `${pendingCalls.length} scheduled calls`}
                         </Badge>
                       )}
                     </div>
@@ -876,6 +1093,19 @@ export default function PlayerDetailPage() {
                       <CopyButton text={player.username} label="Username" size="sm" />
                     </div>
                   </div>
+                </div>
+                <div className={`ml-auto hidden max-w-[260px] shrink-0 items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-xs font-semibold lg:flex ${
+                  isAccountClosed
+                    ? isBreakClosure
+                      ? "border-blue-300/80 bg-blue-50/70 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
+                      : "border-rose-300/90 bg-rose-50/80 text-rose-800 dark:border-rose-800 dark:bg-rose-950/35 dark:text-rose-300"
+                    : "border-green-300/80 bg-green-50/70 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"
+                }`}>
+                  <span className="text-[10px] uppercase tracking-wide opacity-70">Status</span>
+                  <span className="font-bold">{isAccountClosed ? closureLabel : "Open"}</span>
+                  {isAccountClosed && (
+                    <span className="truncate opacity-80">- {player.account_closure_reason || "Unspecified"}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -905,35 +1135,68 @@ export default function PlayerDetailPage() {
 
         <main className={`flex-1 space-y-4 ${isEmbedded ? "p-3 lg:p-4" : "p-4 lg:p-5"}`}>
           {isEmbedded && (
-            <div className="rounded-md border-2 border-border/70 bg-card/90 p-3 shadow-sm">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <h1 className="truncate text-lg font-bold">{getFullName(player)}</h1>
-                <CopyButton text={getFullName(player)} label="Name" />
-                <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
-                  {player.vip_level} - {vipInfo.name}
-                </Badge>
-                {isAccountClosed && (
-                  <Badge variant="outline" className={`gap-1 ${closureBadgeClass}`}>
-                    <X className="h-3.5 w-3.5" />
-                    {closureLabel}: {player.account_closure_reason || "Unspecified"}
+            <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border-2 border-border/70 bg-card/90 p-3 shadow-sm">
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <h1 className="truncate text-lg font-bold">{getFullName(player)}</h1>
+                  <CopyButton text={getFullName(player)} label="Name" />
+                  <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
+                    {player.vip_level} - {vipInfo.name}
                   </Badge>
-                )}
-                {visibleFollowUpViewedAt && (
-                  <Badge variant="outline" className="gap-1 border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300">
-                    <CalendarCheck className="h-3.5 w-3.5" />
-                    Followed up {formatDistanceToNow(new Date(visibleFollowUpViewedAt), { addSuffix: true })}
-                  </Badge>
-                )}
-                {lastCallAt && (
-                  <Badge variant="outline" className="gap-1 border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
-                    <Phone className="h-3.5 w-3.5" />
-                    Called {formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}
-                  </Badge>
-                )}
+                  {player.bonus_abuser && (
+                    <Badge variant="outline" className="gap-1 border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+                      <ShieldAlert className="h-3.5 w-3.5" />
+                      Bonus abuser
+                    </Badge>
+                  )}
+                  {player.contact_email_only && (
+                    <Badge variant="outline" className="gap-1 border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
+                      <Mail className="h-3.5 w-3.5" />
+                      Email only
+                    </Badge>
+                  )}
+                  {player.telegram_member && (
+                    <Badge variant="outline" className="gap-1 border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+                      <Send className="h-3.5 w-3.5" />
+                      Telegram
+                    </Badge>
+                  )}
+                  {visibleFollowUpViewedAt && (
+                    <Badge variant="outline" className="gap-1 border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300">
+                      <CalendarCheck className="h-3.5 w-3.5" />
+                      Followed up {formatDistanceToNow(new Date(visibleFollowUpViewedAt), { addSuffix: true })}
+                    </Badge>
+                  )}
+                  {lastCallAt && (
+                    <Badge variant="outline" className={`gap-1 ${getLastCallBadgeClass(lastCallAt)}`}>
+                      <Phone className="h-3.5 w-3.5" />
+                      Last called {formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}
+                    </Badge>
+                  )}
+                  {pendingCalls.length > 0 && (
+                    <Badge variant="outline" className="gap-1 border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300">
+                      <Clock className="h-3.5 w-3.5" />
+                      {pendingCalls.length === 1 ? "Scheduled call" : `${pendingCalls.length} scheduled calls`}
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <p className="text-sm text-muted-foreground">@{player.username}</p>
+                  <CopyButton text={player.username} label="Username" size="sm" />
+                </div>
               </div>
-              <div className="mt-1 flex items-center gap-1.5">
-                <p className="text-sm text-muted-foreground">@{player.username}</p>
-                <CopyButton text={player.username} label="Username" size="sm" />
+              <div className={`min-w-[190px] rounded-md border-2 px-3 py-2 text-sm ${
+                isAccountClosed
+                  ? isBreakClosure
+                    ? "border-blue-300/80 bg-blue-50/70 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
+                    : "border-rose-300/90 bg-rose-50/80 text-rose-800 dark:border-rose-800 dark:bg-rose-950/35 dark:text-rose-300"
+                  : "border-green-300/80 bg-green-50/70 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"
+              }`}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide opacity-75">Account Status</p>
+                <p className="font-bold">{isAccountClosed ? closureLabel : "Open"}</p>
+                {isAccountClosed && (
+                  <p className="truncate text-xs opacity-80">{player.account_closure_reason || "Unspecified"}</p>
+                )}
               </div>
             </div>
           )}
@@ -973,60 +1236,7 @@ export default function PlayerDetailPage() {
             );
           })()}
 
-          {(pendingTasks.length > 0 || pendingCalls.length > 0) && (
-            <div className="grid gap-3 lg:grid-cols-2">
-              {pendingCalls.length > 0 && (
-                <Alert className="border-2 border-blue-300 bg-blue-50/80 py-3 dark:border-blue-800 dark:bg-blue-950/30">
-                  <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <AlertTitle className="text-base font-bold text-blue-900 dark:text-blue-100">
-                    Scheduled Calls ({pendingCalls.length})
-                  </AlertTitle>
-                  <AlertDescription className="mt-2 text-blue-800 dark:text-blue-200">
-                    <div className="space-y-1.5">
-                      {pendingCalls.slice(0, 3).map(call => (
-                        <div key={call.id} className="rounded border border-blue-200 bg-white p-2 dark:border-blue-800 dark:bg-blue-900/20">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <p className="font-semibold">{call.title}</p>
-                              {call.phone_number && (
-                                <p className="text-sm flex items-center gap-1">
-                                  <Phone className="w-3 h-3" />
-                                  {call.phone_number}
-                                </p>
-                              )}
-                              {call.due_date && (
-                                <p className="text-xs text-muted-foreground">
-                                  {format(new Date(call.due_date), "PPp")}
-                                </p>
-                              )}
-                            </div>
-                            <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
-                              {call.priority}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-blue-200/50 dark:border-blue-800/50">
-                            <Checkbox
-                              id={`call-alert-done-${call.id}`}
-                              checked={checkedAlertTasks.has(call.id)}
-                              onCheckedChange={(checked) => handleAlertCheckboxChange(call, checked as boolean)}
-                            />
-                            <label htmlFor={`call-alert-done-${call.id}`} className="text-xs font-semibold cursor-pointer">
-                              Mark as Done
-                            </label>
-                          </div>
-                        </div>
-                      ))}
-                      {pendingCalls.length > 3 && (
-                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                          +{pendingCalls.length - 3} more scheduled calls
-                        </p>
-                      )}
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {pendingTasks.length > 0 && (
+          {pendingTasks.length > 0 && (
                 <Alert className="border-2 border-amber-300 bg-amber-50/80 py-3 dark:border-amber-800 dark:bg-amber-950/30">
                   <Bell className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                   <AlertTitle className="text-base font-bold text-amber-900 dark:text-amber-100">
@@ -1072,11 +1282,13 @@ export default function PlayerDetailPage() {
                     </div>
                   </AlertDescription>
                 </Alert>
-              )}
-            </div>
           )}
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+          <div className={`grid gap-4 ${
+            isEmbedded
+              ? "lg:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_380px]"
+              : "xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]"
+          }`}>
             <div className="space-y-4">
               <Card className="border-2 border-indigo-300/80 bg-indigo-50/15 shadow-md shadow-indigo-500/5 transition-all hover:shadow-lg dark:border-indigo-800 dark:bg-indigo-950/10">
                 <CardHeader className="border-b-2 border-indigo-200/80 bg-indigo-100/35 py-3 dark:border-indigo-900/70 dark:bg-indigo-950/25">
@@ -1185,6 +1397,12 @@ export default function PlayerDetailPage() {
                       <PreferencesEditor 
                         preferences={draftPreferences}
                         onUpdate={setDraftPreferences}
+                        contactEmailOnly={draftContactEmailOnly}
+                        telegramMember={draftTelegramMember}
+                        onContactFlagsUpdate={({ contactEmailOnly, telegramMember }) => {
+                          setDraftContactEmailOnly(contactEmailOnly);
+                          setDraftTelegramMember(telegramMember);
+                        }}
                       />
                       <div className="flex gap-2 justify-end pt-2 border-t border-border/40">
                         <Button 
@@ -1246,6 +1464,38 @@ export default function PlayerDetailPage() {
                               )}
                             </div>
                           </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Email only:</span>
+                            <div className="flex items-center gap-1">
+                              {player.contact_email_only ? (
+                                <>
+                                  <Check className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                                  <span className="font-medium">Yes</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-4 h-4 text-muted-foreground" />
+                                  <span className="font-medium">No</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Telegram:</span>
+                            <div className="flex items-center gap-1">
+                              {player.telegram_member ? (
+                                <>
+                                  <Send className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                                  <span className="font-medium">Member</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-4 h-4 text-muted-foreground" />
+                                  <span className="font-medium">Not marked</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -1289,7 +1539,7 @@ export default function PlayerDetailPage() {
                         Manage player-related tasks and follow-ups
                       </p>
                     </div>
-                    <Button onClick={() => setIsTaskFormOpen(true)} size="sm" className="border-2 border-primary">
+                    <Button onClick={handleAddTask} size="sm" className="border-2 border-primary">
                       <Plus className="w-4 h-4 mr-2" />
                       Add Task
                     </Button>
@@ -1297,7 +1547,7 @@ export default function PlayerDetailPage() {
                 </CardHeader>
                 <CardContent className="pt-3">
                   <TaskList
-                    tasks={tasks}
+                    tasks={tasks.filter((task) => !task.is_call)}
                     onEdit={handleEditTask}
                     onDelete={handleTaskDelete}
                     onComplete={handleTaskComplete}
@@ -1307,8 +1557,8 @@ export default function PlayerDetailPage() {
               </Card>
             </div>
 
-            <div className="space-y-4">
-              <Card className="border-2 border-slate-300/90 bg-slate-50/30 shadow-md shadow-slate-500/5 transition-all hover:shadow-lg dark:border-slate-700 dark:bg-slate-950/20">
+            <div className="flex flex-col gap-4">
+              <Card className="order-1 border-2 border-slate-300/90 bg-slate-50/30 shadow-md shadow-slate-500/5 transition-all hover:shadow-lg dark:border-slate-700 dark:bg-slate-950/20">
                 <CardHeader className="border-b-2 border-slate-200/90 bg-slate-100/60 py-3 dark:border-slate-800 dark:bg-slate-900/50">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -1327,6 +1577,15 @@ export default function PlayerDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-3 py-3">
                   <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleScheduleCall}
+                      disabled={isAccountClosed}
+                      className="h-9 justify-start gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      <Phone className="h-4 w-4" />
+                      Schedule Call
+                    </Button>
                     <Button
                       size="sm"
                       onClick={() => setIsManualCallLogOpen(true)}
@@ -1360,12 +1619,36 @@ export default function PlayerDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => setIsUpgradeDialogOpen(true)}
+                      disabled={upgradeLevels.length === 0}
+                      className="h-9 justify-start gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                      Upgrade VIP
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setIsDowngradeDialogOpen(true)}
                       disabled={downgradeLevels.length === 0}
                       className="h-9 justify-start gap-2 border-violet-300 text-violet-700 hover:bg-violet-50 disabled:opacity-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/30"
                     >
-                      <Crown className="h-4 w-4" />
+                      <ArrowDown className="h-4 w-4" />
                       Downgrade VIP
+                    </Button>
+                    <Button
+                      variant={player.bonus_abuser ? "outline" : "default"}
+                      size="sm"
+                      onClick={handleBonusAbuserToggle}
+                      disabled={isSavingBonusFlag}
+                      className={
+                        player.bonus_abuser
+                          ? "h-9 justify-start gap-2 border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/30"
+                          : "h-9 justify-start gap-2 border-2 border-orange-500 bg-orange-500 font-bold text-white shadow-md shadow-orange-500/20 hover:bg-orange-600 dark:border-orange-500 dark:bg-orange-600 dark:hover:bg-orange-700"
+                      }
+                    >
+                      <ShieldAlert className="h-4 w-4" />
+                      {player.bonus_abuser ? "Remove Bonus Flag" : "Bonus Abuser"}
                     </Button>
                     {isAccountClosed && canReopenAccount ? (
                       <Button
@@ -1415,88 +1698,111 @@ export default function PlayerDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card className={`border-2 shadow-md transition-all hover:shadow-lg ${
-                isAccountClosed
-                  ? isBreakClosure
-                    ? "border-blue-300/80 bg-blue-50/15 shadow-blue-500/5 dark:border-blue-800 dark:bg-blue-950/10"
-                    : "border-rose-300/90 bg-rose-50/20 shadow-rose-500/10 dark:border-rose-800 dark:bg-rose-950/15"
-                  : "border-green-300/80 bg-green-50/15 shadow-green-500/5 dark:border-green-800 dark:bg-green-950/10"
-              }`}>
-                <CardHeader className={`border-b-2 py-3 ${
-                  isAccountClosed
-                    ? isBreakClosure
-                      ? "border-blue-200/80 bg-blue-100/35 dark:border-blue-900/70 dark:bg-blue-950/25"
-                      : "border-rose-200/80 bg-rose-100/40 dark:border-rose-900/70 dark:bg-rose-950/30"
-                    : "border-green-200/80 bg-green-100/35 dark:border-green-900/70 dark:bg-green-950/25"
-                }`}>
+              <Card className="order-3 border-2 border-blue-300/80 bg-blue-50/15 shadow-md shadow-blue-500/5 transition-all hover:shadow-lg dark:border-blue-800 dark:bg-blue-950/10">
+                <CardHeader className="border-b-2 border-blue-200/80 bg-blue-100/35 py-3 dark:border-blue-900/70 dark:bg-blue-950/25">
                   <div className="flex items-center justify-between gap-3">
                     <CardTitle className="flex items-center gap-2 text-base">
-                      {isAccountClosed ? <X className="h-4 w-4 text-red-700 dark:text-red-300" /> : <Check className="h-4 w-4 text-green-700 dark:text-green-300" />}
-                      Account Status
+                      <Phone className="h-4 w-4 text-blue-700 dark:text-blue-300" />
+                      Scheduled Calls
                     </CardTitle>
-                    <Badge variant="outline" className={isAccountClosed ? closureBadgeClass : "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"}>
-                      {isAccountClosed ? closureLabel : "Open"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
+                        {pendingCalls.length}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        onClick={handleScheduleCall}
+                        disabled={isAccountClosed}
+                        className="h-7 gap-1.5 bg-blue-600 px-2 text-xs hover:bg-blue-700"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Schedule
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-2 py-3 text-sm">
-                  {isAccountClosed ? (
-                    <>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-md border-2 border-red-200/80 bg-background/70 p-2 dark:border-red-900/70">
-                          <p className="text-xs text-muted-foreground">Reason</p>
-                          <p className="font-semibold">{player.account_closure_reason || "Unspecified"}</p>
+                <CardContent className="py-3">
+                  {pendingCalls.length > 0 ? (
+                    <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                      {pendingCalls.map((call) => (
+                        <div key={call.id} className="rounded-md border-2 border-blue-200/80 bg-background/80 p-2 text-sm shadow-sm dark:border-blue-900/70">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold">{call.title}</p>
+                              {call.phone_number && (
+                                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Phone className="h-3 w-3" />
+                                  {call.phone_number}
+                                </p>
+                              )}
+                              {call.due_date && (
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(call.due_date), "PPp")}
+                                </p>
+                              )}
+                            </div>
+                            <Badge className="shrink-0 border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
+                              {call.priority}
+                            </Badge>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-blue-200/60 pt-2 dark:border-blue-900/60">
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id={`call-rail-done-${call.id}`}
+                                checked={checkedAlertTasks.has(call.id)}
+                                onCheckedChange={(checked) => handleAlertCheckboxChange(call, checked as boolean)}
+                              />
+                              <label htmlFor={`call-rail-done-${call.id}`} className="cursor-pointer text-xs font-semibold">
+                                Mark as Done
+                              </label>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCallCancel(call.id)}
+                              className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 dark:hover:text-red-300"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
-                        <div className="rounded-md border-2 border-red-200/80 bg-background/70 p-2 dark:border-red-900/70">
-                          <p className="text-xs text-muted-foreground">Type</p>
-                          <p className="font-semibold">{closureLabel}</p>
-                        </div>
-                      </div>
-                      {isBreakClosure && breakEndsAt && (
-                        <div className={`rounded-md border-2 p-2 ${
-                          isBreakDue
-                            ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
-                            : "border-blue-200 bg-blue-50/50 text-blue-800 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-300"
-                        }`}>
-                          <p className="text-xs opacity-80">{isBreakDue ? "Break period is over" : "Break ends"}</p>
-                          <p className="font-semibold">{format(breakEndsAt, "PPP")}</p>
-                          <p className="mt-1 text-xs opacity-80">
-                            Account remains closed until you reopen it.
-                          </p>
-                        </div>
-                      )}
-                      {canReopenAccount && (
-                        <p className="rounded-md border border-green-200 bg-green-50/60 p-2 text-xs text-green-700 dark:border-green-900 dark:bg-green-950/20 dark:text-green-300">
-                          Reopen is available in the action repository.
-                        </p>
-                      )}
-                      {isAccountClosed && !canReopenAccount && (
-                        <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-300">
-                          Permanent closures require the exceptional reopen confirmation in the action repository.
-                        </p>
-                      )}
-                    </>
+                      ))}
+                    </div>
                   ) : (
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">This player account is currently marked open.</p>
-                      <p className="rounded-md border border-slate-200 bg-background/60 p-2 text-xs text-muted-foreground dark:border-slate-800">
-                        Closure actions are handled in the action repository.
-                      </p>
+                    <div className="rounded-lg border border-dashed border-border/60 bg-muted/10 py-8 text-center">
+                      <Phone className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+                      <p className="text-xs text-muted-foreground">No scheduled calls</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              <Card className="border-2 border-emerald-300/80 bg-emerald-50/15 shadow-md shadow-emerald-500/5 transition-all hover:shadow-lg dark:border-emerald-800 dark:bg-emerald-950/10">
+              <Card className="order-2 border-2 border-emerald-300/80 bg-emerald-50/15 shadow-md shadow-emerald-500/5 transition-all hover:shadow-lg dark:border-emerald-800 dark:bg-emerald-950/10">
                 <CardHeader className="border-b-2 border-emerald-200/80 bg-emerald-100/35 py-3 dark:border-emerald-900/70 dark:bg-emerald-950/25">
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <FileText className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
                       Note Log
                     </CardTitle>
-                    <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
-                      {noteLogs.length}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+                        {noteLogs.length}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setNotesValue("");
+                          setIsNoteDialogOpen(true);
+                        }}
+                        className="h-7 px-2 text-xs border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                      >
+                        <FileText className="w-3 h-3 mr-1" />
+                        Add
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="py-3">
@@ -1523,7 +1829,7 @@ export default function PlayerDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-2 border-blue-300/80 bg-blue-50/15 shadow-md shadow-blue-500/5 transition-all hover:shadow-lg dark:border-blue-800 dark:bg-blue-950/10">
+              <Card className="order-4 border-2 border-blue-300/80 bg-blue-50/15 shadow-md shadow-blue-500/5 transition-all hover:shadow-lg dark:border-blue-800 dark:bg-blue-950/10">
                 <CardHeader className="border-b-2 border-blue-200/80 bg-blue-100/35 py-3 dark:border-blue-900/70 dark:bg-blue-950/25">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -1576,37 +1882,52 @@ export default function PlayerDetailPage() {
                     </div>
                   ) : (
                     <div className={`space-y-1.5 ${showAllCallLogs ? 'max-h-[600px]' : 'max-h-[320px]'} overflow-y-auto transition-all duration-300 ease-in-out scrollbar-thin scrollbar-thumb-blue-300 dark:scrollbar-thumb-blue-700 scrollbar-track-transparent`}>
-                      {(showAllCallLogs ? callLogs : callLogs.slice(0, 5)).map((log, index) => (
-                        <button
-                          key={log.id}
-                          onClick={() => setSelectedCallLog(log)}
-                          className="w-full rounded-lg border-2 border-blue-200 bg-blue-50/50 p-1.5 text-left shadow-sm transition-all hover:scale-[1.01] hover:bg-blue-100/70 hover:shadow-md active:scale-[0.99] dark:border-blue-800 dark:bg-blue-950/20 dark:hover:bg-blue-900/30"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0 text-[10px] px-1 py-0">
-                                  Call #{callLogs.length - index}
-                                </Badge>
-                                {log.duration_minutes && (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {log.duration_minutes}m
-                                  </span>
-                                )}
+                      {(showAllCallLogs ? callLogs : callLogs.slice(0, 5)).map((log, index) => {
+                        const isNoAnswer = isNoAnswerCallLog(log);
+
+                        return (
+                          <button
+                            key={log.id}
+                            onClick={() => setSelectedCallLog(log)}
+                            className={`w-full rounded-lg border-2 p-1.5 text-left shadow-sm transition-all hover:scale-[1.01] hover:shadow-md active:scale-[0.99] ${
+                              isNoAnswer
+                                ? "border-orange-300 bg-orange-50/80 hover:bg-orange-100/80 dark:border-orange-800 dark:bg-orange-950/25 dark:hover:bg-orange-900/30"
+                                : "border-blue-200 bg-blue-50/50 hover:bg-blue-100/70 dark:border-blue-800 dark:bg-blue-950/20 dark:hover:bg-blue-900/30"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <Badge className={`${isNoAnswer ? "bg-orange-600 dark:bg-orange-700" : "bg-blue-600 dark:bg-blue-700"} text-white border-0 text-[10px] px-1 py-0`}>
+                                    {isNoAnswer ? (
+                                      <>
+                                        <PhoneOff className="mr-1 h-3 w-3" />
+                                        No answer
+                                      </>
+                                    ) : (
+                                      <>Call #{callLogs.length - index}</>
+                                    )}
+                                  </Badge>
+                                  {log.duration_minutes && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {log.duration_minutes}m
+                                    </span>
+                                  )}
+                                </div>
+                                <p className={`text-sm font-medium truncate ${isNoAnswer ? "text-orange-900 dark:text-orange-200" : ""}`}>
+                                  {normalizeCallTopic(log.call_topic) || "No reason specified"}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {format(new Date(log.call_time), "MMM d, yyyy 'at' h:mm:ss a")}
+                                </p>
                               </div>
-                              <p className="text-sm font-medium truncate">
-                                {log.call_topic || "Call completed"}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground">
-                                {format(new Date(log.call_time), "MMM d, yyyy • h:mm a")}
-                              </p>
+                              <div className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                  {formatDistanceToNow(new Date(log.completed_at || log.call_time), { addSuffix: true })}
+                              </div>
                             </div>
-                            <div className="text-[11px] text-muted-foreground whitespace-nowrap">
-                                {formatDistanceToNow(new Date(log.completed_at || log.call_time), { addSuffix: true })}
-                            </div>
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                       {!showAllCallLogs && callLogs.length > 5 && (
                         <div className="pt-2 border-t border-blue-200/50 dark:border-blue-800/50">
                           <Button
@@ -1635,6 +1956,7 @@ export default function PlayerDetailPage() {
           task={editingTask}
           playerId={player.id}
           playerPhone={player.phone || undefined}
+          defaultIsCall={taskFormDefaultIsCall}
         />
 
         <PlayerFormDialog
@@ -1654,8 +1976,13 @@ export default function PlayerDetailPage() {
 
         <CallCompletionDialog
           isOpen={isManualCallLogOpen}
-          onClose={() => setIsManualCallLogOpen(false)}
+          onClose={() => {
+            setIsManualCallLogOpen(false);
+            setPrefilledManualCallTopic(null);
+            setPrefilledManualCallTaskId(null);
+          }}
           onComplete={handleManualCallLog}
+          callTopic={prefilledManualCallTopic}
           phoneNumber={player.phone}
           title="Log Call"
           confirmLabel="Save Call Log"
@@ -1694,7 +2021,7 @@ export default function PlayerDetailPage() {
           <DialogContent className="sm:max-w-[460px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-violet-700 dark:text-violet-300">
-                <Crown className="h-5 w-5" />
+                <ArrowDown className="h-5 w-5" />
                 Downgrade VIP Level
               </DialogTitle>
             </DialogHeader>
@@ -1729,6 +2056,45 @@ export default function PlayerDetailPage() {
           </DialogContent>
         </Dialog>
 
+        <Dialog open={isUpgradeDialogOpen} onOpenChange={setIsUpgradeDialogOpen}>
+          <DialogContent className="sm:max-w-[460px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                <ArrowUp className="h-5 w-5" />
+                Upgrade VIP Level
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="rounded-md border-2 border-emerald-200 bg-emerald-50/50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/20">
+                Current level: <span className="font-semibold">VIP {currentVipLevel} - {vipConfig[currentVipLevel].name}</span>
+              </div>
+              {upgradeLevels.length > 0 ? (
+                <div className="grid gap-2">
+                  {upgradeLevels.map((level) => (
+                    <Button
+                      key={level}
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleVipUpgrade(level)}
+                      disabled={isSavingUpgrade}
+                      className="justify-start border-2"
+                    >
+                      VIP {level} - {vipConfig[level].name}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">This player is already at the highest VIP level.</p>
+              )}
+              <div className="flex justify-end border-t pt-3">
+                <Button type="button" variant="ghost" onClick={() => setIsUpgradeDialogOpen(false)} disabled={isSavingUpgrade}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={isAccountClosureOpen} onOpenChange={setIsAccountClosureOpen}>
           <DialogContent className="sm:max-w-[520px]">
             <DialogHeader>
@@ -1739,29 +2105,48 @@ export default function PlayerDetailPage() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Closure reason</label>
+                <label className="text-sm font-semibold">Closure reasons</label>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {ACCOUNT_CLOSURE_REASONS.map((reason) => (
-                    <Button
-                      key={reason}
-                      type="button"
-                      variant={closureReason === reason ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setClosureReason(reason);
-                        if (!REOPENABLE_REASONS.includes(reason as typeof REOPENABLE_REASONS[number])) {
-                          setClosureType("permanent");
-                        }
-                      }}
-                      className="justify-start"
-                    >
-                      {reason}
-                    </Button>
-                  ))}
+                  {ACCOUNT_CLOSURE_REASONS.map((reason) => {
+                    const isSelected = closureReasons.includes(reason);
+
+                    return (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => {
+                          setClosureReasons((current) => {
+                            const next = current.includes(reason)
+                              ? current.filter((selectedReason) => selectedReason !== reason)
+                              : [...current, reason];
+
+                            if (
+                              next.length > 0 &&
+                              !next.every((selectedReason) =>
+                                REOPENABLE_REASONS.includes(selectedReason as typeof REOPENABLE_REASONS[number])
+                              )
+                            ) {
+                              setClosureType("permanent");
+                            }
+
+                            return next;
+                          });
+                        }}
+                        className={`flex h-9 items-center gap-2 rounded-md border-2 px-3 text-left text-sm font-semibold transition-colors ${
+                          isSelected
+                            ? "border-red-500 bg-red-100 text-red-800 dark:border-red-700 dark:bg-red-950/40 dark:text-red-300"
+                            : "border-border bg-background hover:bg-muted/60"
+                        }`}
+                      >
+                        <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
+                        {reason}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {closureReason && REOPENABLE_REASONS.includes(closureReason as typeof REOPENABLE_REASONS[number]) ? (
+              {closureReasons.length > 0 && closureReasons.every((reason) => REOPENABLE_REASONS.includes(reason as typeof REOPENABLE_REASONS[number])) ? (
                 <>
                   <div className="space-y-2">
                     <label className="text-sm font-semibold">Closure type</label>
@@ -1824,9 +2209,9 @@ export default function PlayerDetailPage() {
                     </div>
                   )}
                 </>
-              ) : closureReason ? (
+              ) : closureReasons.length > 0 ? (
                 <div className="rounded-md border-2 border-red-200 bg-red-50/60 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-                  This reason is permanent and complete. Reopening later requires the exceptional reopen confirmation.
+                  One or more selected reasons require permanent closure. Reopening later requires the exceptional reopen confirmation.
                 </div>
               ) : null}
 
@@ -1837,7 +2222,7 @@ export default function PlayerDetailPage() {
                 <Button
                   type="button"
                   onClick={handleCloseAccount}
-                  disabled={!closureReason || isSavingClosure}
+                  disabled={closureReasons.length === 0 || isSavingClosure}
                   className="bg-red-600 hover:bg-red-700"
                 >
                   {isSavingClosure ? "Closing..." : "Close Account"}
@@ -1916,9 +2301,13 @@ export default function PlayerDetailPage() {
             {selectedCallLog && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0">
-                    <Phone className="w-3 h-3 mr-1" />
-                    Call Completed
+                  <Badge className={`${isNoAnswerCallLog(selectedCallLog) ? "bg-orange-600 dark:bg-orange-700" : "bg-blue-600 dark:bg-blue-700"} text-white border-0`}>
+                    {isNoAnswerCallLog(selectedCallLog) ? (
+                      <PhoneOff className="w-3 h-3 mr-1" />
+                    ) : (
+                      <Phone className="w-3 h-3 mr-1" />
+                    )}
+                    {isNoAnswerCallLog(selectedCallLog) ? "No Answer" : "Call Completed"}
                   </Badge>
                   {selectedCallLog.duration_minutes && (
                     <Badge variant="outline" className="border-2 border-blue-300 dark:border-blue-700">
@@ -1928,13 +2317,25 @@ export default function PlayerDetailPage() {
                   )}
                 </div>
 
+                {isNoAnswerCallLog(selectedCallLog) && (
+                  <div className="rounded-lg border-2 border-orange-300 bg-orange-50/80 p-3 text-orange-900 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-200">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <PhoneOff className="h-4 w-4" />
+                      No answer contact attempt
+                    </div>
+                    <p className="mt-1 text-xs opacity-80">
+                      This call was attempted but the player did not answer. The call reason remains recorded below.
+                    </p>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
                     <div className="flex items-center gap-2 text-sm mb-1">
                       <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span className="font-semibold">Call Time</span>
                     </div>
-                    <p className="text-sm pl-6">{format(new Date(selectedCallLog.call_time), "PPPP 'at' p")}</p>
+                    <p className="text-sm pl-6">{format(new Date(selectedCallLog.call_time), "PPPP 'at' h:mm:ss a")}</p>
                   </div>
 
                   {selectedCallLog.phone_number && (
@@ -1966,7 +2367,7 @@ export default function PlayerDetailPage() {
                       </div>
                     ) : (
                       <p className="text-sm font-medium truncate">
-                        {selectedCallLog.call_topic || "No reason specified"}
+                        {normalizeCallTopic(selectedCallLog.call_topic) || "No reason specified"}
                       </p>
                     )}
                   </div>
@@ -1996,7 +2397,7 @@ export default function PlayerDetailPage() {
                       <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span className="font-semibold">Completed At</span>
                     </div>
-                    <p className="text-sm pl-6">{format(new Date(selectedCallLog.completed_at || selectedCallLog.call_time), "PPPP 'at' p")}</p>
+                    <p className="text-sm pl-6">{format(new Date(selectedCallLog.completed_at || selectedCallLog.call_time), "PPPP 'at' h:mm:ss a")}</p>
                   </div>
                 </div>
 

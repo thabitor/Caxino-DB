@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, ArrowUpDown, Trash2, Edit, Plus, Bell, ListPlus, Phone, Users, CalendarCheck, X, Star } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { ArrowLeft, ArrowRight, ArrowUpDown, Trash2, Edit, Plus, Bell, ListPlus, Phone, Users, CalendarCheck, X, Star, ShieldAlert, Mail, Send } from "lucide-react";
+import { differenceInCalendarDays, formatDistanceToNow } from "date-fns";
 import { TaskCountBadge } from "./TaskCountBadge";
 import { CopyButton } from "./CopyButton";
 import { getBirthdayStatus, getBirthdayBadge } from "@/lib/utils";
@@ -28,6 +28,45 @@ interface PlayersTableProps {
 }
 
 const compactCell = "px-2 py-1.5 align-middle";
+const RECENT_CALL_BADGE_DAYS = 3;
+const OVERDUE_CALL_BADGE_DAYS = 30;
+
+function getCallAgeLabel(lastCallAt?: string | null) {
+  if (!lastCallAt) return null;
+
+  const callDate = new Date(lastCallAt);
+  const dayDiff = differenceInCalendarDays(new Date(), callDate);
+
+  if (!Number.isFinite(callDate.getTime()) || dayDiff < 0) {
+    return null;
+  }
+
+  if (dayDiff === 0) return "today";
+  if (dayDiff <= RECENT_CALL_BADGE_DAYS) {
+    return `${dayDiff} day${dayDiff === 1 ? "" : "s"} ago`;
+  }
+  if (dayDiff > OVERDUE_CALL_BADGE_DAYS) {
+    return formatDistanceToNow(callDate, { addSuffix: true });
+  }
+
+  return null;
+}
+
+function getLastCallBadgeClass(lastCallAt?: string | null) {
+  if (!lastCallAt) {
+    return "border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300";
+  }
+
+  const callDate = new Date(lastCallAt);
+  if (!Number.isFinite(callDate.getTime())) {
+    return "border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300";
+  }
+
+  const daysSinceCall = differenceInCalendarDays(new Date(), callDate);
+  return daysSinceCall > OVERDUE_CALL_BADGE_DAYS
+    ? "border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+    : "border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300";
+}
 
 function getClosureKind(player: PlayerWithTasks) {
   return player.account_closure_type === "break" ? "temporary" : "permanent";
@@ -239,6 +278,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
     const birthdayBadge = getBirthdayBadge(birthdayStatus);
     const followUpViewedAt = isClosedAccount(player) ? null : followUpViewedAtByPlayer[player.id];
     const lastCallAt = lastCallAtByPlayer[player.id];
+    const callAgeLabel = getCallAgeLabel(lastCallAt);
     const monthlyCallCount = monthlyCallCountByPlayer[player.id] || 0;
     
     return (
@@ -250,6 +290,33 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
           >
             <X className="h-3 w-3" />
             <span className="text-[11px] font-semibold">{getClosureLabel(player)}</span>
+          </div>
+        )}
+        {player.bonus_abuser && (
+          <div
+            className="flex items-center gap-1 rounded-full border border-red-300 bg-red-100 px-1.5 py-0.5 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+            title="Marked as bonus abuser"
+          >
+            <ShieldAlert className="h-3 w-3" />
+            <span className="text-[11px] font-semibold">Bonus abuser</span>
+          </div>
+        )}
+        {player.contact_email_only && (
+          <div
+            className="flex items-center gap-1 rounded-full border border-orange-300 bg-orange-100 px-1.5 py-0.5 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300"
+            title="Prefers exclusive email contact"
+          >
+            <Mail className="h-3 w-3" />
+            <span className="text-[11px] font-semibold">Email only</span>
+          </div>
+        )}
+        {player.telegram_member && (
+          <div
+            className="flex items-center gap-1 rounded-full border border-sky-300 bg-sky-100 px-1.5 py-0.5 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300"
+            title="Telegram group member"
+          >
+            <Send className="h-3 w-3" />
+            <span className="text-[11px] font-semibold">Telegram</span>
           </div>
         )}
         {birthdayBadge && (
@@ -270,13 +337,13 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
             <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">{callCount}</span>
           </div>
         )}
-        {lastCallAt && (
+        {callAgeLabel && lastCallAt && (
           <div
-            className="flex items-center gap-1 rounded-full border border-blue-300 bg-blue-100 px-1.5 py-0.5 dark:border-blue-800 dark:bg-blue-950/40"
-            title={`Called ${formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}`}
+            className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 ${getLastCallBadgeClass(lastCallAt)}`}
+            title={`Last called ${formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}`}
           >
-            <Phone className="h-3 w-3 text-blue-700 dark:text-blue-300" />
-            <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">Called</span>
+            <Phone className="h-3 w-3" />
+            <span className="text-[11px] font-semibold">{callAgeLabel}</span>
           </div>
         )}
         {monthlyCallCount > 2 && (
@@ -313,6 +380,10 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
       }
 
       return "bg-red-50/60 ring-1 ring-inset ring-red-200 dark:bg-red-950/20 dark:ring-red-900 hover:bg-red-100/70 dark:hover:bg-red-950/30";
+    }
+
+    if (player.bonus_abuser) {
+      return "bg-red-50/70 ring-1 ring-inset ring-red-200 dark:bg-red-950/20 dark:ring-red-900 hover:bg-red-100/70 dark:hover:bg-red-950/30";
     }
     
     if (followUpViewedAt) {

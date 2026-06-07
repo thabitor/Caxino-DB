@@ -10,14 +10,17 @@ export const FOLLOW_UP_RECENT_ACTIVITY_CLEARED_AT_KEY = "recentFollowUpActivityC
 export const FOLLOW_UP_TTL_MS = 60 * 60 * 1000;
 export const FOLLOW_UP_HIGHLIGHT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const FOLLOW_UP_RECENT_ACTIVITY_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+export const ACTION_LOG_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type FollowUpRecentActivityType = "opened" | "dismissed";
 export type ActionHistoryActivityType =
-  | "follow_up_opened"
-  | "follow_up_dismissed"
   | "call_logged"
+  | "call_no_answer"
+  | "vip_upgraded"
+  | "vip_downgraded"
   | "account_closed"
   | "account_reopened"
+  | "bonus_abuser_flagged"
   | "player_added";
 
 export interface FollowUpRecentActivity {

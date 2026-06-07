@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { playerService, PlayerWithTasks, PlayerInsert, PlayerUpdate, getFullName, vipConfig, VipLevel } from "@/services/playerService";
 import { taskService } from "@/services/taskService";
 import { callLogService, type CallLog } from "@/services/callLogService";
+import { playerTouchpointService, type PlayerTouchpoint } from "@/services/playerTouchpointService";
 import { manualFollowUpService } from "@/services/manualFollowUpService";
 import { followUpViewedService } from "@/services/followUpViewedService";
 import { PlayersTable } from "@/components/PlayersTable";
@@ -23,7 +24,7 @@ import { UpcomingBirthdaysPanel } from "@/components/UpcomingBirthdaysPanel";
 import { ExcelUploadDialog } from "@/components/ExcelUploadDialog";
 import { FollowUpQueue } from "@/components/FollowUpQueue";
 import { buildFollowUpQueue, FollowUpItem } from "@/lib/followup";
-import { clearRecentFollowUpActivity, DASHBOARD_REFRESH_EVENT, FOLLOW_UP_RECENT_ACTIVITY_TTL_MS, FOLLOW_UP_TTL_MS, FOLLOW_UP_VIEWED_EVENT, type ActionHistoryActivity, FollowUpRecentActivity, getDashboardRefreshToken, getHighlightedFollowUps, getRecentFollowUpActivity, getRecentFollowUpActivityClearedAt, restoreDismissedFollowUp } from "@/lib/dashboardSync";
+import { ACTION_LOG_TTL_MS, clearRecentFollowUpActivity, DASHBOARD_REFRESH_EVENT, FOLLOW_UP_VIEWED_EVENT, type ActionHistoryActivity, getDashboardRefreshToken, getHighlightedFollowUps, getRecentFollowUpActivityClearedAt } from "@/lib/dashboardSync";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManualFollowUpDialog } from "@/components/ManualFollowUpDialog";
 import { ManualFollowUpPickerDialog } from "@/components/ManualFollowUpPickerDialog";
@@ -53,49 +54,12 @@ export default function Home() {
   const [followUpPlayer, setFollowUpPlayer] = useState<PlayerWithTasks | null>(null);
   const [isQueueFollowUpOpen, setIsQueueFollowUpOpen] = useState(false);
 
-  const mergeRecentFollowUpActivity = useCallback((persistedOpened: { player_id: string; last_viewed_at: string }[]) => {
-    const cutoff = Date.now() - FOLLOW_UP_RECENT_ACTIVITY_TTL_MS;
-    const clearedAt = getRecentFollowUpActivityClearedAt();
-    const clearedAtTime = clearedAt ? new Date(clearedAt).getTime() : null;
-    const isAfterClear = (timestamp: string) => {
-      if (!clearedAtTime || !Number.isFinite(clearedAtTime)) return true;
-
-      const activityTime = new Date(timestamp).getTime();
-      return Number.isFinite(activityTime) && activityTime > clearedAtTime;
-    };
-    const openedFromDb = persistedOpened
-      .filter((viewed) => {
-        const timestamp = new Date(viewed.last_viewed_at).getTime();
-        return Number.isFinite(timestamp) && timestamp >= cutoff && isAfterClear(viewed.last_viewed_at);
-      })
-      .map((viewed): FollowUpRecentActivity => ({
-        playerId: viewed.player_id,
-        type: "opened",
-        timestamp: viewed.last_viewed_at,
-      }));
-
-    const merged = [...getRecentFollowUpActivity().filter((activity) => isAfterClear(activity.timestamp)), ...openedFromDb];
-    const latestByKey = new Map<string, FollowUpRecentActivity>();
-
-    merged.forEach((activity) => {
-      const key = `${activity.playerId}:${activity.type}`;
-      const existing = latestByKey.get(key);
-      if (!existing || new Date(activity.timestamp).getTime() > new Date(existing.timestamp).getTime()) {
-        latestByKey.set(key, activity);
-      }
-    });
-
-    return Array.from(latestByKey.values()).sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-  }, []);
-
   const buildActionHistory = useCallback((
     playersData: PlayerWithTasks[],
     callLogs: CallLog[],
-    followUpActivity: FollowUpRecentActivity[]
+    touchpoints: PlayerTouchpoint[]
   ): ActionHistoryActivity[] => {
-    const cutoff = Date.now() - FOLLOW_UP_RECENT_ACTIVITY_TTL_MS;
+    const cutoff = Date.now() - ACTION_LOG_TTL_MS;
     const clearedAt = getRecentFollowUpActivityClearedAt();
     const clearedAtTime = clearedAt ? new Date(clearedAt).getTime() : null;
     const isValidTimestamp = (timestamp?: string | null) => {
@@ -110,27 +74,50 @@ export default function Home() {
 
         return {
           playerId: callLog.player_id,
-          type: "call_logged",
+          type: callLog.notes?.toLowerCase().includes("no answer. contact attempt recorded at")
+            ? "call_no_answer"
+            : "call_logged",
           timestamp: timestamp as string,
           detail: callLog.call_topic,
         };
       })
       .filter((activity): activity is ActionHistoryActivity => Boolean(activity));
-    const callsByPlayer = callEvents.reduce<Record<string, number[]>>((byPlayer, activity) => {
-      byPlayer[activity.playerId] = [...(byPlayer[activity.playerId] || []), new Date(activity.timestamp).getTime()];
-      return byPlayer;
-    }, {});
-    const followUpEvents = followUpActivity
-      .filter((activity) => isValidTimestamp(activity.timestamp))
-      .filter((activity) => {
-        const activityTime = new Date(activity.timestamp).getTime();
-        return !(callsByPlayer[activity.playerId] || []).some((callTime) => Math.abs(callTime - activityTime) <= FOLLOW_UP_TTL_MS);
+    const touchpointEvents = touchpoints
+      .map((touchpoint): ActionHistoryActivity | null => {
+        const title = touchpoint.title?.toLowerCase() || "";
+        const timestamp = touchpoint.occurred_at || touchpoint.created_at;
+        if (!isValidTimestamp(timestamp)) return null;
+
+        if (title.includes("vip level upgraded")) {
+          return {
+            playerId: touchpoint.player_id,
+            type: "vip_upgraded",
+            timestamp,
+            detail: touchpoint.body,
+          };
+        }
+
+        if (title.includes("vip level downgraded")) {
+          return {
+            playerId: touchpoint.player_id,
+            type: "vip_downgraded",
+            timestamp,
+            detail: touchpoint.body,
+          };
+        }
+
+        if (title.includes("bonus abuser flag added")) {
+          return {
+            playerId: touchpoint.player_id,
+            type: "bonus_abuser_flagged",
+            timestamp,
+            detail: touchpoint.body,
+          };
+        }
+
+        return null;
       })
-      .map((activity): ActionHistoryActivity => ({
-        playerId: activity.playerId,
-        type: activity.type === "dismissed" ? "follow_up_dismissed" : "follow_up_opened",
-        timestamp: activity.timestamp,
-      }));
+      .filter((activity): activity is ActionHistoryActivity => Boolean(activity));
     const playerEvents = playersData.flatMap((player): ActionHistoryActivity[] => {
       const events: ActionHistoryActivity[] = [];
 
@@ -162,26 +149,18 @@ export default function Home() {
       return events;
     });
 
-    return [...callEvents, ...followUpEvents, ...playerEvents]
+    return [...callEvents, ...touchpointEvents, ...playerEvents]
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 40);
+      .slice(0, 120);
   }, []);
-
-  const getPersistedOpenedForRecent = useCallback(
-    () =>
-      Object.entries(followUpViewedAtByPlayer).map(([player_id, last_viewed_at]) => ({
-        player_id,
-        last_viewed_at,
-      })),
-    [followUpViewedAtByPlayer]
-  );
 
   const fetchDashboardData = useCallback(async (options?: { background?: boolean }) => {
     try {
       if (!options?.background || !hasLoadedDashboard.current) {
         setLoading(true);
       }
-      const [playersData, total, distribution, tasks, callLogs, manualFollowUps, viewedPlayers] = await Promise.all([
+      const actionLogCutoff = new Date(Date.now() - ACTION_LOG_TTL_MS).toISOString();
+      const [playersData, total, distribution, tasks, callLogs, manualFollowUps, viewedPlayers, touchpoints] = await Promise.all([
         playerService.getPlayers(),
         playerService.getTotalPlayerCount(),
         playerService.getVipLevelDistribution(),
@@ -189,6 +168,7 @@ export default function Home() {
         callLogService.getAllCallLogs(),
         manualFollowUpService.getActiveManualFollowUps(),
         followUpViewedService.getRecentViewedPlayers(user?.id || null),
+        playerTouchpointService.getRecentTouchpoints(actionLogCutoff),
       ]);
       const localViewed = getHighlightedFollowUps();
       const persistedViewed = Object.fromEntries(
@@ -227,8 +207,7 @@ export default function Home() {
       setFollowUpViewedAtByPlayer({ ...localViewed, ...persistedViewed });
       setLastCallAtByPlayer(latestCallsByPlayer);
       setMonthlyCallCountByPlayer(monthlyCallsByPlayer);
-      const followUpActivity = mergeRecentFollowUpActivity(viewedPlayers);
-      setActionHistory(buildActionHistory(playersData, callLogs, followUpActivity));
+      setActionHistory(buildActionHistory(playersData, callLogs, touchpoints));
       hasLoadedDashboard.current = true;
       lastRefreshToken.current = getDashboardRefreshToken();
     } catch (error) {
@@ -241,7 +220,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [buildActionHistory, mergeRecentFollowUpActivity, toast, user?.id]);
+  }, [buildActionHistory, toast, user?.id]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -277,12 +256,7 @@ export default function Home() {
       window.removeEventListener("focus", refreshRecentActivity);
       document.removeEventListener("visibilitychange", refreshOnVisible);
     };
-  }, [fetchDashboardData, getPersistedOpenedForRecent, mergeRecentFollowUpActivity]);
-
-  const handleRestoreDismissedFollowUp = (playerId: string) => {
-    restoreDismissedFollowUp(playerId);
-    fetchDashboardData({ background: true });
-  };
+  }, [fetchDashboardData]);
 
   const handleClearRecentFollowUps = () => {
     clearRecentFollowUpActivity();
@@ -527,75 +501,81 @@ export default function Home() {
             </div>
 
             <TabsContent value="relationship" className="m-0 min-h-0 flex-1 overflow-hidden">
-          <section className="h-full min-h-0 overflow-hidden rounded-lg border-2 border-border/80 bg-card shadow-md shadow-black/5 dark:border-border/70 dark:shadow-black/20">
-            <Tabs defaultValue="followups" className="flex h-full min-w-0 flex-col">
-              <div className="flex items-end justify-between gap-3 border-b-2 border-border/60 bg-muted/20 px-3 pt-2">
-                <TabsList className="h-9 justify-start rounded-none bg-transparent p-0">
-                  <TabsTrigger
-                    value="followups"
-                    className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
-                  >
-                    Follow-ups
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="alerts"
-                    className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
-                  >
-                    Alerts
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="birthdays"
-                    className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
-                  >
-                    Birthdays
-                  </TabsTrigger>
-                </TabsList>
-                <div className="hidden pb-2 text-xs font-medium text-muted-foreground sm:block">
-                  Relationship workspace
-                </div>
-              </div>
+          <section className="grid h-full min-h-0 grid-rows-[260px_minmax(0,1fr)] gap-3 overflow-y-auto lg:grid-cols-[260px_minmax(0,1fr)] lg:grid-rows-none lg:overflow-hidden 2xl:grid-cols-[300px_minmax(0,1fr)]">
+            <div className="grid min-h-0 gap-3 min-[520px]:grid-rows-[260px_minmax(0,1fr)]">
+              <Card className="h-full overflow-hidden border-2 border-emerald-300/80 bg-emerald-50/20 shadow-md shadow-emerald-500/5 dark:border-emerald-800 dark:bg-emerald-950/10">
+                <CardHeader className="min-h-[68px] border-b-2 border-emerald-200/80 bg-emerald-100/35 py-2.5 dark:border-emerald-900/70 dark:bg-emerald-950/25">
+                  <div className="flex h-full items-center justify-between gap-3">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <AlertCircle className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+                        Manager Snapshot
+                      </CardTitle>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Current workload summary.
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="grid h-[calc(100%-68px)] content-start gap-2 p-3 text-sm">
+                  <div className="grid gap-1.5">
+                    <div className="flex items-center justify-between rounded-md border border-emerald-200/80 bg-emerald-50/45 px-2.5 py-1.5 shadow-sm shadow-emerald-500/5 dark:border-emerald-900/70 dark:bg-emerald-950/20">
+                      <span className="text-xs font-semibold text-muted-foreground">To Review</span>
+                      <span className="text-base font-bold tabular-nums">{followUpItems.length}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border border-red-200 bg-red-50/85 px-2.5 py-1.5 text-red-800 shadow-sm shadow-red-500/5 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+                      <span className="text-xs font-semibold opacity-85">Overdue</span>
+                      <span className="text-base font-bold tabular-nums">{overdueFollowUps}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50/85 px-2.5 py-1.5 text-blue-800 shadow-sm shadow-blue-500/5 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
+                      <span className="text-xs font-semibold opacity-85">Due Today</span>
+                      <span className="text-base font-bold tabular-nums">{todayFollowUps}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border border-cyan-200/80 bg-cyan-50/45 px-2.5 py-1.5 shadow-sm shadow-cyan-500/5 dark:border-cyan-900/70 dark:bg-cyan-950/20">
+                      <span className="text-xs font-semibold text-muted-foreground">Scheduled Calls</span>
+                      <span className="text-base font-bold tabular-nums">{scheduledCalls}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <UpcomingBirthdaysPanel players={players} />
+            </div>
 
-              <div className="grid min-h-0 flex-1 grid-rows-[560px_560px_220px] gap-3 overflow-y-auto p-3 lg:grid-cols-[260px_minmax(0,1fr)_260px] lg:grid-rows-none lg:overflow-hidden 2xl:grid-cols-[300px_minmax(0,1fr)_340px]">
-                <div className="grid min-h-0 gap-3 min-[520px]:grid-rows-[260px_minmax(0,1fr)]">
-                  <Card className="h-full overflow-hidden border-2 border-emerald-300/80 bg-emerald-50/20 shadow-md shadow-emerald-500/5 dark:border-emerald-800 dark:bg-emerald-950/10">
-                    <CardHeader className="min-h-[68px] border-b-2 border-emerald-200/80 bg-emerald-100/35 py-2.5 dark:border-emerald-900/70 dark:bg-emerald-950/25">
-                      <div className="flex h-full items-center justify-between gap-3">
-                        <div>
-                          <CardTitle className="flex items-center gap-2 text-base">
-                            <AlertCircle className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
-                            Manager Snapshot
-                          </CardTitle>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            Current workload summary.
-                          </p>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="grid h-[calc(100%-68px)] content-start gap-2 p-3 text-sm">
-                      <div className="grid gap-1.5">
-                        <div className="flex items-center justify-between rounded-md border border-emerald-200/80 bg-emerald-50/45 px-2.5 py-1.5 shadow-sm shadow-emerald-500/5 dark:border-emerald-900/70 dark:bg-emerald-950/20">
-                          <span className="text-xs font-semibold text-muted-foreground">To Review</span>
-                          <span className="text-base font-bold tabular-nums">{followUpItems.length}</span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-md border border-red-200 bg-red-50/85 px-2.5 py-1.5 text-red-800 shadow-sm shadow-red-500/5 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-                          <span className="text-xs font-semibold opacity-85">Overdue</span>
-                          <span className="text-base font-bold tabular-nums">{overdueFollowUps}</span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50/85 px-2.5 py-1.5 text-blue-800 shadow-sm shadow-blue-500/5 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
-                          <span className="text-xs font-semibold opacity-85">Due Today</span>
-                          <span className="text-base font-bold tabular-nums">{todayFollowUps}</span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-md border border-cyan-200/80 bg-cyan-50/45 px-2.5 py-1.5 shadow-sm shadow-cyan-500/5 dark:border-cyan-900/70 dark:bg-cyan-950/20">
-                          <span className="text-xs font-semibold text-muted-foreground">Scheduled Calls</span>
-                          <span className="text-base font-bold tabular-nums">{scheduledCalls}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <UpcomingBirthdaysPanel players={players} />
+            <section className="flex h-full min-h-0 overflow-hidden rounded-lg border-2 border-border/80 bg-card shadow-md shadow-black/5 dark:border-border/70 dark:shadow-black/20">
+              <Tabs defaultValue="alerts" className="flex h-full min-w-0 flex-1 flex-col">
+                <div className="flex items-end justify-between gap-3 border-b-2 border-border/60 bg-muted/20 px-3 pt-2">
+                  <TabsList className="h-9 justify-start rounded-none bg-transparent p-0">
+                    <TabsTrigger
+                      value="alerts"
+                      className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
+                    >
+                      Alerts
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="followups"
+                      className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
+                    >
+                      Follow-ups
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="birthdays"
+                      className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
+                    >
+                      Birthdays
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="action-log"
+                      className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
+                    >
+                      Action Log
+                    </TabsTrigger>
+                  </TabsList>
+                  <div className="hidden pb-2 text-xs font-medium text-muted-foreground sm:block">
+                    Relationship workspace
+                  </div>
                 </div>
 
-                <div className="min-h-0 min-w-0">
+                <div className="min-h-0 min-w-0 flex-1 p-3">
                   <TabsContent value="followups" className="m-0 h-full">
                     <FollowUpQueue
                       items={followUpItems}
@@ -609,18 +589,16 @@ export default function Home() {
                   <TabsContent value="birthdays" className="m-0 h-full">
                     <BirthdayReminders />
                   </TabsContent>
+                  <TabsContent value="action-log" className="m-0 h-full">
+                    <RecentFollowUpsPanel
+                      activities={actionHistory}
+                      players={players}
+                      onClear={handleClearRecentFollowUps}
+                    />
+                  </TabsContent>
                 </div>
-
-                <div className="min-h-0">
-                  <RecentFollowUpsPanel
-                    activities={actionHistory}
-                    players={players}
-                    onRestore={handleRestoreDismissedFollowUp}
-                    onClear={handleClearRecentFollowUps}
-                  />
-                </div>
-              </div>
-            </Tabs>
+              </Tabs>
+            </section>
           </section>
             </TabsContent>
 

@@ -24,9 +24,22 @@ interface TaskFormDialogProps {
   task?: Task | null;
   playerId?: string;
   playerPhone?: string;
+  defaultIsCall?: boolean;
 }
 
 const CALL_REASONS = ["Reward", "Payment", "Tech issue"] as const;
+const CALL_TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => {
+  const totalMinutes = index * 15;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const value = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  const label = new Date(2000, 0, 1, hours, minutes).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return { value, label };
+});
 
 function parseCallReasons(value?: string | null) {
   if (!value) return [];
@@ -98,7 +111,7 @@ const extendedTaskSchema = z.object({
 
 type ExtendedTaskFormData = z.infer<typeof extendedTaskSchema>;
 
-const getResetValues = (task: Task | null | undefined, playerId?: string, playerPhone?: string): ExtendedTaskFormData => {
+const getResetValues = (task: Task | null | undefined, playerId?: string, playerPhone?: string, defaultIsCall = false): ExtendedTaskFormData => {
   if (!task) {
     return {
       player_id: playerId || "",
@@ -107,7 +120,7 @@ const getResetValues = (task: Task | null | undefined, playerId?: string, player
       priority: "medium",
       status: "pending",
       due_date: undefined,
-      is_call: false,
+      is_call: defaultIsCall,
       phone_number: playerPhone || "",
       call_topic: "",
       call_time: "",
@@ -126,7 +139,7 @@ const getResetValues = (task: Task | null | undefined, playerId?: string, player
   };
 };
 
-export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, playerPhone }: TaskFormDialogProps) {
+export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, playerPhone, defaultIsCall = false }: TaskFormDialogProps) {
   const [isCall, setIsCall] = useState(false);
 
   const form = useForm<ExtendedTaskFormData>({
@@ -138,11 +151,11 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
 
   useEffect(() => {
     if (isOpen) {
-      const resetValues = getResetValues(task, playerId, playerPhone);
+      const resetValues = getResetValues(task, playerId, playerPhone, defaultIsCall);
       form.reset(resetValues);
       setIsCall(resetValues.is_call);
     }
-  }, [task, playerId, playerPhone, isOpen, form]);
+  }, [task, playerId, playerPhone, defaultIsCall, isOpen, form]);
 
   const handleFormSubmit = (data: ExtendedTaskFormData) => {
     console.log("=== FORM SUBMISSION STARTED ===");
@@ -382,12 +395,12 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="due_date"
                     render={({ field }) => (
-                      <FormItem className="flex flex-col">
+                      <FormItem className="flex min-h-[86px] flex-col justify-start">
                         <FormLabel className="text-blue-700 dark:text-blue-300">Call Date *</FormLabel>
                         <Popover modal={true}>
                           <PopoverTrigger asChild>
@@ -395,7 +408,7 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                               <Button 
                                 variant="outline" 
                                 className={cn(
-                                  "w-full pl-3 text-left font-normal justify-start border-blue-300",
+                                  "h-10 w-full justify-start border-blue-300 pl-3 text-left font-normal",
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
@@ -423,11 +436,22 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                     control={form.control}
                     name="call_time"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex min-h-[86px] flex-col justify-start">
                         <FormLabel className="text-blue-700 dark:text-blue-300">Call Time *</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="time" className="border-blue-300" />
-                        </FormControl>
+                        <Select value={field.value || undefined} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger className="h-10 border-blue-300">
+                              <SelectValue placeholder="Pick time" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-[260px]">
+                            {CALL_TIME_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

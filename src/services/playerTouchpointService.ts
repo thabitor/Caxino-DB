@@ -5,6 +5,21 @@ export type PlayerTouchpoint = Database["public"]["Tables"]["player_touchpoints"
 export type PlayerTouchpointInsert = Database["public"]["Tables"]["player_touchpoints"]["Insert"];
 
 export const playerTouchpointService = {
+  async getRecentTouchpoints(cutoffIso: string): Promise<PlayerTouchpoint[]> {
+    const { data, error } = await supabase
+      .from("player_touchpoints")
+      .select("*")
+      .gte("occurred_at", cutoffIso)
+      .order("occurred_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching recent player touchpoints:", error);
+      throw error;
+    }
+
+    return data || [];
+  },
+
   async getTouchpointsByPlayerId(playerId: string): Promise<PlayerTouchpoint[]> {
     const { data, error } = await supabase
       .from("player_touchpoints")

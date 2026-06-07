@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, Clock, ExternalLink, Calendar, User, Phone, X } from "lucide-react";
+import { AlertCircle, Clock, ExternalLink, Calendar, User, Phone, X, Ban } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyButton } from "@/components/CopyButton";
 import { CallCompletionDialog } from "@/components/CallCompletionDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { markFollowUpContacted, notifyDashboardRefresh } from "@/lib/dashboardSync";
 
 interface TaskWithPlayer extends Task {
   player_name: string;
@@ -151,6 +152,7 @@ export function TaskAlertsPanel() {
   const handleTaskComplete = async (taskId: string) => {
     try {
       await taskService.completeTask(taskId);
+      notifyDashboardRefresh();
       toast({ 
         title: "Task completed", 
         description: "Task marked as completed successfully.",
@@ -177,17 +179,52 @@ export function TaskAlertsPanel() {
     }
   };
 
-  const handleCallComplete = async (notes?: string, durationMinutes?: number) => {
+  const handleCancelCall = async (taskId: string) => {
+    try {
+      await taskService.updateTask(taskId, {
+        status: "cancelled",
+      });
+      notifyDashboardRefresh();
+      toast({
+        title: "Scheduled call cancelled",
+        description: "This call was removed from the active scheduled calls list.",
+        duration: 3000
+      });
+      setCheckedTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+      fetchAlerts();
+    } catch (error) {
+      console.error("Error cancelling scheduled call:", error);
+      toast({
+        title: "Error",
+        description: "Could not cancel the scheduled call. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCallComplete = async (notes?: string, durationMinutes?: number, callTopic?: string) => {
     if (!completingCallId || !user) {
       toast({ title: "Error", description: "Missing required data.", variant: "destructive" });
       return;
     }
 
     try {
-      await taskService.completeCallTask(completingCallId, user.id, notes, durationMinutes);
+      const completingCall = todayCalls.find((task) => task.id === completingCallId);
+      await taskService.completeCallTask(completingCallId, user.id, notes, durationMinutes, callTopic);
+      if (completingCall?.player_id) {
+        markFollowUpContacted(completingCall.player_id);
+      }
+      notifyDashboardRefresh();
+      const isNoAnswer = notes?.toLowerCase().includes("no answer. contact attempt recorded at");
       toast({ 
-        title: "Call completed", 
-        description: "Call logged successfully and task marked as complete.",
+        title: isNoAnswer ? "No answer recorded" : "Call completed", 
+        description: isNoAnswer
+          ? "The unanswered call attempt was added to this player's history."
+          : "Call logged successfully and task marked as complete.",
         duration: 3000
       });
       setCheckedTasks(prev => {
@@ -265,7 +302,9 @@ export function TaskAlertsPanel() {
 
   const renderTaskCard = (task: TaskWithPlayer, isCall: boolean) => {
     const cardBorderColor = isCall 
-      ? "border-blue-400 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" 
+      ? isOverdue(task.due_date!)
+        ? "border-red-300 bg-red-50/80 dark:border-red-800 dark:bg-red-950/25"
+        : "border-sky-300 bg-sky-50/85 dark:border-sky-800 dark:bg-sky-950/25"
       : isOverdue(task.due_date!)
         ? getPriorityColor(task.priority)
         : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20";
@@ -275,70 +314,71 @@ export function TaskAlertsPanel() {
     return (
       <div
         key={task.id}
-        className={`relative rounded-lg border-2 p-4 shadow-sm ${cardBorderColor} transition-all hover:shadow-md`}
+        className={`relative rounded-lg border-2 p-3 shadow-sm ${cardBorderColor} transition-all hover:shadow-md`}
       >
         <Button
-          size="sm"
+          size="icon"
           variant="ghost"
           onClick={() => handleDismissTask(task.id)}
-          className="absolute top-2 right-2 h-8 px-3 gap-1.5 hover:bg-muted/80"
+          className="absolute right-2 top-2 h-7 w-7 rounded-full hover:bg-background/80"
           title="Dismiss this reminder"
+          aria-label="Dismiss this reminder"
         >
-          <X className="w-3.5 h-3.5" />
-          <span className="text-xs font-medium">Ok, got it!</span>
+          <X className="h-3.5 w-3.5" />
         </Button>
 
-        <div className="flex items-start justify-between gap-4 pr-24">
-          <div className="flex items-start gap-3 flex-1">
-            <div className="pt-1 flex flex-col items-center space-y-1">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <div className="flex w-16 shrink-0 flex-col items-center space-y-1 pt-1">
               <Checkbox
                 id={`task-done-${task.id}`}
                 checked={isChecked}
                 onCheckedChange={(checked) => handleCheckboxChange(task, checked as boolean)}
-                className="h-5 w-5 border-2"
+                className="h-4 w-4 border-2"
               />
-               <label htmlFor={`task-done-${task.id}`} className="text-xs font-semibold cursor-pointer text-center leading-tight">
-                Mark as<br/>Done
+               <label htmlFor={`task-done-${task.id}`} className="cursor-pointer text-center text-[11px] font-semibold leading-tight">
+                Mark done
               </label>
             </div>
             
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                {isCall && (
-                  <Badge className="bg-blue-600 dark:bg-blue-700 text-white border-0 gap-1">
-                    <Phone className="w-3 h-3" />
-                    Call Scheduled
-                  </Badge>
-                )}
-                <Badge className={getStatusColor(task.status)}>
-                  {task.status.replace("_", " ")}
-                </Badge>
-                <Badge variant="outline" className="capitalize border-2">
-                  {task.priority} priority
-                </Badge>
-                {isOverdue(task.due_date!) && (
-                  <Badge className="bg-red-600 dark:bg-red-700 text-white border-0 animate-pulse">
-                    OVERDUE
-                  </Badge>
-                )}
-              </div>
-
-              <h4 className="font-semibold text-base flex items-center gap-2">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <h4 className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm">
                 {isCall && <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-                {task.title}
+                {isCall ? (
+                  <>
+                    <span className="font-semibold">Call</span>
+                    <span className="font-bold text-sky-900 dark:text-sky-100">{task.player_name}</span>
+                    <span className="text-xs font-medium text-muted-foreground">(@{task.player_username})</span>
+                    {task.call_topic && (
+                      <>
+                        <span className="font-semibold">for</span>
+                        <span className="font-bold text-foreground">{task.call_topic}</span>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <span className="font-semibold">{task.title}</span>
+                )}
               </h4>
 
-              {isCall && task.phone_number && (
-                <div className="flex items-center gap-2 rounded border-2 border-blue-200 bg-blue-100/50 p-2 dark:border-blue-800 dark:bg-blue-900/20">
-                  <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="font-mono text-sm font-medium">{task.phone_number}</span>
-                  <CopyButton text={task.phone_number} label="Phone" />
+              {isCall && task.due_date && (
+                <div className={`flex items-center gap-1.5 text-xs font-semibold ${isOverdue(task.due_date) ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"}`}>
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>
+                    {isOverdue(task.due_date)
+                      ? `Scheduled ${formatDistanceToNow(new Date(task.due_date))} ago`
+                      : `Scheduled for ${format(new Date(task.due_date), "PPp")}`}
+                  </span>
                 </div>
               )}
 
-              {isCall && task.call_topic && (
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-medium">Reason:</span> {task.call_topic}
+              {isCall && task.phone_number && (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-white/70 px-2 py-1 font-mono font-semibold text-sky-900 dark:border-sky-800 dark:bg-sky-950/35 dark:text-sky-100">
+                    <Phone className="h-3.5 w-3.5 text-sky-600 dark:text-sky-300" />
+                    {task.phone_number}
+                    <CopyButton text={task.phone_number} label="Phone" />
+                  </span>
                 </div>
               )}
 
@@ -348,38 +388,80 @@ export function TaskAlertsPanel() {
                 </p>
               )}
 
-              <div className="flex items-center gap-4 text-sm flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <User className="w-4 h-4" />
-                  <span className="font-medium">{task.player_name}</span>
-                  <span className="text-muted-foreground">(@{task.player_username})</span>
-                </div>
-                <div className={`flex items-center gap-1.5 font-semibold ${isOverdue(task.due_date!) ? "text-red-600 dark:text-red-400" : isCall ? "text-blue-600 dark:text-blue-400" : "text-amber-600 dark:text-amber-400"}`}>
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    {isCall && !isOverdue(task.due_date!) 
-                      ? `Call at ${format(new Date(task.due_date!), "PPp")}`
-                      : isOverdue(task.due_date!) 
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                {!isCall && (
+                  <div className="flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5" />
+                    <span className="font-medium">{task.player_name}</span>
+                    <span className="text-muted-foreground">(@{task.player_username})</span>
+                  </div>
+                )}
+                {!isCall && (
+                  <div className={`flex items-center gap-1.5 font-semibold ${isOverdue(task.due_date!) ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}>
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>
+                      {isOverdue(task.due_date!)
                         ? `Overdue by ${formatDistanceToNow(new Date(task.due_date!))}` 
                         : `Due ${formatDistanceToNow(new Date(task.due_date!))} from now`
-                    }
-                  </span>
-                </div>
+                      }
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {isCall && (
+                  <Badge className="gap-1 border border-sky-400 bg-white text-sky-800 shadow-sm dark:border-sky-700 dark:bg-sky-950 dark:text-sky-200">
+                    <Phone className="w-3 h-3" />
+                    Call Scheduled
+                  </Badge>
+                )}
+                <Badge className={getStatusColor(task.status)}>
+                  {task.status.replace("_", " ")}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={`capitalize border-2 ${
+                    isCall
+                      ? "border-sky-300 bg-white/80 text-sky-800 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-200"
+                      : ""
+                  }`}
+                >
+                  {task.priority} priority
+                </Badge>
+                {isOverdue(task.due_date!) && (
+                  <Badge className="bg-red-600 dark:bg-red-700 text-white border-0 animate-pulse">
+                    OVERDUE
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
           
-          <Button
-            size="sm"
-            variant="outline"
-            asChild
-            className="border-2 gap-1.5 shrink-0"
-          >
-            <Link href={`/player/${task.player_id}`}>
-              View Player
-              <ExternalLink className="w-3 h-3" />
-            </Link>
-          </Button>
+          <div className="flex w-32 shrink-0 flex-col gap-1.5 pt-7">
+            <Button
+              size="sm"
+              variant="outline"
+              asChild
+              className="h-8 justify-start gap-1.5 border-2 text-xs"
+            >
+              <Link href={`/player/${task.player_id}`}>
+                View Player
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+            </Button>
+            {isCall && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleCancelCall(task.id)}
+                className="h-8 gap-1.5 border-2 border-red-300 bg-white/80 text-xs text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
+              >
+                <Ban className="w-3 h-3" />
+                Cancel Call
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );

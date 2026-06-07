@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Clock, FileText } from "lucide-react";
+import { Phone, PhoneOff, Clock, FileText } from "lucide-react";
 
 interface CallCompletionDialogProps {
   isOpen: boolean;
@@ -23,6 +23,15 @@ const CALL_REASONS = ["Reward", "Payment", "Tech issue"] as const;
 function parseCallReasons(value?: string | null) {
   if (!value) return [];
   return CALL_REASONS.filter((reason) => value.split(",").map((item) => item.trim()).includes(reason));
+}
+
+function getSelectedCallReason(reasons: string[], fallback?: string | null) {
+  const selectedReason = reasons.length > 0 ? reasons.join(", ") : fallback?.trim();
+  if (!selectedReason || selectedReason.toLowerCase() === "no answer") {
+    return undefined;
+  }
+
+  return selectedReason;
 }
 
 export function CallCompletionDialog({ 
@@ -50,6 +59,21 @@ export function CallCompletionDialog({
 
     const durationMinutes = duration ? parseInt(duration, 10) : undefined;
     onComplete(notes || undefined, durationMinutes, reasons.join(", "));
+    setNotes("");
+    setDuration("");
+    setReasons([]);
+  };
+
+  const handleNoAnswer = () => {
+    const attemptedAt = new Date().toISOString();
+    const selectedReason = getSelectedCallReason(reasons, callTopic);
+    const noAnswerNote = [
+      `No answer. Contact attempt recorded at ${attemptedAt}.`,
+      `Call reason: ${selectedReason || "No reason specified"}.`,
+      notes.trim(),
+    ].filter(Boolean).join("\n\n");
+
+    onComplete(noAnswerNote, undefined, selectedReason);
     setNotes("");
     setDuration("");
     setReasons([]);
@@ -143,6 +167,15 @@ export function CallCompletionDialog({
           <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleNoAnswer}
+              className="gap-2 border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/30"
+            >
+              <PhoneOff className="w-4 h-4" />
+              No Answer
             </Button>
             <Button type="submit" disabled={reasons.length === 0} className="bg-blue-600 hover:bg-blue-700 gap-2">
               <Phone className="w-4 h-4" />
