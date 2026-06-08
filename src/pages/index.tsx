@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
 import { playerService, PlayerWithTasks, PlayerInsert, PlayerUpdate, getFullName, vipConfig, VipLevel } from "@/services/playerService";
 import { taskService } from "@/services/taskService";
 import { callLogService, type CallLog } from "@/services/callLogService";
@@ -32,6 +33,7 @@ import { RecentFollowUpsPanel } from "@/components/RecentFollowUpsPanel";
 import { PlayerFlyout } from "@/components/PlayerFlyout";
 
 export default function Home() {
+  const router = useRouter();
   const [players, setPlayers] = useState<PlayerWithTasks[]>([]);
   const [totalPlayers, setTotalPlayers] = useState(0);
   const [vipDistribution, setVipDistribution] = useState<Record<VipLevel, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
@@ -53,6 +55,19 @@ export default function Home() {
   const [flyoutPlayerId, setFlyoutPlayerId] = useState<string | null>(null);
   const [followUpPlayer, setFollowUpPlayer] = useState<PlayerWithTasks | null>(null);
   const [isQueueFollowUpOpen, setIsQueueFollowUpOpen] = useState(false);
+  const [activeMainTab, setActiveMainTab] = useState("relationship");
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const tab = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
+    setActiveMainTab(tab === "directory" ? "directory" : "relationship");
+  }, [router.isReady, router.query.tab]);
+
+  const handleMainTabChange = (value: string) => {
+    setActiveMainTab(value);
+    const nextQuery = value === "directory" ? { tab: "directory" } : {};
+    router.replace({ pathname: "/", query: nextQuery }, undefined, { shallow: true });
+  };
 
   const buildActionHistory = useCallback((
     playersData: PlayerWithTasks[],
@@ -485,7 +500,7 @@ export default function Home() {
         </header>
 
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 lg:p-5">
-          <Tabs defaultValue="relationship" className="flex h-full min-h-0 flex-1 flex-col">
+          <Tabs value={activeMainTab} onValueChange={handleMainTabChange} className="flex h-full min-h-0 flex-1 flex-col">
             <div className="mb-3 flex items-center justify-between gap-3">
               <TabsList className="h-10 justify-start rounded-md border-2 border-border/70 bg-muted/35 p-1 shadow-sm">
                 <TabsTrigger value="relationship" className="h-8 px-4 text-xs">

@@ -1006,9 +1006,20 @@ export default function PlayerDetailPage() {
   const isBreakClosure = isAccountClosed && player.account_closure_type === "break";
   const closureLabel = getClosureLabel(player.account_closure_type);
   const closureBadgeClass = getClosureBadgeClass(player.account_closure_type);
+  const accountStatusLabel = isAccountClosed ? closureLabel : "Open";
+  const accountStatusDetail = isAccountClosed ? player.account_closure_reason || "Unspecified" : null;
   const canReopenAccount = isBreakClosure && REOPENABLE_REASONS.includes(player.account_closure_reason as typeof REOPENABLE_REASONS[number]);
   const breakEndsAt = player.account_closure_until ? new Date(player.account_closure_until) : null;
   const isBreakDue = Boolean(isBreakClosure && breakEndsAt && breakEndsAt.getTime() <= Date.now());
+  const goToDirectory = () => router.push({ pathname: "/", query: { tab: "directory" } });
+  const handleBackNavigation = () => {
+    const from = Array.isArray(router.query.from) ? router.query.from[0] : router.query.from;
+    if (from === "window" || (typeof window !== "undefined" && window.history.length <= 1)) {
+      goToDirectory();
+      return;
+    }
+    router.back();
+  };
   const activeManualFollowUp = isAccountClosed ? null : manualFollowUps.find((followUp) => followUp.status === "active");
   const currentVipLevel = (player.vip_level || 1) as VipLevel;
   const upgradeLevels = (Object.keys(vipConfig).map(Number) as VipLevel[])
@@ -1023,91 +1034,27 @@ export default function PlayerDetailPage() {
       <div className="flex min-h-screen flex-col bg-background">
         {!isEmbedded && (
         <header className="sticky top-0 z-10 border-b-2 border-border/60 bg-background/90 shadow-md backdrop-blur-lg">
-          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-2 lg:px-5">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border/60 px-4 py-2 lg:px-5">
+            <div className="flex min-w-0 items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 gap-1.5 border-2 font-semibold hover:bg-muted/50"
+                onClick={handleBackNavigation}
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
                 asChild 
                 className="h-8 gap-1.5 border-2 font-semibold hover:bg-muted/50"
               >
-                <Link href="/">
-                  <ArrowLeft className="w-4 h-4" />
-                  Players
+                <Link href={{ pathname: "/", query: { tab: "directory" } }}>
+                  Directory
                 </Link>
               </Button>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                      <h1 className="truncate text-lg font-bold">{getFullName(player)}</h1>
-                      <CopyButton text={getFullName(player)} label="Name" />
-                      <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
-                        {player.vip_level} - {vipInfo.name}
-                      </Badge>
-                      {player.bonus_abuser && (
-                        <Badge variant="outline" className="gap-1 border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
-                          <ShieldAlert className="h-3.5 w-3.5" />
-                          Bonus abuser
-                        </Badge>
-                      )}
-                      {player.contact_email_only && (
-                        <Badge variant="outline" className="gap-1 border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
-                          <Mail className="h-3.5 w-3.5" />
-                          Email only
-                        </Badge>
-                      )}
-                      {player.telegram_member && (
-                        <Badge variant="outline" className="gap-1 border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
-                          <Send className="h-3.5 w-3.5" />
-                          Telegram
-                        </Badge>
-                      )}
-                      {isAccountClosed && (
-                        <Badge variant="outline" className={`gap-1 ${closureBadgeClass}`}>
-                          <X className="h-3.5 w-3.5" />
-                          {closureLabel}: {player.account_closure_reason || "Unspecified"}
-                        </Badge>
-                      )}
-                      {visibleFollowUpViewedAt && (
-                        <Badge variant="outline" className="gap-1 border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300">
-                          <CalendarCheck className="h-3.5 w-3.5" />
-                          Followed up {formatDistanceToNow(new Date(visibleFollowUpViewedAt), { addSuffix: true })}
-                        </Badge>
-                      )}
-                      {lastCallAt && (
-                        <Badge variant="outline" className={`gap-1 ${getLastCallBadgeClass(lastCallAt)}`}>
-                          <Phone className="h-3.5 w-3.5" />
-                          Last called {formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}
-                        </Badge>
-                      )}
-                      {pendingCalls.length > 0 && (
-                        <Badge variant="outline" className="gap-1 border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300">
-                          <Clock className="h-3.5 w-3.5" />
-                          {pendingCalls.length === 1 ? "Scheduled call" : `${pendingCalls.length} scheduled calls`}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm text-muted-foreground">@{player.username}</p>
-                      <CopyButton text={player.username} label="Username" size="sm" />
-                    </div>
-                  </div>
-                </div>
-                <div className={`ml-auto hidden max-w-[260px] shrink-0 items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-xs font-semibold lg:flex ${
-                  isAccountClosed
-                    ? isBreakClosure
-                      ? "border-blue-300/80 bg-blue-50/70 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
-                      : "border-rose-300/90 bg-rose-50/80 text-rose-800 dark:border-rose-800 dark:bg-rose-950/35 dark:text-rose-300"
-                    : "border-green-300/80 bg-green-50/70 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"
-                }`}>
-                  <span className="text-[10px] uppercase tracking-wide opacity-70">Status</span>
-                  <span className="font-bold">{isAccountClosed ? closureLabel : "Open"}</span>
-                  {isAccountClosed && (
-                    <span className="truncate opacity-80">- {player.account_closure_reason || "Unspecified"}</span>
-                  )}
-                </div>
-              </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {user && (
@@ -1130,6 +1077,77 @@ export default function PlayerDetailPage() {
               </Button>
             </div>
           </div>
+          <div className="px-4 py-3 lg:px-5">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <h1 className="inline-flex min-w-0 items-center gap-2 truncate text-2xl font-extrabold tracking-tight">
+                <span className="truncate">{getFullName(player)}</span>
+                <span
+                  className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                    isAccountClosed
+                      ? closureBadgeClass
+                      : "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"
+                  }`}
+                  title={accountStatusDetail ? `${accountStatusLabel}: ${accountStatusDetail}` : accountStatusLabel}
+                  aria-label={accountStatusDetail ? `${accountStatusLabel}: ${accountStatusDetail}` : accountStatusLabel}
+                >
+                  {isAccountClosed ? <X className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+                </span>
+                {isAccountClosed && (
+                  <span className={`truncate text-xs font-semibold ${isBreakClosure ? "text-blue-700 dark:text-blue-300" : "text-rose-700 dark:text-rose-300"}`}>
+                    {accountStatusLabel}
+                  </span>
+                )}
+              </h1>
+              <CopyButton text={getFullName(player)} label="Name" />
+              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-muted-foreground">
+                @{player.username}
+                <CopyButton text={player.username} label="Username" size="icon" className="h-7 w-7" />
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 font-mono text-xs font-semibold text-muted-foreground/80">
+                {player.user_id}
+                <CopyButton text={player.user_id} label="User ID" size="icon" className="h-7 w-7" />
+              </span>
+              <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`} title={`VIP level ${player.vip_level}: ${vipInfo.name}`}>
+                {player.vip_level} - {vipInfo.name}
+              </Badge>
+              {player.bonus_abuser && (
+                <Badge variant="outline" title="Marked as a bonus abuser" className="gap-1 border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                  Bonus abuser
+                </Badge>
+              )}
+              {player.contact_email_only && (
+                <Badge variant="outline" title="Prefers exclusive email contact" className="gap-1 border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
+                  <Mail className="h-3.5 w-3.5" />
+                  Email only
+                </Badge>
+              )}
+              {player.telegram_member && (
+                <Badge variant="outline" title="Telegram group member" className="gap-1 border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+                  <Send className="h-3.5 w-3.5" />
+                  Telegram
+                </Badge>
+              )}
+              {visibleFollowUpViewedAt && (
+                <Badge variant="outline" title={`Followed up ${formatDistanceToNow(new Date(visibleFollowUpViewedAt), { addSuffix: true })}`} className="gap-1 border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300">
+                  <CalendarCheck className="h-3.5 w-3.5" />
+                  Followed up {formatDistanceToNow(new Date(visibleFollowUpViewedAt), { addSuffix: true })}
+                </Badge>
+              )}
+              {lastCallAt && (
+                <Badge variant="outline" title={`Last called ${formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}`} className={`gap-1 ${getLastCallBadgeClass(lastCallAt)}`}>
+                  <Phone className="h-3.5 w-3.5" />
+                  Last called {formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}
+                </Badge>
+              )}
+              {pendingCalls.length > 0 && (
+                <Badge variant="outline" title={`${pendingCalls.length} scheduled call${pendingCalls.length === 1 ? "" : "s"} pending`} className="gap-1 border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300">
+                  <Clock className="h-3.5 w-3.5" />
+                  {pendingCalls.length === 1 ? "Scheduled call" : `${pendingCalls.length} scheduled calls`}
+                </Badge>
+              )}
+            </div>
+          </div>
         </header>
         )}
 
@@ -1138,65 +1156,74 @@ export default function PlayerDetailPage() {
             <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border-2 border-border/70 bg-card/90 p-3 shadow-sm">
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <h1 className="truncate text-lg font-bold">{getFullName(player)}</h1>
+                  <h1 className="inline-flex min-w-0 items-center gap-2 truncate text-2xl font-extrabold tracking-tight">
+                    <span className="truncate">{getFullName(player)}</span>
+                    <span
+                      className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                        isAccountClosed
+                          ? closureBadgeClass
+                          : "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"
+                      }`}
+                      title={accountStatusDetail ? `${accountStatusLabel}: ${accountStatusDetail}` : accountStatusLabel}
+                      aria-label={accountStatusDetail ? `${accountStatusLabel}: ${accountStatusDetail}` : accountStatusLabel}
+                    >
+                      {isAccountClosed ? <X className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+                    </span>
+                    {isAccountClosed && (
+                      <span className={`truncate text-xs font-semibold ${isBreakClosure ? "text-blue-700 dark:text-blue-300" : "text-rose-700 dark:text-rose-300"}`}>
+                        {accountStatusLabel}
+                      </span>
+                    )}
+                  </h1>
                   <CopyButton text={getFullName(player)} label="Name" />
-                  <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`}>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-muted-foreground">
+                    @{player.username}
+                    <CopyButton text={player.username} label="Username" size="icon" className="h-7 w-7" />
+                  </span>
+                  <span className="inline-flex shrink-0 items-center gap-1 font-mono text-xs font-semibold text-muted-foreground/80">
+                    {player.user_id}
+                    <CopyButton text={player.user_id} label="User ID" size="icon" className="h-7 w-7" />
+                  </span>
+                  <Badge className={`${vipInfo.bgColor} ${vipInfo.color} font-semibold`} title={`VIP level ${player.vip_level}: ${vipInfo.name}`}>
                     {player.vip_level} - {vipInfo.name}
                   </Badge>
                   {player.bonus_abuser && (
-                    <Badge variant="outline" className="gap-1 border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+                    <Badge variant="outline" title="Marked as a bonus abuser" className="gap-1 border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
                       <ShieldAlert className="h-3.5 w-3.5" />
                       Bonus abuser
                     </Badge>
                   )}
                   {player.contact_email_only && (
-                    <Badge variant="outline" className="gap-1 border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
+                    <Badge variant="outline" title="Prefers exclusive email contact" className="gap-1 border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
                       <Mail className="h-3.5 w-3.5" />
                       Email only
                     </Badge>
                   )}
                   {player.telegram_member && (
-                    <Badge variant="outline" className="gap-1 border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+                    <Badge variant="outline" title="Telegram group member" className="gap-1 border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
                       <Send className="h-3.5 w-3.5" />
                       Telegram
                     </Badge>
                   )}
                   {visibleFollowUpViewedAt && (
-                    <Badge variant="outline" className="gap-1 border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300">
+                    <Badge variant="outline" title={`Followed up ${formatDistanceToNow(new Date(visibleFollowUpViewedAt), { addSuffix: true })}`} className="gap-1 border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300">
                       <CalendarCheck className="h-3.5 w-3.5" />
                       Followed up {formatDistanceToNow(new Date(visibleFollowUpViewedAt), { addSuffix: true })}
                     </Badge>
                   )}
                   {lastCallAt && (
-                    <Badge variant="outline" className={`gap-1 ${getLastCallBadgeClass(lastCallAt)}`}>
+                    <Badge variant="outline" title={`Last called ${formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}`} className={`gap-1 ${getLastCallBadgeClass(lastCallAt)}`}>
                       <Phone className="h-3.5 w-3.5" />
                       Last called {formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}
                     </Badge>
                   )}
                   {pendingCalls.length > 0 && (
-                    <Badge variant="outline" className="gap-1 border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300">
+                    <Badge variant="outline" title={`${pendingCalls.length} scheduled call${pendingCalls.length === 1 ? "" : "s"} pending`} className="gap-1 border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300">
                       <Clock className="h-3.5 w-3.5" />
                       {pendingCalls.length === 1 ? "Scheduled call" : `${pendingCalls.length} scheduled calls`}
                     </Badge>
                   )}
                 </div>
-                <div className="mt-1 flex items-center gap-1.5">
-                  <p className="text-sm text-muted-foreground">@{player.username}</p>
-                  <CopyButton text={player.username} label="Username" size="sm" />
-                </div>
-              </div>
-              <div className={`min-w-[190px] rounded-md border-2 px-3 py-2 text-sm ${
-                isAccountClosed
-                  ? isBreakClosure
-                    ? "border-blue-300/80 bg-blue-50/70 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
-                    : "border-rose-300/90 bg-rose-50/80 text-rose-800 dark:border-rose-800 dark:bg-rose-950/35 dark:text-rose-300"
-                  : "border-green-300/80 bg-green-50/70 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"
-              }`}>
-                <p className="text-[11px] font-semibold uppercase tracking-wide opacity-75">Account Status</p>
-                <p className="font-bold">{isAccountClosed ? closureLabel : "Open"}</p>
-                {isAccountClosed && (
-                  <p className="truncate text-xs opacity-80">{player.account_closure_reason || "Unspecified"}</p>
-                )}
               </div>
             </div>
           )}

@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex max-w-full items-center whitespace-nowrap rounded-md border px-1 py-0 text-[10px] font-semibold leading-4 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -27,9 +27,29 @@ export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> {}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function getBadgeText(children: React.ReactNode): string {
+  if (typeof children === "string" || typeof children === "number") {
+    return String(children);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(getBadgeText).filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  }
+
+  if (React.isValidElement<{ children?: React.ReactNode }>(children)) {
+    return getBadgeText(children.props.children);
+  }
+
+  return "";
+}
+
+function Badge({ className, variant, title, children, ...props }: BadgeProps) {
+  const inferredTitle = title ?? (getBadgeText(children) || undefined);
+
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div className={cn(badgeVariants({ variant }), className)} title={inferredTitle} {...props}>
+      {children}
+    </div>
   )
 }
 

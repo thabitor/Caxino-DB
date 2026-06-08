@@ -88,10 +88,10 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: "Segoe UI Variable Text", "Segoe UI", "Inter", system-ui, sans-serif;
+    font-family: "Aptos", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
     letter-spacing: 0;
-    line-height: 1.42;
+    line-height: 1.46;
   }
 
   h1,
@@ -100,10 +100,10 @@
   h4,
   h5,
   h6 {
-    font-family: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-    font-stretch: condensed;
-    font-weight: 700;
+    font-family: "Aptos Display", "Aptos", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    font-weight: 750;
     letter-spacing: 0;
+    line-height: 1.16;
   }
 
   strong,
@@ -111,9 +111,8 @@
   .font-semibold,
   .font-bold,
   .font-extrabold {
-    font-family: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-    font-stretch: condensed;
-    letter-spacing: 0.005em;
+    font-family: "Aptos", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    letter-spacing: 0;
   }
 
   .font-mono {
@@ -243,13 +242,12 @@
 
   button,
   [role="button"] {
-    font-family: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-    font-stretch: condensed;
+    font-family: "Aptos", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
     letter-spacing: 0;
   }
 
   button:not([role="tab"]) {
-    font-weight: 700;
+    font-weight: 650;
   }
 
   input,
@@ -274,9 +272,8 @@
   [role="tab"] {
     border-color: transparent !important;
     color: hsl(var(--muted-foreground));
-    font-family: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-    font-stretch: condensed;
-    font-weight: 800;
+    font-family: "Aptos", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    font-weight: 700;
   }
 
   [role="tab"][data-state="active"] {
@@ -296,11 +293,10 @@
 
   th {
     color: hsl(var(--muted-foreground)) !important;
-    font-family: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-    font-stretch: condensed;
-    font-weight: 800 !important;
+    font-family: "Aptos", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    font-weight: 700 !important;
     text-transform: uppercase;
-    letter-spacing: 0.055em;
+    letter-spacing: 0.035em;
   }
 
   td,

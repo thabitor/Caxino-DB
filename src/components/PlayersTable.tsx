@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactElement } from "react";
 import { PlayerWithTasks, VipLevel, getFullName, vipConfig } from "@/services/playerService";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { differenceInCalendarDays, formatDistanceToNow } from "date-fns";
 import { TaskCountBadge } from "./TaskCountBadge";
 import { CopyButton } from "./CopyButton";
 import { getBirthdayStatus, getBirthdayBadge } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type SortField = keyof PlayerWithTasks | "task_count";
 type SortDirection = "asc" | "desc";
@@ -28,8 +29,20 @@ interface PlayersTableProps {
 }
 
 const compactCell = "px-2 py-1.5 align-middle";
+const directoryBadgeBase = "inline-flex max-w-full items-center gap-0.5 whitespace-nowrap rounded-full border px-1 py-0 text-[10px] font-semibold leading-4 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
 const RECENT_CALL_BADGE_DAYS = 3;
 const OVERDUE_CALL_BADGE_DAYS = 30;
+
+function DirectoryBadgeTooltip({ label, children }: { label: string; children: ReactElement }) {
+  return (
+    <TooltipProvider delayDuration={120}>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side="top">{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 function getCallAgeLabel(lastCallAt?: string | null) {
   if (!lastCallAt) return null;
@@ -282,87 +295,86 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
     const monthlyCallCount = monthlyCallCountByPlayer[player.id] || 0;
     
     return (
-      <div className="flex items-center gap-1.5">
+      <div className="flex max-w-[260px] flex-wrap items-center gap-1 gap-y-0.5">
         {getAccountStatus(player) === "closed" && (
-          <div
-            className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 ${getClosureMarkerClass(player)}`}
-            title={`${getClosureLabel(player)} closure${player.account_closure_reason ? `: ${player.account_closure_reason}` : ""}`}
-          >
-            <X className="h-3 w-3" />
-            <span className="text-[11px] font-semibold">{getClosureLabel(player)}</span>
-          </div>
+          <DirectoryBadgeTooltip label={`${getClosureLabel(player)} closure${player.account_closure_reason ? `: ${player.account_closure_reason}` : ""}`}>
+            <div className={`${directoryBadgeBase} ${getClosureMarkerClass(player)}`}>
+              <X />
+              <span>{getClosureLabel(player)}</span>
+            </div>
+          </DirectoryBadgeTooltip>
         )}
         {player.bonus_abuser && (
-          <div
-            className="flex items-center gap-1 rounded-full border border-red-300 bg-red-100 px-1.5 py-0.5 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
-            title="Marked as bonus abuser"
-          >
-            <ShieldAlert className="h-3 w-3" />
-            <span className="text-[11px] font-semibold">Bonus abuser</span>
-          </div>
+          <DirectoryBadgeTooltip label="Marked as bonus abuser">
+            <div className={`${directoryBadgeBase} border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300`}>
+              <ShieldAlert />
+              <span>Bonus abuser</span>
+            </div>
+          </DirectoryBadgeTooltip>
         )}
         {player.contact_email_only && (
-          <div
-            className="flex items-center gap-1 rounded-full border border-orange-300 bg-orange-100 px-1.5 py-0.5 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300"
-            title="Prefers exclusive email contact"
-          >
-            <Mail className="h-3 w-3" />
-            <span className="text-[11px] font-semibold">Email only</span>
-          </div>
+          <DirectoryBadgeTooltip label="Prefers exclusive email contact">
+            <div className={`${directoryBadgeBase} border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300`}>
+              <Mail />
+              <span>Email only</span>
+            </div>
+          </DirectoryBadgeTooltip>
         )}
         {player.telegram_member && (
-          <div
-            className="flex items-center gap-1 rounded-full border border-sky-300 bg-sky-100 px-1.5 py-0.5 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300"
-            title="Telegram group member"
-          >
-            <Send className="h-3 w-3" />
-            <span className="text-[11px] font-semibold">Telegram</span>
-          </div>
+          <DirectoryBadgeTooltip label="Telegram group member">
+            <div className={`${directoryBadgeBase} border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300`}>
+              <Send />
+              <span>Telegram</span>
+            </div>
+          </DirectoryBadgeTooltip>
         )}
         {birthdayBadge && (
-          <div className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] ${birthdayBadge.className}`}>
-            <span className="text-[10px] leading-none">{birthdayBadge.emoji}</span>
-            <span className="font-semibold leading-none">{birthdayBadge.text}</span>
-          </div>
+          <DirectoryBadgeTooltip label={`Birthday status: ${birthdayBadge.text}`}>
+            <div className={`${directoryBadgeBase} ${birthdayBadge.className}`}>
+              <span className="text-[10px] leading-none">{birthdayBadge.emoji}</span>
+              <span className="font-semibold leading-none">{birthdayBadge.text}</span>
+            </div>
+          </DirectoryBadgeTooltip>
         )}
         {taskCount > 0 && (
-          <div className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-1.5 py-0.5 dark:border-amber-700 dark:bg-amber-900/30">
-            <Bell className="w-3 h-3 text-amber-700 dark:text-amber-300" />
-            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">{taskCount}</span>
-          </div>
+          <DirectoryBadgeTooltip label={`${taskCount} active reminder${taskCount === 1 ? "" : "s"}`}>
+            <div className={`${directoryBadgeBase} border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300`}>
+              <Bell />
+              <span>{taskCount}</span>
+            </div>
+          </DirectoryBadgeTooltip>
         )}
         {callCount > 0 && (
-          <div className="flex items-center gap-1 rounded-full border border-blue-300 bg-blue-100 px-1.5 py-0.5 dark:border-blue-700 dark:bg-blue-900/30">
-            <Phone className="w-3 h-3 text-blue-700 dark:text-blue-300" />
-            <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">{callCount}</span>
-          </div>
+          <DirectoryBadgeTooltip label={`${callCount} scheduled call${callCount === 1 ? "" : "s"}`}>
+            <div className={`${directoryBadgeBase} border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300`}>
+              <Phone />
+              <span>{callCount}</span>
+            </div>
+          </DirectoryBadgeTooltip>
         )}
         {callAgeLabel && lastCallAt && (
-          <div
-            className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 ${getLastCallBadgeClass(lastCallAt)}`}
-            title={`Last called ${formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}`}
-          >
-            <Phone className="h-3 w-3" />
-            <span className="text-[11px] font-semibold">{callAgeLabel}</span>
-          </div>
+          <DirectoryBadgeTooltip label={`Last called ${formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}`}>
+            <div className={`${directoryBadgeBase} ${getLastCallBadgeClass(lastCallAt)}`}>
+              <Phone />
+              <span>{callAgeLabel}</span>
+            </div>
+          </DirectoryBadgeTooltip>
         )}
         {monthlyCallCount > 2 && (
-          <div
-            className="flex items-center gap-1 rounded-full border border-fuchsia-300 bg-fuchsia-100 px-1.5 py-0.5 dark:border-fuchsia-800 dark:bg-fuchsia-950/40"
-            title={`${monthlyCallCount} calls logged this month`}
-          >
-            <Star className="h-3 w-3 text-fuchsia-700 dark:text-fuchsia-300" />
-            <span className="text-[11px] font-semibold text-fuchsia-700 dark:text-fuchsia-300">Most contacted</span>
-          </div>
+          <DirectoryBadgeTooltip label={`${monthlyCallCount} calls logged this month`}>
+            <div className={`${directoryBadgeBase} border-fuchsia-300 bg-fuchsia-100 text-fuchsia-700 dark:border-fuchsia-800 dark:bg-fuchsia-950/40 dark:text-fuchsia-300`}>
+              <Star />
+              <span>Most contacted</span>
+            </div>
+          </DirectoryBadgeTooltip>
         )}
         {followUpViewedAt && (
-          <div
-            className="flex items-center gap-1 rounded-full border border-green-300 bg-green-100 px-1.5 py-0.5 dark:border-green-800 dark:bg-green-950/40"
-            title={`Followed up ${formatDistanceToNow(new Date(followUpViewedAt), { addSuffix: true })}`}
-          >
-            <CalendarCheck className="h-3 w-3 text-green-700 dark:text-green-300" />
-            <span className="text-[11px] font-semibold text-green-700 dark:text-green-300">Followed up</span>
-          </div>
+          <DirectoryBadgeTooltip label={`Followed up ${formatDistanceToNow(new Date(followUpViewedAt), { addSuffix: true })}`}>
+            <div className={`${directoryBadgeBase} border-green-300 bg-green-100 text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300`}>
+              <CalendarCheck />
+              <span>Followed up</span>
+            </div>
+          </DirectoryBadgeTooltip>
         )}
       </div>
     );
@@ -569,14 +581,23 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
                     )}
                   </TableCell>
                   <TableCell className={compactCell}>
-                    <Badge variant="outline" className={`capitalize ${getStatusBadgeClass(getAccountStatus(player), player)}`}>
-                      {getAccountStatus(player) === "closed" ? getClosureLabel(player) : formatStatus(getAccountStatus(player))}
-                    </Badge>
+                    <DirectoryBadgeTooltip label={getAccountStatus(player) === "closed" ? `${getClosureLabel(player)} account closure` : "Account is open"}>
+                      <Badge
+                        variant="outline"
+                        className={`capitalize ${getStatusBadgeClass(getAccountStatus(player), player)}`}
+                      >
+                        {getAccountStatus(player) === "closed" ? getClosureLabel(player) : formatStatus(getAccountStatus(player))}
+                      </Badge>
+                    </DirectoryBadgeTooltip>
                   </TableCell>
                   <TableCell className={compactCell}>
-                    <Badge className={`${vipConfig[(player.vip_level || 1) as VipLevel].bgColor} ${vipConfig[(player.vip_level || 1) as VipLevel].color} px-1.5 py-0 text-[11px] hover:${vipConfig[(player.vip_level || 1) as VipLevel].bgColor}`}>
-                      {player.vip_level || 1} - {vipConfig[(player.vip_level || 1) as VipLevel].name}
-                    </Badge>
+                    <DirectoryBadgeTooltip label={`VIP level ${player.vip_level || 1}: ${vipConfig[(player.vip_level || 1) as VipLevel].name}`}>
+                      <Badge
+                        className={`${vipConfig[(player.vip_level || 1) as VipLevel].bgColor} ${vipConfig[(player.vip_level || 1) as VipLevel].color} hover:${vipConfig[(player.vip_level || 1) as VipLevel].bgColor}`}
+                      >
+                        {player.vip_level || 1} - {vipConfig[(player.vip_level || 1) as VipLevel].name}
+                      </Badge>
+                    </DirectoryBadgeTooltip>
                   </TableCell>
                   <TableCell className={compactCell}><TaskCountBadge count={player.tasks[0]?.count ?? 0} /></TableCell>
                   <TableCell className={compactCell}>{getTaskIndicators(player)}</TableCell>

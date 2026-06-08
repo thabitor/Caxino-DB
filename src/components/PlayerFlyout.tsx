@@ -16,6 +16,7 @@ interface PlayerFlyoutProps {
 
 export function PlayerFlyout({ playerId, isOpen, onOpenChange }: PlayerFlyoutProps) {
   const playerUrl = playerId ? `/player/${playerId}` : "";
+  const playerWindowUrl = playerId ? `${playerUrl}?from=window` : "";
   const embeddedUrl = playerId ? `${playerUrl}?embed=1` : "";
 
   return (
@@ -31,7 +32,7 @@ export function PlayerFlyout({ playerId, isOpen, onOpenChange }: PlayerFlyoutPro
           </SheetHeader>
           {playerId && (
             <Button asChild variant="outline" size="sm" className="mr-8 shrink-0 gap-1.5">
-              <a href={playerUrl} target="_blank" rel="noreferrer">
+              <a href={playerWindowUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="h-3.5 w-3.5" />
                 Open in window
               </a>
