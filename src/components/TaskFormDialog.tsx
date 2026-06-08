@@ -28,18 +28,7 @@ interface TaskFormDialogProps {
 }
 
 const CALL_REASONS = ["Reward", "Payment", "Tech issue"] as const;
-const CALL_TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => {
-  const totalMinutes = index * 15;
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  const value = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-  const label = new Date(2000, 0, 1, hours, minutes).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  return { value, label };
-});
+const CALL_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function parseCallReasons(value?: string | null) {
   if (!value) return [];
@@ -53,6 +42,15 @@ function toggleCallReason(currentValue: string | undefined, callReason: typeof C
     : currentReasons.filter((reason) => reason !== callReason);
 
   return nextReasons.join(", ");
+}
+
+function formatCallTimeInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
 }
 
 const extendedTaskSchema = z.object({
@@ -87,6 +85,12 @@ const extendedTaskSchema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Call time is required",
+        path: ["call_time"],
+      });
+    } else if (!CALL_TIME_PATTERN.test(data.call_time.trim())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Use 24-hour format, e.g. 14:30",
         path: ["call_time"],
       });
     }
@@ -203,7 +207,7 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
 
     if (data.is_call && data.due_date && data.call_time) {
       const date = new Date(data.due_date);
-      const [hours, minutes] = data.call_time.split(":");
+      const [hours, minutes] = data.call_time.trim().split(":");
       date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
       dueDate = date.toISOString();
       console.log("✅ Call due date constructed:", dueDate);
@@ -438,20 +442,19 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                     render={({ field }) => (
                       <FormItem className="flex min-h-[86px] flex-col justify-start">
                         <FormLabel className="text-blue-700 dark:text-blue-300">Call Time *</FormLabel>
-                        <Select value={field.value || undefined} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger className="h-10 border-blue-300">
-                              <SelectValue placeholder="Pick time" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="max-h-[260px]">
-                            {CALL_TIME_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ""}
+                            placeholder="14:30"
+                            inputMode="numeric"
+                            maxLength={5}
+                            pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                            className="h-10 border-blue-300 font-mono"
+                            onChange={(event) => field.onChange(formatCallTimeInput(event.target.value))}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">Type 0915 or 09:15. The colon is added automatically.</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
