@@ -34,6 +34,9 @@ const getResetValues = (player: Player | null): PlayerFormData => {
       casino: "",
       contact_email_only: false,
       telegram_member: false,
+      whatsapp_channel: false,
+      novatalks_channel: false,
+      email_channel: false,
       vip_level: 3,
       last_email_sent: undefined,
       preferences: "{}",
@@ -64,6 +67,9 @@ const getResetValues = (player: Player | null): PlayerFormData => {
     casino: player.casino ?? "",
     contact_email_only: player.contact_email_only ?? false,
     telegram_member: player.telegram_member ?? false,
+    whatsapp_channel: player.whatsapp_channel ?? false,
+    novatalks_channel: player.novatalks_channel ?? false,
+    email_channel: player.email_channel ?? false,
     vip_level: player.vip_level as VipLevel,
     last_email_sent: player.last_email_sent ? new Date(player.last_email_sent) : undefined,
     preferences: preferencesStr,
@@ -327,9 +333,15 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                         onUpdate={handlePreferencesUpdate} 
                         contactEmailOnly={form.watch("contact_email_only") === true}
                         telegramMember={form.watch("telegram_member") === true}
-                        onContactFlagsUpdate={({ contactEmailOnly, telegramMember }) => {
+                        whatsappChannel={form.watch("whatsapp_channel") === true}
+                        novatalksChannel={form.watch("novatalks_channel") === true}
+                        emailChannel={form.watch("email_channel") === true}
+                        onContactFlagsUpdate={({ contactEmailOnly, telegramMember, whatsappChannel, novatalksChannel, emailChannel }) => {
                           form.setValue("contact_email_only", contactEmailOnly);
                           form.setValue("telegram_member", telegramMember);
+                          form.setValue("whatsapp_channel", whatsappChannel);
+                          form.setValue("novatalks_channel", novatalksChannel);
+                          form.setValue("email_channel", emailChannel);
                         }}
                       />
                     </FormControl>

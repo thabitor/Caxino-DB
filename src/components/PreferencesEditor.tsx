@@ -19,7 +19,16 @@ export interface PreferencesEditorProps {
   onUpdate: (newPreferences: PlayerPreferences) => void;
   contactEmailOnly?: boolean;
   telegramMember?: boolean;
-  onContactFlagsUpdate?: (flags: { contactEmailOnly: boolean; telegramMember: boolean }) => void;
+  whatsappChannel?: boolean;
+  novatalksChannel?: boolean;
+  emailChannel?: boolean;
+  onContactFlagsUpdate?: (flags: {
+    contactEmailOnly: boolean;
+    telegramMember: boolean;
+    whatsappChannel: boolean;
+    novatalksChannel: boolean;
+    emailChannel: boolean;
+  }) => void;
 }
 
 export function PreferencesEditor({
@@ -27,6 +36,9 @@ export function PreferencesEditor({
   onUpdate,
   contactEmailOnly = false,
   telegramMember = false,
+  whatsappChannel = false,
+  novatalksChannel = false,
+  emailChannel = false,
   onContactFlagsUpdate,
 }: PreferencesEditorProps) {
   const [preferences, setPreferences] = useState<PlayerPreferences>(initialPreferences);
@@ -58,10 +70,16 @@ export function PreferencesEditor({
     });
   };
 
-  const updateContactFlag = (flag: "contactEmailOnly" | "telegramMember", value: boolean) => {
+  const updateContactFlag = (
+    flag: "contactEmailOnly" | "telegramMember" | "whatsappChannel" | "novatalksChannel" | "emailChannel",
+    value: boolean
+  ) => {
     onContactFlagsUpdate?.({
       contactEmailOnly: flag === "contactEmailOnly" ? value : contactEmailOnly,
       telegramMember: flag === "telegramMember" ? value : telegramMember,
+      whatsappChannel: flag === "whatsappChannel" ? value : whatsappChannel,
+      novatalksChannel: flag === "novatalksChannel" ? value : novatalksChannel,
+      emailChannel: flag === "emailChannel" ? value : emailChannel,
     });
   };
 
@@ -90,6 +108,14 @@ export function PreferencesEditor({
             />
           </div>
           <div className="grid gap-2 border-t pt-3 sm:grid-cols-2">
+            <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border-2 border-emerald-200 bg-emerald-50/50 px-3 py-2 dark:border-emerald-900 dark:bg-emerald-950/20">
+              <Label htmlFor="email-channel-toggle" className="text-sm font-medium">Email</Label>
+              <Switch
+                id="email-channel-toggle"
+                checked={emailChannel}
+                onCheckedChange={(checked) => updateContactFlag("emailChannel", checked)}
+              />
+            </div>
             <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border-2 border-orange-200 bg-orange-50/50 px-3 py-2 dark:border-orange-900 dark:bg-orange-950/20">
               <Label htmlFor="email-only-toggle" className="text-sm font-medium">Email only</Label>
               <Switch
@@ -104,6 +130,22 @@ export function PreferencesEditor({
                 id="telegram-toggle"
                 checked={telegramMember}
                 onCheckedChange={(checked) => updateContactFlag("telegramMember", checked)}
+              />
+            </div>
+            <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border-2 border-green-200 bg-green-50/50 px-3 py-2 dark:border-green-900 dark:bg-green-950/20">
+              <Label htmlFor="whatsapp-toggle" className="text-sm font-medium">WhatsApp</Label>
+              <Switch
+                id="whatsapp-toggle"
+                checked={whatsappChannel}
+                onCheckedChange={(checked) => updateContactFlag("whatsappChannel", checked)}
+              />
+            </div>
+            <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border-2 border-violet-200 bg-violet-50/50 px-3 py-2 dark:border-violet-900 dark:bg-violet-950/20">
+              <Label htmlFor="novatalks-toggle" className="text-sm font-medium">Novatalks</Label>
+              <Switch
+                id="novatalks-toggle"
+                checked={novatalksChannel}
+                onCheckedChange={(checked) => updateContactFlag("novatalksChannel", checked)}
               />
             </div>
           </div>

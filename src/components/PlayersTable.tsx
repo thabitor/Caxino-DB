@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, ArrowUpDown, Trash2, Edit, Plus, Bell, ListPlus, Phone, Users, CalendarCheck, X, Star, ShieldAlert, Mail, Send } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpDown, Trash2, Edit, Plus, Bell, ListPlus, Phone, Users, CalendarCheck, X, Star, ShieldAlert, Mail, Send, MessageCircle, Headphones } from "lucide-react";
 import { differenceInCalendarDays, formatDistanceToNow } from "date-fns";
 import { TaskCountBadge } from "./TaskCountBadge";
 import { CopyButton } from "./CopyButton";
@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 type SortField = keyof PlayerWithTasks | "task_count";
 type SortDirection = "asc" | "desc";
-type TaskFilter = "all" | "with_tasks" | "with_calls" | "with_both" | "with_birthdays";
+type TaskFilter = "all" | "with_tasks" | "with_calls" | "with_both" | "with_birthdays" | "to_follow_up";
 
 interface PlayersTableProps {
   players: PlayerWithTasks[];
@@ -26,6 +26,7 @@ interface PlayersTableProps {
   followUpViewedAtByPlayer?: Record<string, string>;
   lastCallAtByPlayer?: Record<string, string>;
   monthlyCallCountByPlayer?: Record<string, number>;
+  toFollowUpPlayerIds?: string[];
 }
 
 const compactCell = "px-2 py-1.5 align-middle";
@@ -107,7 +108,7 @@ const SortableHeader = ({ children, field, sortField, sortDirection, onSort }: {
   );
 };
 
-export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollowUp, onOpenPlayer, followUpViewedAtByPlayer = {}, lastCallAtByPlayer = {}, monthlyCallCountByPlayer = {} }: PlayersTableProps) {
+export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollowUp, onOpenPlayer, followUpViewedAtByPlayer = {}, lastCallAtByPlayer = {}, monthlyCallCountByPlayer = {}, toFollowUpPlayerIds = [] }: PlayersTableProps) {
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [filter, setFilter] = useState("");
@@ -173,6 +174,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
     players.forEach((player) => statuses.add(getAccountStatus(player)));
     return Array.from(statuses).sort();
   }, [players]);
+  const toFollowUpPlayerIdSet = useMemo(() => new Set(toFollowUpPlayerIds), [toFollowUpPlayerIds]);
 
   const getStatusBadgeClass = (status: string, player?: PlayerWithTasks) => {
     switch (status.toLowerCase()) {
@@ -206,6 +208,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
       const taskCount = player.tasks[0]?.count ?? 0;
       const callCount = player.tasks[0]?.call_count ?? 0;
       const hasBirthday = getBirthdayStatus(player.dob) !== null;
+      const isToFollowUp = toFollowUpPlayerIdSet.has(player.id);
       
       // Apply task filter
       let taskFilterMatch = true;
@@ -219,6 +222,8 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
         taskFilterMatch = taskCount > 0 || callCount > 0;
       } else if (taskFilter === "with_birthdays") {
         taskFilterMatch = hasBirthday;
+      } else if (taskFilter === "to_follow_up") {
+        taskFilterMatch = isToFollowUp;
       }
 
       return taskFilterMatch && vipLevelMatch && casinoMatch && statusMatch && (
@@ -276,7 +281,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
       
       return 0;
     });
-  }, [players, filter, vipFilter, casinoFilter, statusFilter, taskFilter, sortField, sortDirection]);
+  }, [players, filter, vipFilter, casinoFilter, statusFilter, taskFilter, sortField, sortDirection, toFollowUpPlayerIdSet]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedPlayers.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -325,6 +330,30 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
             <div className={`${directoryBadgeBase} border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300`}>
               <Send />
               <span>Telegram</span>
+            </div>
+          </DirectoryBadgeTooltip>
+        )}
+        {player.whatsapp_channel && (
+          <DirectoryBadgeTooltip label="WhatsApp contact channel">
+            <div className={`${directoryBadgeBase} border-green-300 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300`}>
+              <MessageCircle />
+              <span>WhatsApp</span>
+            </div>
+          </DirectoryBadgeTooltip>
+        )}
+        {player.novatalks_channel && (
+          <DirectoryBadgeTooltip label="Novatalks contact channel">
+            <div className={`${directoryBadgeBase} border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300`}>
+              <Headphones />
+              <span>Novatalks</span>
+            </div>
+          </DirectoryBadgeTooltip>
+        )}
+        {player.email_channel && (
+          <DirectoryBadgeTooltip label="Email contact channel">
+            <div className={`${directoryBadgeBase} border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300`}>
+              <Mail />
+              <span>Email</span>
             </div>
           </DirectoryBadgeTooltip>
         )}
@@ -502,6 +531,15 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
           >
             🎂
             Birthdays
+          </Button>
+          <Button
+            variant={taskFilter === "to_follow_up" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => handleTaskFilterChange("to_follow_up")}
+            className="h-7 gap-1 px-2 text-xs text-emerald-700 dark:text-emerald-300"
+          >
+            <ListPlus className="h-3.5 w-3.5" />
+            To Follow Up
           </Button>
         </div>
       </div>

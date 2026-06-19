@@ -151,6 +151,7 @@ export type Database = {
           contact_email_only: boolean
           created_at: string | null
           dob: string | null
+          email_channel: boolean
           email: string | null
           firstname: string | null
           gender: string | null
@@ -158,6 +159,7 @@ export type Database = {
           last_email_sent: string | null
           lastname: string | null
           notes: string | null
+          novatalks_channel: boolean
           phone: string | null
           preferences: Json | null
           preferred_time_from: number | null
@@ -168,6 +170,7 @@ export type Database = {
           user_id: string
           username: string
           vip_level: number | null
+          whatsapp_channel: boolean
         }
         Insert: {
           account_closed_at?: string | null
@@ -182,6 +185,7 @@ export type Database = {
           contact_email_only?: boolean
           created_at?: string | null
           dob?: string | null
+          email_channel?: boolean
           email?: string | null
           firstname?: string | null
           gender?: string | null
@@ -189,6 +193,7 @@ export type Database = {
           last_email_sent?: string | null
           lastname?: string | null
           notes?: string | null
+          novatalks_channel?: boolean
           phone?: string | null
           preferences?: Json | null
           preferred_time_from?: number | null
@@ -199,6 +204,7 @@ export type Database = {
           user_id: string
           username: string
           vip_level?: number | null
+          whatsapp_channel?: boolean
         }
         Update: {
           account_closed_at?: string | null
@@ -213,6 +219,7 @@ export type Database = {
           contact_email_only?: boolean
           created_at?: string | null
           dob?: string | null
+          email_channel?: boolean
           email?: string | null
           firstname?: string | null
           gender?: string | null
@@ -220,6 +227,7 @@ export type Database = {
           last_email_sent?: string | null
           lastname?: string | null
           notes?: string | null
+          novatalks_channel?: boolean
           phone?: string | null
           preferences?: Json | null
           preferred_time_from?: number | null
@@ -230,6 +238,7 @@ export type Database = {
           user_id?: string
           username?: string
           vip_level?: number | null
+          whatsapp_channel?: boolean
         }
         Relationships: []
       }

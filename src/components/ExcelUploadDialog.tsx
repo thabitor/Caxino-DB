@@ -89,6 +89,11 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             notes: ["notes"],
             preferred_time_from: ["preferred_time_from", "preferredtimefrom"],
             preferred_time_to: ["preferred_time_to", "preferredtimeto"],
+            contact_email_only: ["contact_email_only", "email_only", "emailonly"],
+            telegram_member: ["telegram_member", "telegram", "telegram_channel"],
+            whatsapp_channel: ["whatsapp_channel", "whatsapp", "whats_app"],
+            novatalks_channel: ["novatalks_channel", "novatalks", "nova_talks"],
+            email_channel: ["email_channel", "email_contact", "email_member"],
           };
 
           // Helper to find column value with flexible matching
@@ -105,6 +110,15 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
                 return row[key];
               }
             }
+            return null;
+          };
+
+          const parseBooleanFlag = (value: unknown): boolean | null => {
+            if (value === null || value === undefined || value === "") return null;
+            if (typeof value === "boolean") return value;
+            const normalized = String(value).trim().toLowerCase();
+            if (["true", "yes", "y", "1", "member", "enabled", "active"].includes(normalized)) return true;
+            if (["false", "no", "n", "0", "not marked", "disabled", "inactive"].includes(normalized)) return false;
             return null;
           };
 
@@ -130,6 +144,11 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             const notes = getColumnValue(row, "notes");
             const preferred_time_from = getColumnValue(row, "preferred_time_from");
             const preferred_time_to = getColumnValue(row, "preferred_time_to");
+            const contact_email_only = parseBooleanFlag(getColumnValue(row, "contact_email_only"));
+            const telegram_member = parseBooleanFlag(getColumnValue(row, "telegram_member"));
+            const whatsapp_channel = parseBooleanFlag(getColumnValue(row, "whatsapp_channel"));
+            const novatalks_channel = parseBooleanFlag(getColumnValue(row, "novatalks_channel"));
+            const email_channel = parseBooleanFlag(getColumnValue(row, "email_channel"));
 
             // Add fields only if they have values
             if (user_id !== null) player.user_id = String(user_id).trim();
@@ -161,6 +180,11 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             if (notes !== null) player.notes = String(notes).trim();
             if (preferred_time_from !== null) player.preferred_time_from = Number(preferred_time_from);
             if (preferred_time_to !== null) player.preferred_time_to = Number(preferred_time_to);
+            if (contact_email_only !== null) player.contact_email_only = contact_email_only;
+            if (telegram_member !== null) player.telegram_member = telegram_member;
+            if (whatsapp_channel !== null) player.whatsapp_channel = whatsapp_channel;
+            if (novatalks_channel !== null) player.novatalks_channel = novatalks_channel;
+            if (email_channel !== null) player.email_channel = email_channel;
 
             console.log(`Parsed player ${index + 1}:`, player);
             return player;

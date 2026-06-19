@@ -31,6 +31,17 @@ import { ManualFollowUpDialog } from "@/components/ManualFollowUpDialog";
 import { ManualFollowUpPickerDialog } from "@/components/ManualFollowUpPickerDialog";
 import { RecentFollowUpsPanel } from "@/components/RecentFollowUpsPanel";
 import { PlayerFlyout } from "@/components/PlayerFlyout";
+import { getUpcomingBirthdays } from "@/lib/birthdays";
+
+function TabNotification({ count }: { count: number }) {
+  if (count <= 0) return null;
+
+  return (
+    <span className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-4 text-white shadow-sm">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 export default function Home() {
   const router = useRouter();
@@ -43,6 +54,7 @@ export default function Home() {
   const [lastCallAtByPlayer, setLastCallAtByPlayer] = useState<Record<string, string>>({});
   const [monthlyCallCountByPlayer, setMonthlyCallCountByPlayer] = useState<Record<string, number>>({});
   const [actionHistory, setActionHistory] = useState<ActionHistoryActivity[]>([]);
+  const [alertNotificationCount, setAlertNotificationCount] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<PlayerWithTasks | null>(null);
   const [loading, setLoading] = useState(true);
@@ -203,6 +215,24 @@ export default function Home() {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
       const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+      const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const alertCalls = tasks.filter((task) => {
+        if (!task.is_call || !task.due_date) return false;
+        const dueDate = new Date(task.due_date);
+        return dueDate >= todayStart && dueDate < todayEnd;
+      }).length;
+      const alertRegularTasks = tasks.filter((task) => {
+        if (task.is_call || !task.due_date) return false;
+        return new Date(task.due_date) <= next24Hours;
+      }).length;
+      const alertClosureReminders = playersData.filter((player) => (
+        player.account_status === "closed" &&
+        player.account_closure_type === "break" &&
+        Boolean(player.account_closure_until) &&
+        new Date(player.account_closure_until as string).getTime() <= Date.now()
+      )).length;
       const monthlyCallsByPlayer = callLogs.reduce<Record<string, number>>((counts, callLog) => {
         const timestamp = callLog.completed_at || callLog.call_time;
         if (!timestamp) return counts;
@@ -218,6 +248,7 @@ export default function Home() {
       setTotalPlayers(total);
       setVipDistribution(distribution);
       setActiveTasks(tasks.length);
+      setAlertNotificationCount(alertCalls + alertRegularTasks + alertClosureReminders);
       setFollowUpItems(buildFollowUpQueue(playersData, tasks, callLogs, manualFollowUps));
       setFollowUpViewedAtByPlayer({ ...localViewed, ...persistedViewed });
       setLastCallAtByPlayer(latestCallsByPlayer);
@@ -458,6 +489,10 @@ export default function Home() {
   const overdueFollowUps = followUpItems.filter((item) => item.status === "overdue").length;
   const todayFollowUps = followUpItems.filter((item) => item.status === "today").length;
   const scheduledCalls = followUpItems.reduce((total, item) => total + item.activeCallCount, 0);
+  const alertsCount = alertNotificationCount;
+  const birthdayNotificationCount = getUpcomingBirthdays(players, { withinDays: 7 }).length;
+  const followUpNotificationCount = followUpItems.length;
+  const toFollowUpPlayerIds = followUpItems.map((item) => item.player.id);
 
   return (
     <ProtectedRoute>
@@ -565,18 +600,21 @@ export default function Home() {
                       className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
                     >
                       Alerts
+                      <TabNotification count={alertsCount} />
                     </TabsTrigger>
                     <TabsTrigger
                       value="followups"
                       className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
                     >
                       Follow-ups
+                      <TabNotification count={followUpNotificationCount} />
                     </TabsTrigger>
                     <TabsTrigger
                       value="birthdays"
                       className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
                     >
                       Birthdays
+                      <TabNotification count={birthdayNotificationCount} />
                     </TabsTrigger>
                     <TabsTrigger
                       value="action-log"
@@ -715,6 +753,7 @@ export default function Home() {
                   followUpViewedAtByPlayer={followUpViewedAtByPlayer}
                   lastCallAtByPlayer={lastCallAtByPlayer}
                   monthlyCallCountByPlayer={monthlyCallCountByPlayer}
+                  toFollowUpPlayerIds={toFollowUpPlayerIds}
                 />
               )}
             </CardContent>

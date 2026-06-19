@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowUp, ArrowDown, Mail, Phone, PhoneOff, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User, ListPlus, CalendarCheck, ShieldAlert, Send } from "lucide-react";
+import { ArrowLeft, ArrowUp, ArrowDown, Mail, Phone, PhoneOff, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User, ListPlus, CalendarCheck, ShieldAlert, Send, MessageCircle, Headphones } from "lucide-react";
 import { differenceInCalendarDays, format, formatDistanceToNow } from "date-fns";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -151,6 +151,9 @@ export default function PlayerDetailPage() {
   const [draftPreferences, setDraftPreferences] = useState<PlayerPreferences>({});
   const [draftContactEmailOnly, setDraftContactEmailOnly] = useState(false);
   const [draftTelegramMember, setDraftTelegramMember] = useState(false);
+  const [draftWhatsappChannel, setDraftWhatsappChannel] = useState(false);
+  const [draftNovatalksChannel, setDraftNovatalksChannel] = useState(false);
+  const [draftEmailChannel, setDraftEmailChannel] = useState(false);
   const [completingCallId, setCompletingCallId] = useState<string | null>(null);
   const [checkedAlertTasks, setCheckedAlertTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
@@ -848,6 +851,9 @@ export default function PlayerDetailPage() {
     });
     setDraftContactEmailOnly(player?.contact_email_only ?? false);
     setDraftTelegramMember(player?.telegram_member ?? false);
+    setDraftWhatsappChannel(player?.whatsapp_channel ?? false);
+    setDraftNovatalksChannel(player?.novatalks_channel ?? false);
+    setDraftEmailChannel(player?.email_channel ?? false);
     setIsEditingPreferences(true);
   };
 
@@ -876,6 +882,9 @@ export default function PlayerDetailPage() {
         preferred_time_to: timeToInt,           // Separate integer column
         contact_email_only: draftContactEmailOnly,
         telegram_member: draftTelegramMember,
+        whatsapp_channel: draftWhatsappChannel,
+        novatalks_channel: draftNovatalksChannel,
+        email_channel: draftEmailChannel,
       };
       
       await playerService.updatePlayer(player.id, updateData);
@@ -895,6 +904,9 @@ export default function PlayerDetailPage() {
     setDraftPreferences({});
     setDraftContactEmailOnly(false);
     setDraftTelegramMember(false);
+    setDraftWhatsappChannel(false);
+    setDraftNovatalksChannel(false);
+    setDraftEmailChannel(false);
     setIsEditingPreferences(false);
   };
 
@@ -1128,6 +1140,24 @@ export default function PlayerDetailPage() {
                   Telegram
                 </Badge>
               )}
+              {player.whatsapp_channel && (
+                <Badge variant="outline" title="WhatsApp contact channel" className="gap-1 border-green-300 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  WhatsApp
+                </Badge>
+              )}
+              {player.novatalks_channel && (
+                <Badge variant="outline" title="Novatalks contact channel" className="gap-1 border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
+                  <Headphones className="h-3.5 w-3.5" />
+                  Novatalks
+                </Badge>
+              )}
+              {player.email_channel && (
+                <Badge variant="outline" title="Email contact channel" className="gap-1 border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  <Mail className="h-3.5 w-3.5" />
+                  Email
+                </Badge>
+              )}
               {visibleFollowUpViewedAt && (
                 <Badge variant="outline" title={`Followed up ${formatDistanceToNow(new Date(visibleFollowUpViewedAt), { addSuffix: true })}`} className="gap-1 border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300">
                   <CalendarCheck className="h-3.5 w-3.5" />
@@ -1203,6 +1233,24 @@ export default function PlayerDetailPage() {
                     <Badge variant="outline" title="Telegram group member" className="gap-1 border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
                       <Send className="h-3.5 w-3.5" />
                       Telegram
+                    </Badge>
+                  )}
+                  {player.whatsapp_channel && (
+                    <Badge variant="outline" title="WhatsApp contact channel" className="gap-1 border-green-300 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      WhatsApp
+                    </Badge>
+                  )}
+                  {player.novatalks_channel && (
+                    <Badge variant="outline" title="Novatalks contact channel" className="gap-1 border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
+                      <Headphones className="h-3.5 w-3.5" />
+                      Novatalks
+                    </Badge>
+                  )}
+                  {player.email_channel && (
+                    <Badge variant="outline" title="Email contact channel" className="gap-1 border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <Mail className="h-3.5 w-3.5" />
+                      Email
                     </Badge>
                   )}
                   {visibleFollowUpViewedAt && (
@@ -1426,9 +1474,15 @@ export default function PlayerDetailPage() {
                         onUpdate={setDraftPreferences}
                         contactEmailOnly={draftContactEmailOnly}
                         telegramMember={draftTelegramMember}
-                        onContactFlagsUpdate={({ contactEmailOnly, telegramMember }) => {
+                        whatsappChannel={draftWhatsappChannel}
+                        novatalksChannel={draftNovatalksChannel}
+                        emailChannel={draftEmailChannel}
+                        onContactFlagsUpdate={({ contactEmailOnly, telegramMember, whatsappChannel, novatalksChannel, emailChannel }) => {
                           setDraftContactEmailOnly(contactEmailOnly);
                           setDraftTelegramMember(telegramMember);
+                          setDraftWhatsappChannel(whatsappChannel);
+                          setDraftNovatalksChannel(novatalksChannel);
+                          setDraftEmailChannel(emailChannel);
                         }}
                       />
                       <div className="flex gap-2 justify-end pt-2 border-t border-border/40">
@@ -1514,6 +1568,54 @@ export default function PlayerDetailPage() {
                                 <>
                                   <Send className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                                   <span className="font-medium">Member</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-4 h-4 text-muted-foreground" />
+                                  <span className="font-medium">Not marked</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">WhatsApp:</span>
+                            <div className="flex items-center gap-1">
+                              {player.whatsapp_channel ? (
+                                <>
+                                  <MessageCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                  <span className="font-medium">Enabled</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-4 h-4 text-muted-foreground" />
+                                  <span className="font-medium">Not marked</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Novatalks:</span>
+                            <div className="flex items-center gap-1">
+                              {player.novatalks_channel ? (
+                                <>
+                                  <Headphones className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                                  <span className="font-medium">Enabled</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-4 h-4 text-muted-foreground" />
+                                  <span className="font-medium">Not marked</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Email channel:</span>
+                            <div className="flex items-center gap-1">
+                              {player.email_channel ? (
+                                <>
+                                  <Mail className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                  <span className="font-medium">Enabled</span>
                                 </>
                               ) : (
                                 <>

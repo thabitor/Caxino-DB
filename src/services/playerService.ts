@@ -25,6 +25,9 @@ export const playerSchema = z.object({
   casino: z.string().optional(),
   contact_email_only: z.boolean().optional(),
   telegram_member: z.boolean().optional(),
+  whatsapp_channel: z.boolean().optional(),
+  novatalks_channel: z.boolean().optional(),
+  email_channel: z.boolean().optional(),
   vip_level: z.coerce.number().min(1).max(5) as z.ZodType<VipLevel>,
   last_email_sent: z.date().optional(),
   preferences: z.string().optional().refine((val) => {
