@@ -158,7 +158,7 @@ export function RecentFollowUpsPanel({ activities, players, onClear }: RecentFol
                       {sentence}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {player ? `@${player.username}` : activity.playerId}
+                      {player ? `ID ${player.user_id}` : activity.playerId}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">

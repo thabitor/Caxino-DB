@@ -73,9 +73,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
           // Column mapping - maps Excel column names to database field names
           // Each database field maps to multiple possible Excel header variations
           const columnMapping: Record<string, string[]> = {
-            user_id: ["user_id", "userid", "id"],
-            username: ["username", "user_name"],
-            casino: ["casino"],
+            user_id: ["user_id", "userid", "id"],            casino: ["casino"],
             firstname: ["firstname", "first_name"],
             lastname: ["lastname", "last_name"],
             phone: ["phone"],
@@ -94,6 +92,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             whatsapp_channel: ["whatsapp_channel", "whatsapp", "whats_app"],
             novatalks_channel: ["novatalks_channel", "novatalks", "nova_talks"],
             email_channel: ["email_channel", "email_contact", "email_member"],
+            sent_vip_guide: ["sent_vip_guide", "vip_guide_sent", "vipguide", "vip_guide"],
           };
 
           // Helper to find column value with flexible matching
@@ -128,9 +127,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             const player: Partial<PlayerInsert> = {};
 
             // Map all possible fields
-            const user_id = getColumnValue(row, "user_id");
-            const username = getColumnValue(row, "username");
-            const casino = getColumnValue(row, "casino");
+            const user_id = getColumnValue(row, "user_id");            const casino = getColumnValue(row, "casino");
             const firstname = getColumnValue(row, "firstname");
             const lastname = getColumnValue(row, "lastname");
             const phone = getColumnValue(row, "phone");
@@ -149,11 +146,10 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             const whatsapp_channel = parseBooleanFlag(getColumnValue(row, "whatsapp_channel"));
             const novatalks_channel = parseBooleanFlag(getColumnValue(row, "novatalks_channel"));
             const email_channel = parseBooleanFlag(getColumnValue(row, "email_channel"));
+            const sent_vip_guide = parseBooleanFlag(getColumnValue(row, "sent_vip_guide"));
 
             // Add fields only if they have values
-            if (user_id !== null) player.user_id = String(user_id).trim();
-            if (username !== null) player.username = String(username).trim();
-            if (casino !== null) player.casino = String(casino).trim();
+            if (user_id !== null) player.user_id = String(user_id).trim();            if (casino !== null) player.casino = String(casino).trim();
             if (firstname !== null) player.firstname = String(firstname).trim();
             if (lastname !== null) player.lastname = String(lastname).trim();
             if (phone !== null) player.phone = String(phone).trim();
@@ -185,6 +181,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             if (whatsapp_channel !== null) player.whatsapp_channel = whatsapp_channel;
             if (novatalks_channel !== null) player.novatalks_channel = novatalks_channel;
             if (email_channel !== null) player.email_channel = email_channel;
+            if (sent_vip_guide !== null) player.sent_vip_guide = sent_vip_guide;
 
             console.log(`Parsed player ${index + 1}:`, player);
             return player;
@@ -294,7 +291,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
         <DialogHeader>
           <DialogTitle>Import Players from Excel</DialogTitle>
           <DialogDescription>
-            Upload an Excel file (.xlsx or .xls). Existing players are merged by user ID or username, and blank sheet values will not overwrite saved data.
+            Upload an Excel file (.xlsx or .xls). Existing players are merged by user ID, and blank sheet values will not overwrite saved data.
           </DialogDescription>
         </DialogHeader>
 
@@ -364,7 +361,7 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
             <p className="text-sm font-medium mb-2">Supported columns (all optional):</p>
             <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-              <p>• <strong>Identity:</strong> user_id, username, casino</p>
+              <p>• <strong>Identity:</strong> user_id, casino</p>
               <p>• <strong>Personal:</strong> firstname, lastname, phone, email, dob (date of birth), gender</p>
               <p>• <strong>Account:</strong> vip_level, total_deposits, last_email_sent, account_status</p>
               <p>• <strong>Contact:</strong> preferred_time_from, preferred_time_to, notes</p>

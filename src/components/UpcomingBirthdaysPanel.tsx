@@ -33,7 +33,7 @@ export function UpcomingBirthdaysPanel({ players }: UpcomingBirthdaysPanelProps)
               <div key={birthday.player.id} className="flex items-center justify-between gap-2 rounded-md border-2 border-pink-200/70 bg-background/70 px-2 py-1.5 shadow-sm shadow-pink-500/5 dark:border-pink-900/70">
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold">{getFullName(birthday.player)}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">@{birthday.player.username}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">ID {birthday.player.user_id}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   <Badge variant="outline" className="px-1.5 py-0 text-[10px]">

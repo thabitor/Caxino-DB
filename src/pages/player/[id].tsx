@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowUp, ArrowDown, Mail, Phone, PhoneOff, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User, ListPlus, CalendarCheck, ShieldAlert, Send, MessageCircle, Headphones } from "lucide-react";
+import { ArrowLeft, ArrowUp, ArrowDown, Mail, Phone, PhoneOff, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User, ListPlus, CalendarCheck, ShieldAlert, Send, MessageCircle, Headphones, BookOpenCheck } from "lucide-react";
 import { differenceInCalendarDays, format, formatDistanceToNow } from "date-fns";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -1111,10 +1111,6 @@ export default function PlayerDetailPage() {
                 )}
               </h1>
               <CopyButton text={getFullName(player)} label="Name" />
-              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-muted-foreground">
-                @{player.username}
-                <CopyButton text={player.username} label="Username" size="icon" className="h-7 w-7" />
-              </span>
               <span className="inline-flex shrink-0 items-center gap-1 font-mono text-xs font-semibold text-muted-foreground/80">
                 {player.user_id}
                 <CopyButton text={player.user_id} label="User ID" size="icon" className="h-7 w-7" />
@@ -1156,6 +1152,12 @@ export default function PlayerDetailPage() {
                 <Badge variant="outline" title="Email contact channel" className="gap-1 border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                   <Mail className="h-3.5 w-3.5" />
                   Email
+                </Badge>
+              )}
+              {player.sent_vip_guide && (
+                <Badge variant="outline" title="VIP guide has been sent to this player" className="gap-1 border-indigo-300 bg-indigo-100 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
+                  <BookOpenCheck className="h-3.5 w-3.5" />
+                  VIP guide sent
                 </Badge>
               )}
               {visibleFollowUpViewedAt && (
@@ -1206,10 +1208,6 @@ export default function PlayerDetailPage() {
                     )}
                   </h1>
                   <CopyButton text={getFullName(player)} label="Name" />
-                  <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-muted-foreground">
-                    @{player.username}
-                    <CopyButton text={player.username} label="Username" size="icon" className="h-7 w-7" />
-                  </span>
                   <span className="inline-flex shrink-0 items-center gap-1 font-mono text-xs font-semibold text-muted-foreground/80">
                     {player.user_id}
                     <CopyButton text={player.user_id} label="User ID" size="icon" className="h-7 w-7" />
@@ -1251,6 +1249,12 @@ export default function PlayerDetailPage() {
                     <Badge variant="outline" title="Email contact channel" className="gap-1 border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                       <Mail className="h-3.5 w-3.5" />
                       Email
+                    </Badge>
+                  )}
+                  {player.sent_vip_guide && (
+                    <Badge variant="outline" title="VIP guide has been sent to this player" className="gap-1 border-indigo-300 bg-indigo-100 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
+                      <BookOpenCheck className="h-3.5 w-3.5" />
+                      VIP guide sent
                     </Badge>
                   )}
                   {visibleFollowUpViewedAt && (

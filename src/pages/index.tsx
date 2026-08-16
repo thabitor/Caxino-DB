@@ -12,7 +12,7 @@ import { PlayerFormDialog } from "@/components/PlayerFormDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Crown, ListTodo, LogOut, AlertCircle, Phone } from "lucide-react";
+import { Users, Crown, ListTodo, LogOut, AlertCircle, Phone, CircleCheck, LockKeyhole } from "lucide-react";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Badge } from "@/components/ui/badge";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -21,14 +21,11 @@ import { TaskAlertsPanel } from "@/components/TaskAlertsPanel";
 import { TaskFormDialog } from "@/components/TaskFormDialog";
 import { CallReminderNotification } from "@/components/CallReminderNotification";
 import { BirthdayReminders } from "@/components/BirthdayReminders";
-import { UpcomingBirthdaysPanel } from "@/components/UpcomingBirthdaysPanel";
 import { ExcelUploadDialog } from "@/components/ExcelUploadDialog";
-import { FollowUpQueue } from "@/components/FollowUpQueue";
 import { buildFollowUpQueue, FollowUpItem } from "@/lib/followup";
 import { ACTION_LOG_TTL_MS, clearRecentFollowUpActivity, DASHBOARD_REFRESH_EVENT, FOLLOW_UP_VIEWED_EVENT, type ActionHistoryActivity, getDashboardRefreshToken, getHighlightedFollowUps, getRecentFollowUpActivityClearedAt } from "@/lib/dashboardSync";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManualFollowUpDialog } from "@/components/ManualFollowUpDialog";
-import { ManualFollowUpPickerDialog } from "@/components/ManualFollowUpPickerDialog";
 import { RecentFollowUpsPanel } from "@/components/RecentFollowUpsPanel";
 import { PlayerFlyout } from "@/components/PlayerFlyout";
 import { getUpcomingBirthdays } from "@/lib/birthdays";
@@ -49,12 +46,16 @@ export default function Home() {
   const [totalPlayers, setTotalPlayers] = useState(0);
   const [vipDistribution, setVipDistribution] = useState<Record<VipLevel, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
   const [activeTasks, setActiveTasks] = useState(0);
+  const [activeScheduledCalls, setActiveScheduledCalls] = useState(0);
+  const [openAccounts, setOpenAccounts] = useState(0);
+  const [closedAccounts, setClosedAccounts] = useState(0);
   const [followUpItems, setFollowUpItems] = useState<FollowUpItem[]>([]);
   const [followUpViewedAtByPlayer, setFollowUpViewedAtByPlayer] = useState<Record<string, string>>({});
   const [lastCallAtByPlayer, setLastCallAtByPlayer] = useState<Record<string, string>>({});
   const [monthlyCallCountByPlayer, setMonthlyCallCountByPlayer] = useState<Record<string, number>>({});
   const [actionHistory, setActionHistory] = useState<ActionHistoryActivity[]>([]);
   const [alertNotificationCount, setAlertNotificationCount] = useState(0);
+  const [scheduledCallAlertCount, setScheduledCallAlertCount] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<PlayerWithTasks | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,17 +68,18 @@ export default function Home() {
   const [flyoutPlayerId, setFlyoutPlayerId] = useState<string | null>(null);
   const [followUpPlayer, setFollowUpPlayer] = useState<PlayerWithTasks | null>(null);
   const [isQueueFollowUpOpen, setIsQueueFollowUpOpen] = useState(false);
-  const [activeMainTab, setActiveMainTab] = useState("relationship");
+  const [activeMainTab, setActiveMainTab] = useState("directory");
 
   useEffect(() => {
     if (!router.isReady) return;
     const tab = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
-    setActiveMainTab(tab === "directory" ? "directory" : "relationship");
+    const validTabs = new Set(["directory", "tasks", "calls", "birthdays", "action-log"]);
+    setActiveMainTab(tab && validTabs.has(tab) ? tab : "directory");
   }, [router.isReady, router.query.tab]);
 
   const handleMainTabChange = (value: string) => {
     setActiveMainTab(value);
-    const nextQuery = value === "directory" ? { tab: "directory" } : {};
+    const nextQuery = { tab: value };
     router.replace({ pathname: "/", query: nextQuery }, undefined, { shallow: true });
   };
 
@@ -247,8 +249,15 @@ export default function Home() {
       setPlayers(playersData);
       setTotalPlayers(total);
       setVipDistribution(distribution);
-      setActiveTasks(tasks.length);
-      setAlertNotificationCount(alertCalls + alertRegularTasks + alertClosureReminders);
+      const activeScheduledCallsTotal = tasks.filter((task) => task.is_call).length;
+      const activeRegularTasksTotal = tasks.filter((task) => !task.is_call).length;
+      const closedAccountsTotal = playersData.filter((player) => (player.account_status || "open").trim().toLowerCase() === "closed").length;
+      setActiveTasks(activeRegularTasksTotal);
+      setActiveScheduledCalls(activeScheduledCallsTotal);
+      setOpenAccounts(Math.max(0, total - closedAccountsTotal));
+      setClosedAccounts(closedAccountsTotal);
+      setAlertNotificationCount(alertRegularTasks + alertClosureReminders);
+      setScheduledCallAlertCount(alertCalls);
       setFollowUpItems(buildFollowUpQueue(playersData, tasks, callLogs, manualFollowUps));
       setFollowUpViewedAtByPlayer({ ...localViewed, ...persistedViewed });
       setLastCallAtByPlayer(latestCallsByPlayer);
@@ -488,8 +497,9 @@ export default function Home() {
 
   const overdueFollowUps = followUpItems.filter((item) => item.status === "overdue").length;
   const todayFollowUps = followUpItems.filter((item) => item.status === "today").length;
-  const scheduledCalls = followUpItems.reduce((total, item) => total + item.activeCallCount, 0);
+  const scheduledCalls = activeScheduledCalls;
   const alertsCount = alertNotificationCount;
+  const scheduledCallAlerts = scheduledCallAlertCount;
   const birthdayNotificationCount = getUpcomingBirthdays(players, { withinDays: 7 }).length;
   const followUpNotificationCount = followUpItems.length;
   const toFollowUpPlayerIds = followUpItems.map((item) => item.player.id);
@@ -534,128 +544,141 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 lg:p-5">
-          <Tabs value={activeMainTab} onValueChange={handleMainTabChange} className="flex h-full min-h-0 flex-1 flex-col">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <TabsList className="h-10 justify-start rounded-md border-2 border-border/70 bg-muted/35 p-1 shadow-sm">
-                <TabsTrigger value="relationship" className="h-8 px-4 text-xs">
-                  Relationship Workspace
-                </TabsTrigger>
-                <TabsTrigger value="directory" className="h-8 px-4 text-xs">
-                  Players Directory
-                </TabsTrigger>
-              </TabsList>
-              <div className="hidden text-xs font-medium text-muted-foreground sm:block">
-                Focused views for queue work and player management
+        <main className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden p-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:p-5 2xl:grid-cols-[300px_minmax(0,1fr)]">
+          <Card className="min-h-0 overflow-hidden border-2 border-border/80 bg-card shadow-md shadow-black/5 dark:border-border/70 dark:shadow-black/20">
+            <CardContent className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3">
+              <div className="flex items-center gap-3 rounded-md border border-border/70 bg-muted/25 px-3 py-2">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background">
+                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-extrabold text-foreground">Manager Snapshot</h2>
+                  <p className="truncate text-xs text-muted-foreground">All-database workload totals</p>
+                </div>
               </div>
-            </div>
 
-            <TabsContent value="relationship" className="m-0 min-h-0 flex-1 overflow-hidden">
-          <section className="grid h-full min-h-0 grid-rows-[260px_minmax(0,1fr)] gap-3 overflow-y-auto lg:grid-cols-[260px_minmax(0,1fr)] lg:grid-rows-none lg:overflow-hidden 2xl:grid-cols-[300px_minmax(0,1fr)]">
-            <div className="grid min-h-0 gap-3 min-[520px]:grid-rows-[260px_minmax(0,1fr)]">
-              <Card className="h-full overflow-hidden border-2 border-emerald-300/80 bg-emerald-50/20 shadow-md shadow-emerald-500/5 dark:border-emerald-800 dark:bg-emerald-950/10">
-                <CardHeader className="min-h-[68px] border-b-2 border-emerald-200/80 bg-emerald-100/35 py-2.5 dark:border-emerald-900/70 dark:bg-emerald-950/25">
-                  <div className="flex h-full items-center justify-between gap-3">
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <AlertCircle className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
-                        Manager Snapshot
-                      </CardTitle>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Current workload summary.
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="grid h-[calc(100%-68px)] content-start gap-2 p-3 text-sm">
-                  <div className="grid gap-1.5">
-                    <div className="flex items-center justify-between rounded-md border border-emerald-200/80 bg-emerald-50/45 px-2.5 py-1.5 shadow-sm shadow-emerald-500/5 dark:border-emerald-900/70 dark:bg-emerald-950/20">
-                      <span className="text-xs font-semibold text-muted-foreground">To Review</span>
-                      <span className="text-base font-bold tabular-nums">{followUpItems.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-md border border-red-200 bg-red-50/85 px-2.5 py-1.5 text-red-800 shadow-sm shadow-red-500/5 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-                      <span className="text-xs font-semibold opacity-85">Overdue</span>
-                      <span className="text-base font-bold tabular-nums">{overdueFollowUps}</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50/85 px-2.5 py-1.5 text-blue-800 shadow-sm shadow-blue-500/5 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
-                      <span className="text-xs font-semibold opacity-85">Due Today</span>
-                      <span className="text-base font-bold tabular-nums">{todayFollowUps}</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-md border border-cyan-200/80 bg-cyan-50/45 px-2.5 py-1.5 shadow-sm shadow-cyan-500/5 dark:border-cyan-900/70 dark:bg-cyan-950/20">
-                      <span className="text-xs font-semibold text-muted-foreground">Scheduled Calls</span>
-                      <span className="text-base font-bold tabular-nums">{scheduledCalls}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <UpcomingBirthdaysPanel players={players} />
-            </div>
+              <div className="rounded-md border border-border/70 bg-background/70 px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
+                    <Users className="h-3.5 w-3.5" />
+                    Players
+                  </span>
+                  <span className="text-lg font-extrabold tabular-nums text-foreground">{loading ? "-" : totalPlayers}</span>
+                </div>
+                <div className="mt-2 space-y-1">
+                  {(Object.keys(vipDistribution).map(Number) as VipLevel[]).sort((a, b) => a - b).map((level) => {
+                    const count = vipDistribution[level];
+                    const config = vipConfig[level];
+                    if (!config) return null;
+                    return (
+                      <div key={level} className="flex items-center justify-between gap-3 rounded border border-border/60 bg-muted/20 px-2 py-1 text-xs">
+                        <span className={`font-semibold ${config.color}`}>VIP Level {level}</span>
+                        <span className="font-extrabold tabular-nums text-foreground">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-            <section className="flex h-full min-h-0 overflow-hidden rounded-lg border-2 border-border/80 bg-card shadow-md shadow-black/5 dark:border-border/70 dark:shadow-black/20">
-              <Tabs defaultValue="alerts" className="flex h-full min-w-0 flex-1 flex-col">
-                <div className="flex items-end justify-between gap-3 border-b-2 border-border/60 bg-muted/20 px-3 pt-2">
-                  <TabsList className="h-9 justify-start rounded-none bg-transparent p-0">
-                    <TabsTrigger
-                      value="alerts"
-                      className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
-                    >
-                      Alerts
-                      <TabNotification count={alertsCount} />
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="followups"
-                      className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
-                    >
-                      Follow-ups
-                      <TabNotification count={followUpNotificationCount} />
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="birthdays"
-                      className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
-                    >
-                      Birthdays
-                      <TabNotification count={birthdayNotificationCount} />
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="action-log"
-                      className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
-                    >
-                      Action Log
-                    </TabsTrigger>
-                  </TabsList>
-                  <div className="hidden pb-2 text-xs font-medium text-muted-foreground sm:block">
-                    Relationship workspace
-                  </div>
+              <div className="grid min-w-0 gap-1.5 sm:grid-cols-2 lg:grid-cols-1">
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/70 px-3 py-2">
+                  <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                    <CircleCheck className="h-3.5 w-3.5" />
+                    Open accounts
+                  </span>
+                  <span className="text-base font-extrabold tabular-nums text-foreground">{loading ? "-" : openAccounts}</span>
                 </div>
 
-                <div className="min-h-0 min-w-0 flex-1 p-3">
-                  <TabsContent value="followups" className="m-0 h-full">
-                    <FollowUpQueue
-                      items={followUpItems}
-                      onAddFollowUp={() => setIsQueueFollowUpOpen(true)}
-                      onOpenPlayer={setFlyoutPlayerId}
-                    />
-                  </TabsContent>
-                  <TabsContent value="alerts" className="m-0 h-full">
-                    <TaskAlertsPanel />
-                  </TabsContent>
-                  <TabsContent value="birthdays" className="m-0 h-full">
-                    <BirthdayReminders />
-                  </TabsContent>
-                  <TabsContent value="action-log" className="m-0 h-full">
-                    <RecentFollowUpsPanel
-                      activities={actionHistory}
-                      players={players}
-                      onClear={handleClearRecentFollowUps}
-                    />
-                  </TabsContent>
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/70 px-3 py-2">
+                  <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                    <LockKeyhole className="h-3.5 w-3.5" />
+                    Closed accounts
+                  </span>
+                  <span className="text-base font-extrabold tabular-nums text-foreground">{loading ? "-" : closedAccounts}</span>
                 </div>
-              </Tabs>
-            </section>
-          </section>
+
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/70 px-3 py-2">
+                  <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                    <Phone className="h-3.5 w-3.5" />
+                    Scheduled calls
+                  </span>
+                  <span className="text-base font-extrabold tabular-nums text-foreground">{loading ? "-" : scheduledCalls}</span>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/70 px-3 py-2">
+                  <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                    <ListTodo className="h-3.5 w-3.5" />
+                    Active tasks
+                  </span>
+                  <span className="text-base font-extrabold tabular-nums text-foreground">{loading ? "-" : activeTasks}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Tabs value={activeMainTab} onValueChange={handleMainTabChange} className="flex h-full min-h-0 flex-1 flex-col">
+            <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border-2 border-border/80 bg-card shadow-md shadow-black/5 dark:border-border/70 dark:shadow-black/20">
+              <div className="flex items-end justify-between gap-3 border-b-2 border-border/60 bg-muted/20 px-3 pt-2">
+                <TabsList className="h-9 justify-start rounded-none bg-transparent p-0">
+                  <TabsTrigger
+                    value="directory"
+                    className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
+                  >
+                    Directory
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="tasks"
+                    className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
+                  >
+                    Tasks
+                    <TabNotification count={alertsCount} />
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="calls"
+                    className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
+                  >
+                    Calls
+                    <TabNotification count={scheduledCallAlerts} />
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="birthdays"
+                    className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
+                  >
+                    Birthdays
+                    <TabNotification count={birthdayNotificationCount} />
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="action-log"
+                    className="h-9 rounded-b-none rounded-t-md border-2 border-b-0 bg-muted/35 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none"
+                  >
+                    Action Log
+                  </TabsTrigger>
+                </TabsList>
+                <div className="hidden pb-2 text-xs font-medium text-muted-foreground sm:block">
+                  Workspace tabs
+                </div>
+              </div>
+
+              <div className="min-h-0 min-w-0 flex-1 p-3">
+            <TabsContent value="tasks" className="m-0 h-full overflow-hidden">
+              <TaskAlertsPanel mode="tasks" />
             </TabsContent>
 
-            <TabsContent value="directory" className="m-0 min-h-0 flex-1 overflow-hidden">
+            <TabsContent value="calls" className="m-0 h-full overflow-hidden">
+              <TaskAlertsPanel mode="calls" />
+            </TabsContent>
+
+            <TabsContent value="birthdays" className="m-0 h-full overflow-hidden">
+              <BirthdayReminders />
+            </TabsContent>
+
+            <TabsContent value="action-log" className="m-0 h-full overflow-hidden">
+              <RecentFollowUpsPanel
+                activities={actionHistory}
+                players={players}
+                onClear={handleClearRecentFollowUps}
+              />
+            </TabsContent>
+            <TabsContent value="directory" className="m-0 h-full overflow-hidden">
           <Card className="flex h-full min-h-0 flex-col border-2 border-primary/25 bg-card shadow-md transition-shadow hover:shadow-lg">
             <CardHeader className="shrink-0 border-b-2 border-border/70 bg-secondary/55 py-3">
               <div className="flex items-center justify-between">
@@ -678,63 +701,7 @@ export default function Home() {
               </div>
             </CardHeader>
 
-            <div className="shrink-0 px-4 pb-3">
-              {loading ? (
-                <Skeleton className="h-10 w-full" />
-              ) : (
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border-2 border-indigo-200/80 bg-indigo-50/40 px-3 py-2 shadow-sm shadow-indigo-500/5 dark:border-indigo-900/70 dark:bg-indigo-950/20">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium text-muted-foreground">Total:</span>
-                    <span className="text-sm font-bold">{totalPlayers}</span>
-                  </div>
-
-                  <div className="h-5 w-px bg-border" />
-
-                  <div className="flex items-center gap-2">
-                    <Crown className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    <span className="text-sm font-medium text-muted-foreground">VIP:</span>
-                    <div className="flex items-center gap-1.5">
-                      {(Object.keys(vipDistribution).map(Number) as VipLevel[]).sort((a, b) => b - a).map((level) => {
-                        const count = vipDistribution[level];
-                        const config = vipConfig[level];
-                        if (!config || count === 0) return null;
-                        return (
-                          <Badge 
-                            key={level} 
-                            variant="secondary" 
-                            className={`text-xs px-1.5 py-0 ${config.bgColor} ${config.color} border-0`}
-                          >
-                            L{level}: {count}
-                          </Badge>
-                        );
-                      })}
-                      {Object.values(vipDistribution).every(c => c === 0) && (
-                        <span className="text-xs text-muted-foreground">None</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="h-5 w-px bg-border" />
-
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium text-muted-foreground">Scheduled Calls:</span>
-                    <span className="text-sm font-bold">{scheduledCalls}</span>
-                  </div>
-
-                  <div className="h-5 w-px bg-border" />
-
-                  <div className="flex items-center gap-2">
-                    <ListTodo className="w-4 h-4 text-green-600 dark:text-green-400" />
-                    <span className="text-sm font-medium text-muted-foreground">Active Tasks:</span>
-                    <span className="text-sm font-bold">{activeTasks}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <CardContent className="min-h-0 flex-1 px-4 pb-4">
+            <CardContent className="min-h-0 flex-1 px-4 pb-4 pt-3">
               {loading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-12 w-full" />
@@ -759,6 +726,8 @@ export default function Home() {
             </CardContent>
           </Card>
             </TabsContent>
+              </div>
+            </section>
           </Tabs>
         </main>
 
@@ -785,12 +754,6 @@ export default function Home() {
           playerName={followUpPlayer ? getFullName(followUpPlayer) : "this player"}
         />
 
-        <ManualFollowUpPickerDialog
-          isOpen={isQueueFollowUpOpen}
-          onClose={() => setIsQueueFollowUpOpen(false)}
-          onSubmit={handleQueueManualFollowUpCreate}
-          players={players}
-        />
 
         <PlayerFlyout
           playerId={flyoutPlayerId}

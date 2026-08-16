@@ -17,12 +17,14 @@ import { markFollowUpContacted, notifyDashboardRefresh } from "@/lib/dashboardSy
 
 interface TaskWithPlayer extends Task {
   player_name: string;
-  player_username: string;
+  player_user_id: string;
 }
 
 const DISMISSED_TASKS_KEY = "dismissedTaskReminders";
 
-export function TaskAlertsPanel() {
+type TaskAlertsPanelMode = "all" | "tasks" | "calls";
+
+export function TaskAlertsPanel({ mode = "all" }: { mode?: TaskAlertsPanelMode }) {
   const [todayCalls, setTodayCalls] = useState<TaskWithPlayer[]>([]);
   const [regularTasks, setRegularTasks] = useState<TaskWithPlayer[]>([]);
   const [closureReminders, setClosureReminders] = useState<Player[]>([]);
@@ -106,7 +108,7 @@ export function TaskAlertsPanel() {
           return {
             ...task,
             player_name: player ? getFullName(player) : "Unknown Player",
-            player_username: player?.username || "unknown",
+            player_user_id: player?.user_id || "unknown",
           };
         })
       );
@@ -348,7 +350,7 @@ export function TaskAlertsPanel() {
                   <>
                     <span className="font-semibold">Call</span>
                     <span className="font-bold text-sky-900 dark:text-sky-100">{task.player_name}</span>
-                    <span className="text-xs font-medium text-muted-foreground">(@{task.player_username})</span>
+                    <span className="text-xs font-medium text-muted-foreground">(ID {task.player_user_id})</span>
                     {task.call_topic && (
                       <>
                         <span className="font-semibold">for</span>
@@ -393,7 +395,7 @@ export function TaskAlertsPanel() {
                   <div className="flex items-center gap-1.5">
                     <User className="h-3.5 w-3.5" />
                     <span className="font-medium">{task.player_name}</span>
-                    <span className="text-muted-foreground">(@{task.player_username})</span>
+                    <span className="text-muted-foreground">(ID {task.player_user_id})</span>
                   </div>
                 )}
                 {!isCall && (
@@ -482,7 +484,16 @@ export function TaskAlertsPanel() {
 
   const visibleCalls = todayCalls.filter(task => !dismissedTasks.has(task.id));
   const visibleRegularTasks = regularTasks.filter(task => !dismissedTasks.has(task.id));
-  const totalAlerts = visibleCalls.length + visibleRegularTasks.length + closureReminders.length;
+  const showCalls = mode === "all" || mode === "calls";
+  const showTasks = mode === "all" || mode === "tasks";
+  const visibleClosureReminders = showTasks ? closureReminders : [];
+  const totalAlerts = (showCalls ? visibleCalls.length : 0) + (showTasks ? visibleRegularTasks.length : 0) + visibleClosureReminders.length;
+  const panelTitle = mode === "calls" ? "Scheduled Calls" : mode === "tasks" ? "Tasks & Reminders" : "Task Alerts & Reminders";
+  const panelSummary = mode === "calls"
+    ? `${visibleCalls.length} calls scheduled for today`
+    : mode === "tasks"
+      ? `${visibleRegularTasks.length} tasks, ${visibleClosureReminders.length} closure reminders`
+      : `${visibleCalls.length} calls today, ${visibleRegularTasks.length} other tasks, ${visibleClosureReminders.length} closures`;
 
   return (
     <>
@@ -495,13 +506,13 @@ export function TaskAlertsPanel() {
               </div>
               <div>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  Task Alerts & Reminders
+                  {panelTitle}
                   <Badge className="border-0 bg-red-600 text-white dark:bg-red-700">
                     {totalAlerts}
                   </Badge>
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  {visibleCalls.length} calls today, {visibleRegularTasks.length} other tasks, {closureReminders.length} closures
+                  {panelSummary}
                 </p>
               </div>
             </div>
@@ -514,11 +525,11 @@ export function TaskAlertsPanel() {
                 <div>
                   <Clock className="mx-auto mb-2 h-5 w-5" />
                   <p className="font-medium">All caught up.</p>
-                  <p className="mt-1 text-xs opacity-80">No urgent tasks or upcoming reminders need attention right now.</p>
+                  <p className="mt-1 text-xs opacity-80">{mode === "calls" ? "No scheduled calls need attention right now." : "No urgent tasks or reminders need attention right now."}</p>
                 </div>
               </div>
             )}
-            {visibleCalls.length > 0 && (
+            {showCalls && visibleCalls.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -532,16 +543,16 @@ export function TaskAlertsPanel() {
               </div>
             )}
 
-            {closureReminders.length > 0 && (
+            {showTasks && visibleClosureReminders.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                   <h3 className="text-lg font-bold text-red-700 dark:text-red-400">
-                    Account Breaks Ended ({closureReminders.length})
+                    Account Breaks Ended ({visibleClosureReminders.length})
                   </h3>
                 </div>
                 <div className="space-y-2">
-                  {closureReminders.map((player) => (
+                  {visibleClosureReminders.map((player) => (
                     <div
                       key={player.id}
                       className="rounded-lg border-2 border-red-200 bg-red-50/80 p-3 shadow-sm dark:border-red-900 dark:bg-red-950/20"
@@ -549,7 +560,7 @@ export function TaskAlertsPanel() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate font-semibold">{getFullName(player)}</p>
-                          <p className="truncate text-xs text-muted-foreground">@{player.username}</p>
+                          <p className="truncate text-xs text-muted-foreground">ID {player.user_id}</p>
                           <p className="mt-1 text-xs text-red-700 dark:text-red-300">
                             Break ended {formatDistanceToNow(new Date(player.account_closure_until!), { addSuffix: true })}.
                             Send the reopening email, then reopen the account from the player page.
@@ -570,7 +581,7 @@ export function TaskAlertsPanel() {
               </div>
             )}
 
-            {visibleRegularTasks.length > 0 && (
+            {showTasks && visibleRegularTasks.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, ArrowUpDown, Trash2, Edit, Plus, Bell, ListPlus, Phone, Users, CalendarCheck, X, Star, ShieldAlert, Mail, Send, MessageCircle, Headphones } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpDown, Trash2, Edit, Plus, Bell, ListPlus, Phone, Users, CalendarCheck, X, Star, ShieldAlert, Mail, Send, MessageCircle, Headphones, BookOpenCheck } from "lucide-react";
 import { differenceInCalendarDays, formatDistanceToNow } from "date-fns";
 import { TaskCountBadge } from "./TaskCountBadge";
 import { CopyButton } from "./CopyButton";
@@ -228,9 +228,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
 
       return taskFilterMatch && vipLevelMatch && casinoMatch && statusMatch && (
         player.user_id.toLowerCase().includes(lowerCaseFilter) ||
-        getFullName(player).toLowerCase().includes(lowerCaseFilter) ||
-        player.username.toLowerCase().includes(lowerCaseFilter) ||
-        (player.email || "").toLowerCase().includes(lowerCaseFilter) ||
+        getFullName(player).toLowerCase().includes(lowerCaseFilter) ||        (player.email || "").toLowerCase().includes(lowerCaseFilter) ||
         (player.phone || "").toLowerCase().includes(lowerCaseFilter) ||
         (player.casino || "").toLowerCase().includes(lowerCaseFilter)
       );
@@ -354,6 +352,14 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
             <div className={`${directoryBadgeBase} border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300`}>
               <Mail />
               <span>Email</span>
+            </div>
+          </DirectoryBadgeTooltip>
+        )}
+        {player.sent_vip_guide && (
+          <DirectoryBadgeTooltip label="VIP guide has been sent to this player">
+            <div className={`${directoryBadgeBase} border-indigo-300 bg-indigo-100 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300`}>
+              <BookOpenCheck />
+              <span>VIP guide</span>
             </div>
           </DirectoryBadgeTooltip>
         )}
@@ -484,72 +490,12 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
             ))}
           </SelectContent>
         </Select>
-        
-        <div className="flex items-center gap-1 rounded-md border-2 border-border/70 bg-muted/30 p-0.5 shadow-sm">
-          <Button
-            variant={taskFilter === "all" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => handleTaskFilterChange("all")}
-            className="h-7 gap-1 px-2 text-xs"
-          >
-            <Users className="h-3.5 w-3.5" />
-            All
-          </Button>
-          <Button
-            variant={taskFilter === "with_tasks" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => handleTaskFilterChange("with_tasks")}
-            className="h-7 gap-1 px-2 text-xs"
-          >
-            <Bell className="h-3.5 w-3.5" />
-            Tasks
-          </Button>
-          <Button
-            variant={taskFilter === "with_calls" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => handleTaskFilterChange("with_calls")}
-            className="h-7 gap-1 px-2 text-xs"
-          >
-            <Phone className="h-3.5 w-3.5" />
-            Calls
-          </Button>
-          <Button
-            variant={taskFilter === "with_both" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => handleTaskFilterChange("with_both")}
-            className="h-7 gap-1 px-2 text-xs text-purple-700 dark:text-purple-300"
-          >
-            <Bell className="w-3.5 h-3.5" />
-            <Phone className="w-3.5 h-3.5" />
-            Reminders
-          </Button>
-          <Button
-            variant={taskFilter === "with_birthdays" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => handleTaskFilterChange("with_birthdays")}
-            className="h-7 gap-1 px-2 text-xs text-pink-700 dark:text-pink-300"
-          >
-            🎂
-            Birthdays
-          </Button>
-          <Button
-            variant={taskFilter === "to_follow_up" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => handleTaskFilterChange("to_follow_up")}
-            className="h-7 gap-1 px-2 text-xs text-emerald-700 dark:text-emerald-300"
-          >
-            <ListPlus className="h-3.5 w-3.5" />
-            To Follow Up
-          </Button>
-        </div>
       </div>
       <div className="mt-2 min-h-0 flex-1 overflow-auto rounded-md border-2 border-border/70 shadow-sm">
         <Table className="text-xs">
           <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
-              <SortableHeader field="user_id" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>User ID</SortableHeader>
-              <SortableHeader field="username" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Username</SortableHeader>
-              <SortableHeader field="firstname" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Full Name</SortableHeader>
+              <SortableHeader field="user_id" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>User ID</SortableHeader>              <SortableHeader field="firstname" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Full Name</SortableHeader>
               <SortableHeader field="email" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Email</SortableHeader>
               <SortableHeader field="phone" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Phone</SortableHeader>
               <SortableHeader field="casino" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Casino</SortableHeader>
@@ -573,22 +519,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
                       <span className="font-mono text-xs text-muted-foreground">{player.user_id}</span>
                       <CopyButton text={player.user_id} label="User ID" />
                     </div>
-                  </TableCell>
-                  <TableCell className={`${compactCell} font-medium`}>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onOpenPlayer?.(player.id);
-                        }}
-                        className="text-left text-blue-600 hover:underline dark:text-blue-400"
-                      >
-                        {player.username}
-                      </button>
-                      <CopyButton text={player.username} label="Username" />
-                    </div>
-                  </TableCell>
+                  </TableCell>
                   <TableCell className={compactCell}>
                     <div className="flex items-center gap-2">
                       <span>{getFullName(player)}</span>
@@ -670,7 +601,7 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
                 </TableRow>
               ))
             ) : (
-              <TableRow><TableCell colSpan={11} className="h-24 text-center">No players found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="h-24 text-center">No players found.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>

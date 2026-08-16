@@ -23,9 +23,7 @@ interface PlayerFormDialogProps {
 const getResetValues = (player: Player | null): PlayerFormData => {
   if (!player) {
     return {
-      user_id: "",
-      username: "",
-      firstname: "",
+      user_id: "",      firstname: "",
       lastname: "",
       email: "",
       phone: "",
@@ -37,6 +35,7 @@ const getResetValues = (player: Player | null): PlayerFormData => {
       whatsapp_channel: false,
       novatalks_channel: false,
       email_channel: false,
+      sent_vip_guide: false,
       vip_level: 3,
       last_email_sent: undefined,
       preferences: "{}",
@@ -56,9 +55,7 @@ const getResetValues = (player: Player | null): PlayerFormData => {
   }
 
   return {
-    user_id: player.user_id,
-    username: player.username,
-    firstname: player.firstname,
+    user_id: player.user_id,    firstname: player.firstname,
     lastname: player.lastname,
     email: player.email,
     phone: player.phone ?? "",
@@ -70,6 +67,7 @@ const getResetValues = (player: Player | null): PlayerFormData => {
     whatsapp_channel: player.whatsapp_channel ?? false,
     novatalks_channel: player.novatalks_channel ?? false,
     email_channel: player.email_channel ?? false,
+    sent_vip_guide: player.sent_vip_guide ?? false,
     vip_level: player.vip_level as VipLevel,
     last_email_sent: player.last_email_sent ? new Date(player.last_email_sent) : undefined,
     preferences: preferencesStr,
@@ -130,18 +128,7 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                       <FormMessage />
                     </FormItem>
                   )}
-                />
-                <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Username</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                />
                 <FormField
                   control={form.control}
                   name="firstname"
@@ -258,6 +245,25 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                             <FormMessage />
                         </FormItem>
                     )}
+                />
+                <FormField
+                  control={form.control}
+                  name="sent_vip_guide"
+                  render={({ field }) => (
+                    <FormItem className="flex min-h-10 items-center gap-3 rounded-md border-2 border-indigo-200 bg-indigo-50/40 px-3 py-2 dark:border-indigo-900 dark:bg-indigo-950/20">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value === true}
+                          onCheckedChange={(checked) => field.onChange(checked === true)}
+                        />
+                      </FormControl>
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm font-semibold">VIP guide sent</FormLabel>
+                        <p className="text-xs text-muted-foreground">Marks that the player received the VIP guide.</p>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <FormField
                   control={form.control}

@@ -522,7 +522,7 @@ export function FollowUpQueue({ items, onAddFollowUp, onOpenPlayer }: FollowUpQu
                           >
                             {getFullName(item.player)}
                           </button>
-                          <span className="truncate text-xs font-medium text-muted-foreground">@{item.player.username}</span>
+                          <span className="truncate text-xs font-medium text-muted-foreground">ID {item.player.user_id}</span>
                         </div>
                       </div>
                       {wasContactedRecently ? (

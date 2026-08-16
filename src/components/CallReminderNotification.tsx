@@ -10,7 +10,7 @@ import { notifyDashboardRefresh } from "@/lib/dashboardSync";
 interface CallReminderData {
   task: Task;
   playerName: string;
-  playerUsername: string;
+  playerUserId: string;
 }
 
 export function CallReminderNotification() {
@@ -51,7 +51,7 @@ export function CallReminderNotification() {
             setActiveReminder({
               task: nearestCall,
               playerName: getFullName(player),
-              playerUsername: player.username,
+              playerUserId: player.user_id,
             });
           }
         }
@@ -127,7 +127,7 @@ export function CallReminderNotification() {
           <p className="text-sm leading-5 text-foreground">
             You have an upcoming call to{" "}
             <span className="font-bold text-sky-800 dark:text-sky-200">{activeReminder.playerName}</span>{" "}
-            <span className="text-xs font-medium text-muted-foreground">(@{activeReminder.playerUsername})</span>{" "}
+            <span className="text-xs font-medium text-muted-foreground">(ID {activeReminder.playerUserId})</span>{" "}
             for <span className="font-bold">{callReason}</span> in{" "}
             <span className="font-bold text-sky-700 dark:text-sky-300">{minutesLabel}</span>.
           </p>

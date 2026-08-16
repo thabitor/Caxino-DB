@@ -146,7 +146,7 @@ export function BirthdayReminders() {
                     <div className="flex min-w-0 items-center gap-2">
                       <User className="h-4 w-4 shrink-0" />
                       <span className="truncate font-semibold">{getFullName(birthday.player)}</span>
-                      <span className="truncate text-sm text-muted-foreground">@{birthday.player.username}</span>
+                      <span className="truncate text-sm text-muted-foreground">ID {birthday.player.user_id}</span>
                     </div>
 
                     <p className="text-sm text-muted-foreground">

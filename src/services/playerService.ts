@@ -14,9 +14,7 @@ export type PlayerWithTasks = Player & {
 export type VipLevel = 1 | 2 | 3 | 4 | 5;
 
 export const playerSchema = z.object({
-  user_id: z.string().min(1, "User ID is required"),
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  firstname: z.string().optional(),
+  user_id: z.string().min(1, "User ID is required"),  firstname: z.string().optional(),
   lastname: z.string().optional(),
   email: z.string().email("Invalid email address").or(z.literal("")).optional(),
   phone: z.string().optional(),
@@ -28,6 +26,7 @@ export const playerSchema = z.object({
   whatsapp_channel: z.boolean().optional(),
   novatalks_channel: z.boolean().optional(),
   email_channel: z.boolean().optional(),
+  sent_vip_guide: z.boolean().optional(),
   vip_level: z.coerce.number().min(1).max(5) as z.ZodType<VipLevel>,
   last_email_sent: z.date().optional(),
   preferences: z.string().optional().refine((val) => {
@@ -265,8 +264,7 @@ export async function bulkCreatePlayers(
     throw existingError;
   }
 
-  const byUserId = new Map((existingPlayers || []).map((player) => [player.user_id, player]));
-  const byUsername = new Map((existingPlayers || []).map((player) => [player.username.toLowerCase(), player]));
+  const byUserId = new Map((existingPlayers || []).map((player) => [player.user_id, player]));
 
   for (let i = 0; i < players.length; i++) {
     try {
@@ -277,28 +275,20 @@ export async function bulkCreatePlayers(
       }
 
       const userIdMatch = playerData.user_id ? byUserId.get(playerData.user_id) : undefined;
-      const usernameMatch = playerData.username ? byUsername.get(playerData.username.toLowerCase()) : undefined;
-
-      if (userIdMatch && usernameMatch && userIdMatch.id !== usernameMatch.id) {
-        throw new Error(`User ID matches @${userIdMatch.username}, but username matches user ID ${usernameMatch.user_id}. Resolve this identity conflict before import.`);
-      }
-
-      const existingPlayer = userIdMatch || usernameMatch;
+      const existingPlayer = userIdMatch;
 
       if (existingPlayer) {
         const updates = { ...playerData } as PlayerUpdate;
         delete updates.id;
         const updatedPlayer = await playerService.updatePlayer(existingPlayer.id, updates);
-        byUserId.set(updatedPlayer.user_id, updatedPlayer);
-        byUsername.set(updatedPlayer.username.toLowerCase(), updatedPlayer);
+        byUserId.set(updatedPlayer.user_id, updatedPlayer);
       } else {
-        if (!playerData.user_id || !playerData.username) {
-          throw new Error("New players require both user_id and username.");
+        if (!playerData.user_id) {
+          throw new Error("New players require user_id.");
         }
 
         const createdPlayer = await playerService.createPlayer(playerData as PlayerInsert);
-        byUserId.set(createdPlayer.user_id, createdPlayer);
-        byUsername.set(createdPlayer.username.toLowerCase(), createdPlayer);
+        byUserId.set(createdPlayer.user_id, createdPlayer);
       }
 
       results.success++;

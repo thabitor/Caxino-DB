@@ -33,7 +33,7 @@ export function getUpcomingBirthdays(players: Player[], options?: { withinDays?:
       return { player, nextBirthday, daysUntil, turningAge };
     })
     .filter((birthday) => options?.withinDays === undefined || birthday.daysUntil <= options.withinDays)
-    .sort((a, b) => a.daysUntil - b.daysUntil || a.player.username.localeCompare(b.player.username));
+    .sort((a, b) => a.daysUntil - b.daysUntil || a.player.user_id.localeCompare(b.player.user_id));
 
   return options?.limit ? upcoming.slice(0, options.limit) : upcoming;
 }

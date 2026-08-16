@@ -214,7 +214,7 @@ export function buildFollowUpQueue(
         return aTime - bTime;
       }
 
-      return a.player.username.localeCompare(b.player.username);
+      return a.player.user_id.localeCompare(b.player.user_id);
     });
 
   return queueItems;

@@ -164,11 +164,11 @@ export type Database = {
           preferences: Json | null
           preferred_time_from: number | null
           preferred_time_to: number | null
+          sent_vip_guide: boolean
           total_deposits: number | null
           telegram_member: boolean
           updated_at: string | null
           user_id: string
-          username: string
           vip_level: number | null
           whatsapp_channel: boolean
         }
@@ -198,11 +198,11 @@ export type Database = {
           preferences?: Json | null
           preferred_time_from?: number | null
           preferred_time_to?: number | null
+          sent_vip_guide?: boolean
           total_deposits?: number | null
           telegram_member?: boolean
           updated_at?: string | null
           user_id: string
-          username: string
           vip_level?: number | null
           whatsapp_channel?: boolean
         }
@@ -232,11 +232,11 @@ export type Database = {
           preferences?: Json | null
           preferred_time_from?: number | null
           preferred_time_to?: number | null
+          sent_vip_guide?: boolean
           total_deposits?: number | null
           telegram_member?: boolean
           updated_at?: string | null
           user_id?: string
-          username?: string
           vip_level?: number | null
           whatsapp_channel?: boolean
         }

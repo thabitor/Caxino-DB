@@ -71,7 +71,7 @@ export function ManualFollowUpPickerDialog({ isOpen, onClose, onSubmit, players 
               <SelectContent className="max-h-72">
                 {eligiblePlayers.map((player) => (
                   <SelectItem key={player.id} value={player.id}>
-                    {getFullName(player)} - @{player.username}
+                    {getFullName(player)} - ID {player.user_id}
                   </SelectItem>
                 ))}
                 {eligiblePlayers.length === 0 && (
