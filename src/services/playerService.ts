@@ -65,6 +65,10 @@ function cleanIncomingPlayer(playerData: Partial<PlayerInsert>): Partial<PlayerI
   ) as Partial<PlayerInsert>;
 }
 
+function getImportPlayerName(player: { firstname?: string | null; lastname?: string | null }): string {
+  return ((player.firstname || "") + " " + (player.lastname || "")).trim() || "name not provided";
+}
+
 function getImportErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (error && typeof error === "object") {
@@ -264,15 +268,48 @@ export async function bulkCreatePlayers(
     throw existingError;
   }
 
-  const byUserId = new Map((existingPlayers || []).map((player) => [player.user_id, player]));
+  const byUserId = new Map((existingPlayers || []).map((player) => [String(player.user_id).trim(), player]));
 
-  for (let i = 0; i < players.length; i++) {
+  const parsedRows = players
+    .map((player, index) => {
+      const data = cleanIncomingPlayer(player);
+      if (typeof data.user_id === "string") data.user_id = data.user_id.trim();
+      return { index, data };
+    })
+    .filter(({ data }) => Object.values(data).some(isPresent));
+
+  const rowsByUserId = new Map<string, { index: number; data: Partial<PlayerInsert> }[]>();
+  parsedRows.forEach((row) => {
+    const userId = row.data.user_id;
+    if (!userId) return;
+    const key = String(userId);
+    rowsByUserId.set(key, [...(rowsByUserId.get(key) || []), row]);
+  });
+
+  const duplicateUserIdErrors = Array.from(rowsByUserId.entries())
+    .filter(([, rows]) => rows.length > 1)
+    .map(([userId, rows]) => {
+      const names = rows
+        .map(({ index, data }) => "Row " + (index + 1) + ": " + getImportPlayerName(data))
+        .join("; ");
+      const existingPlayer = byUserId.get(userId);
+      const databaseStatus = existingPlayer
+        ? "already exists in the DB as " + getImportPlayerName(existingPlayer)
+        : "does not currently exist in the DB";
+
+      return "Duplicate user_id " + userId + " appears " + rows.length + " times in the uploaded file (" + names + ") and " + databaseStatus + ". Keep one row for this user_id before uploading.";
+    });
+
+  if (duplicateUserIdErrors.length > 0) {
+    return {
+      success: 0,
+      failed: parsedRows.length,
+      errors: duplicateUserIdErrors,
+    };
+  }
+
+  for (const { index: i, data: playerData } of parsedRows) {
     try {
-      const playerData = cleanIncomingPlayer(players[i]);
-
-      if (!Object.values(playerData).some(isPresent)) {
-        continue;
-      }
 
       const userIdMatch = playerData.user_id ? byUserId.get(playerData.user_id) : undefined;
       const existingPlayer = userIdMatch;
@@ -284,7 +321,7 @@ export async function bulkCreatePlayers(
         byUserId.set(updatedPlayer.user_id, updatedPlayer);
       } else {
         if (!playerData.user_id) {
-          throw new Error("New players require user_id.");
+          throw new Error("Missing required user_id for " + getImportPlayerName(playerData) + ".");
         }
 
         const createdPlayer = await playerService.createPlayer(playerData as PlayerInsert);

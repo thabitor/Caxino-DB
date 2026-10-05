@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Download } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -13,6 +13,19 @@ interface ExcelUploadDialogProps {
 }
 
 type PlayerInsert = Database["public"]["Tables"]["players"]["Insert"];
+
+type TemplateColumn = { key: keyof PlayerInsert; label: string; required?: boolean };
+const TEMPLATE_COLUMNS: TemplateColumn[] = [
+  { key: "user_id", label: "user_id", required: true },
+  { key: "casino", label: "casino" },
+  { key: "vip_level", label: "vip_level" },
+  { key: "firstname", label: "firstname" },
+  { key: "lastname", label: "lastname" },
+  { key: "gender", label: "gender" },
+  { key: "dob", label: "dob" },
+  { key: "email", label: "email" },
+  { key: "phone", label: "phone" },
+];
 
 export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -52,6 +65,15 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
     e.preventDefault();
   };
 
+  const handleDownloadTemplate = () => {
+    const workbook = XLSX.utils.book_new();
+    const headers = TEMPLATE_COLUMNS.map((column) => column.label);
+    const playersSheet = XLSX.utils.aoa_to_sheet([headers]);
+    playersSheet["!cols"] = TEMPLATE_COLUMNS.map((column) => ({ wch: Math.max(column.label.length + 2, 14) }));
+    XLSX.utils.book_append_sheet(workbook, playersSheet, "Players");
+    XLSX.writeFile(workbook, "caxino-player-import-template.xlsx");
+  };
+
   const parseExcelFile = async (file: File): Promise<Partial<PlayerInsert>[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -76,9 +98,9 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
             user_id: ["user_id", "userid", "id"],            casino: ["casino"],
             firstname: ["firstname", "first_name"],
             lastname: ["lastname", "last_name"],
-            phone: ["phone"],
+            phone: ["phone", "phone_number"],
             email: ["email"],
-            dob: ["dob", "birthday", "date_of_birth"],
+            dob: ["dob", "birthday", "birthdate", "date_of_birth"],
             gender: ["gender"],
             vip_level: ["vip_level", "viplevel", "vip"],
             total_deposits: ["total_deposits", "totaldeposits", "deposits"],
@@ -359,14 +381,23 @@ export function ExcelUploadDialog({ onUploadComplete }: ExcelUploadDialogProps) 
           )}
 
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-            <p className="text-sm font-medium mb-2">Supported columns (all optional):</p>
-            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-              <p>• <strong>Identity:</strong> user_id, casino</p>
-              <p>• <strong>Personal:</strong> firstname, lastname, phone, email, dob (date of birth), gender</p>
-              <p>• <strong>Account:</strong> vip_level, total_deposits, last_email_sent, account_status</p>
-              <p>• <strong>Contact:</strong> preferred_time_from, preferred_time_to, notes</p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium mb-2">Supported columns</p>
+                <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                  <p>• <strong>Required:</strong> user_id</p>
+                  <p>• <strong>Optional:</strong> casino, vip_level, firstname, lastname, gender, dob, email, phone</p>
+                </div>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={handleDownloadTemplate} className="shrink-0 gap-2">
+                <Download className="h-4 w-4" />
+                Download template
+              </Button>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-600 mt-2">
+            <p className="text-xs text-gray-500 dark:text-gray-600 mt-3">
+              The template uses the import field names directly and keeps the workbook free of helper rows or comments.
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-600 mt-1">
               Column names are flexible and case-insensitive. Extra sheet columns are ignored.
             </p>
           </div>
