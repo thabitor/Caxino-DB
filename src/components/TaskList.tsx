@@ -1,7 +1,7 @@
 
 import { ReactNode, useState } from "react";
-import { format } from "date-fns";
 import { Task, TaskPriority, TaskStatus, priorityConfig, statusConfig } from "@/services/taskService";
+import { formatDate, formatDateTime } from "@/lib/dateFormat";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,7 @@ export function TaskList({ tasks, onEdit, onDelete, onComplete, onCompleteCall }
                     {task.due_date && (
                       <CardDescription className={isCallTask ? "font-semibold" : ""}>
                         {isCallTask ? "Call at: " : "Due: "}
-                        {format(new Date(task.due_date), isCallTask ? "MMM d, yyyy 'at' h:mm a" : "MMM d, yyyy")}
+                        {isCallTask ? formatDateTime(task.due_date) : formatDate(task.due_date)}
                       </CardDescription>
                     )}
                     {isCallTask && task.phone_number && (

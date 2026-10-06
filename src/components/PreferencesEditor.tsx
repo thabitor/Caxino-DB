@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+const nativeSelectClass = "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
 
 export interface PlayerPreferences {
   communication?: {
@@ -161,70 +162,63 @@ export function PreferencesEditor({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="time-from" className="text-sm">Preferred Time From</Label>
-              <Select
+              <select
                 value={(preferences.preferred_time_from?.toString()) || "9"}
-                onValueChange={(val) => {
+                onChange={(event) => {
+                  const val = event.target.value;
                   console.log("Time From changed to:", val);
                   updatePreferences({ preferred_time_from: parseInt(val) });
                 }}
+                className={nativeSelectClass}
+                id="time-from"
               >
-                <SelectTrigger id="time-from">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
                   {Array.from({ length: 13 }, (_, i) => i + 9).map((hour) => (
-                    <SelectItem key={hour} value={hour.toString()}>
+                    <option key={hour} value={hour.toString()}>
                       {hour}h
-                    </SelectItem>
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+              </select>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="time-to" className="text-sm">Preferred Time To</Label>
-              <Select
+              <select
                 value={(preferences.preferred_time_to?.toString()) || "21"}
-                onValueChange={(val) => {
+                onChange={(event) => {
+                  const val = event.target.value;
                   console.log("Time To changed to:", val);
                   updatePreferences({ preferred_time_to: parseInt(val) });
                 }}
+                className={nativeSelectClass}
+                id="time-to"
               >
-                <SelectTrigger id="time-to">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
                   {Array.from({ length: 13 }, (_, i) => i + 9).map((hour) => (
-                    <SelectItem key={hour} value={hour.toString()}>
+                    <option key={hour} value={hour.toString()}>
                       {hour}h
-                    </SelectItem>
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+              </select>
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="language" className="text-sm">Preferred Language</Label>
-            <Select
+            <select
               value={preferences.language ?? "en"}
-              onValueChange={(val) => updatePreferences({ language: val })}
+              onChange={(event) => updatePreferences({ language: event.target.value })}
+              className={nativeSelectClass}
+              id="language"
             >
-              <SelectTrigger id="language">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="es">Spanish</SelectItem>
-                <SelectItem value="fr">French</SelectItem>
-                <SelectItem value="de">German</SelectItem>
-                <SelectItem value="it">Italian</SelectItem>
-                <SelectItem value="pt">Portuguese</SelectItem>
-                <SelectItem value="zh">Chinese</SelectItem>
-                <SelectItem value="ja">Japanese</SelectItem>
-                <SelectItem value="ar">Arabic</SelectItem>
-              </SelectContent>
-            </Select>
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="it">Italian</option>
+              <option value="pt">Portuguese</option>
+              <option value="zh">Chinese</option>
+              <option value="ja">Japanese</option>
+              <option value="ar">Arabic</option>
+            </select>
           </div>
         </CardContent>
       </Card>

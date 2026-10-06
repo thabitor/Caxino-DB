@@ -1,7 +1,7 @@
 import { DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, CalendarClock, Check, CheckCircle2, Clock, Eye, GripVertical, ListPlus, Phone, UserRound, X } from "lucide-react";
-import { format } from "date-fns";
 import type { FollowUpItem, FollowUpStatus } from "@/lib/followup";
+import { formatDateTime } from "@/lib/dateFormat";
 import { getFullName } from "@/services/playerService";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ const reasonBadgeStyles: Record<string, string> = {
 
 function formatDueDate(dueDate?: string | null) {
   if (!dueDate) return null;
-  return format(new Date(dueDate), "MMM d, h:mm a");
+  return formatDateTime(dueDate);
 }
 
 function isNewFollowUp(queueCreatedAt?: string | null) {

@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowUp, ArrowDown, Mail, Phone, PhoneOff, Calendar, DollarSign, Crown, FileText, Plus, Edit, Save, X, Check, LogOut, Bell, AlertCircle, Clock, User, ListPlus, CalendarCheck, ShieldAlert, Send, MessageCircle, Headphones, BookOpenCheck } from "lucide-react";
-import { differenceInCalendarDays, format, formatDistanceToNow } from "date-fns";
+import { differenceInCalendarDays, formatDistanceToNow } from "date-fns";
+import { formatDate, formatDateTime, formatDateTimeWithSeconds } from "@/lib/dateFormat";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1333,7 +1334,7 @@ export default function PlayerDetailPage() {
                               )}
                               {task.due_date && (
                                 <p className="text-xs text-muted-foreground">
-                                  Due: {format(new Date(task.due_date), "PPp")}
+                                  Due: {formatDateTime(task.due_date)}
                                 </p>
                               )}
                             </div>
@@ -1427,8 +1428,8 @@ export default function PlayerDetailPage() {
                       <div className="flex items-center gap-1.5 rounded-lg border-2 border-pink-200 bg-pink-50/50 p-1.5 shadow-sm dark:border-pink-800 dark:bg-pink-950/20">
                         <Calendar className="w-3 h-3 text-pink-600 dark:text-pink-400 flex-shrink-0" />
                         <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">DOB:</span>
-                        <span className="text-sm font-medium text-foreground truncate">{format(new Date(player.dob), "PPP")}</span>
-                        <CopyButton text={format(new Date(player.dob), "PPP")} label="Date of Birth" size="sm" />
+                        <span className="text-sm font-medium text-foreground truncate">{formatDate(player.dob)}</span>
+                        <CopyButton text={formatDate(player.dob)} label="Date of Birth" size="sm" />
                       </div>
                     )}
 
@@ -1445,8 +1446,8 @@ export default function PlayerDetailPage() {
                       <div className="flex items-center gap-1.5 rounded-lg border-2 border-indigo-200 bg-indigo-50/50 p-1.5 shadow-sm dark:border-indigo-800 dark:bg-indigo-950/20">
                         <Mail className="w-3 h-3 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
                         <span className="font-semibold whitespace-nowrap text-[11px] text-muted-foreground">Last Email:</span>
-                        <span className="text-sm font-medium text-foreground truncate">{format(new Date(player.last_email_sent), "PPP")}</span>
-                        <CopyButton text={format(new Date(player.last_email_sent), "PPP")} label="Last Email Sent" size="sm" />
+                        <span className="text-sm font-medium text-foreground truncate">{formatDate(player.last_email_sent)}</span>
+                        <CopyButton text={formatDate(player.last_email_sent)} label="Last Email Sent" size="sm" />
                       </div>
                     )}
                   </div>
@@ -1870,7 +1871,7 @@ export default function PlayerDetailPage() {
                               )}
                               {call.due_date && (
                                 <p className="text-xs text-muted-foreground">
-                                  {format(new Date(call.due_date), "PPp")}
+                                  {formatDateTime(call.due_date)}
                                 </p>
                               )}
                             </div>
@@ -2051,7 +2052,7 @@ export default function PlayerDetailPage() {
                                   {normalizeCallTopic(log.call_topic) || "No reason specified"}
                                 </p>
                                 <p className="text-[11px] text-muted-foreground">
-                                  {format(new Date(log.call_time), "MMM d, yyyy 'at' h:mm:ss a")}
+                                  {formatDateTimeWithSeconds(log.call_time)}
                                 </p>
                               </div>
                               <div className="text-[11px] text-muted-foreground whitespace-nowrap">
@@ -2468,7 +2469,7 @@ export default function PlayerDetailPage() {
                       <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span className="font-semibold">Call Time</span>
                     </div>
-                    <p className="text-sm pl-6">{format(new Date(selectedCallLog.call_time), "PPPP 'at' h:mm:ss a")}</p>
+                    <p className="text-sm pl-6">{formatDateTimeWithSeconds(selectedCallLog.call_time)}</p>
                   </div>
 
                   {selectedCallLog.phone_number && (
@@ -2530,7 +2531,7 @@ export default function PlayerDetailPage() {
                       <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span className="font-semibold">Completed At</span>
                     </div>
-                    <p className="text-sm pl-6">{format(new Date(selectedCallLog.completed_at || selectedCallLog.call_time), "PPPP 'at' h:mm:ss a")}</p>
+                    <p className="text-sm pl-6">{formatDateTimeWithSeconds(selectedCallLog.completed_at || selectedCallLog.call_time)}</p>
                   </div>
                 </div>
 

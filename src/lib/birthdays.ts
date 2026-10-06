@@ -1,4 +1,5 @@
-import { differenceInCalendarDays, format, startOfDay } from "date-fns";
+import { differenceInCalendarDays, startOfDay } from "date-fns";
+import { formatDate } from "@/lib/dateFormat";
 import type { Player } from "@/services/playerService";
 
 export interface UpcomingBirthday {
@@ -45,5 +46,5 @@ export function getBirthdayTimingLabel(daysUntil: number) {
 }
 
 export function formatBirthdayDate(date: Date) {
-  return format(date, "MMM d");
+  return formatDate(date);
 }

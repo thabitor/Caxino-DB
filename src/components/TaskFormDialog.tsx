@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
@@ -14,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { CalendarIcon, X, Phone } from "lucide-react";
 import { format } from "date-fns";
+import { formatDate } from "@/lib/dateFormat";
 import { Task, taskSchema, TaskFormData, TaskInsert, TaskUpdate, priorityConfig, statusConfig, TaskPriority, TaskStatus } from "@/services/taskService";
 import * as z from "zod";
 
@@ -26,6 +26,8 @@ interface TaskFormDialogProps {
   playerPhone?: string;
   defaultIsCall?: boolean;
 }
+
+const nativeSelectClass = "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
 
 const CALL_REASONS = ["Reward", "Payment", "Tech issue"] as const;
 const CALL_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -416,7 +418,7 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
-                                {field.value ? format(field.value, "PP") : <span>Pick date</span>}
+                                {field.value ? formatDate(field.value) : <span>Pick date</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
@@ -516,7 +518,7 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
                                 !field.value && "text-muted-foreground"
                               )}
                             >
-                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                              {field.value ? formatDate(field.value) : <span>Pick a date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -555,14 +557,13 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Priority</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
+                  <FormControl>
+                    <select value={field.value} onChange={(event) => field.onChange(event.target.value)} className={nativeSelectClass}>
                       {Object.keys(priorityConfig).map((p) => (
-                        <SelectItem key={p} value={p}>{priorityConfig[p as TaskPriority].label}</SelectItem>
+                        <option key={p} value={p}>{priorityConfig[p as TaskPriority].label}</option>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </select>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -574,14 +575,13 @@ export function TaskFormDialog({ isOpen, onClose, onSubmit, task, playerId, play
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
+                  <FormControl>
+                    <select value={field.value} onChange={(event) => field.onChange(event.target.value)} className={nativeSelectClass}>
                       {Object.keys(statusConfig).map((s) => (
-                        <SelectItem key={s} value={s}>{statusConfig[s as TaskStatus].label}</SelectItem>
+                        <option key={s} value={s}>{statusConfig[s as TaskStatus].label}</option>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </select>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

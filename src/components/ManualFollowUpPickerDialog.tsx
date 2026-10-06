@@ -3,7 +3,6 @@ import { ListPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { PlayerWithTasks } from "@/services/playerService";
 import { getFullName } from "@/services/playerService";
@@ -14,6 +13,8 @@ interface ManualFollowUpPickerDialogProps {
   onSubmit: (player: PlayerWithTasks, note: string) => Promise<void> | void;
   players: PlayerWithTasks[];
 }
+
+const nativeSelectClass = "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
 
 export function ManualFollowUpPickerDialog({ isOpen, onClose, onSubmit, players }: ManualFollowUpPickerDialogProps) {
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
@@ -64,23 +65,23 @@ export function ManualFollowUpPickerDialog({ isOpen, onClose, onSubmit, players 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Player</Label>
-            <Select value={selectedPlayerId} onValueChange={setSelectedPlayerId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a player" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {eligiblePlayers.map((player) => (
-                  <SelectItem key={player.id} value={player.id}>
-                    {getFullName(player)} - ID {player.user_id}
-                  </SelectItem>
-                ))}
-                {eligiblePlayers.length === 0 && (
-                  <SelectItem value="none" disabled>
-                    No open players available
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <select
+              value={selectedPlayerId}
+              onChange={(event) => setSelectedPlayerId(event.target.value)}
+              className={nativeSelectClass}
+            >
+              <option value="" disabled>Choose a player</option>
+              {eligiblePlayers.map((player) => (
+                <option key={player.id} value={player.id}>
+                  {getFullName(player)} - ID {player.user_id}
+                </option>
+              ))}
+              {eligiblePlayers.length === 0 && (
+                <option value="none" disabled>
+                  No open players available
+                </option>
+              )}
+            </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="queue-follow-up-note">Reason for follow-up</Label>

@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, Clock, ExternalLink, Calendar, User, Phone, X, Ban } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
+import { formatDateTime } from "@/lib/dateFormat";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyButton } from "@/components/CopyButton";
 import { CallCompletionDialog } from "@/components/CallCompletionDialog";
@@ -369,7 +370,7 @@ export function TaskAlertsPanel({ mode = "all" }: { mode?: TaskAlertsPanelMode }
                   <span>
                     {isOverdue(task.due_date)
                       ? `Scheduled ${formatDistanceToNow(new Date(task.due_date))} ago`
-                      : `Scheduled for ${format(new Date(task.due_date), "PPp")}`}
+                      : `Scheduled for ${formatDateTime(task.due_date)}`}
                   </span>
                 </div>
               )}

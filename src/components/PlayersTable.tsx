@@ -3,13 +3,10 @@ import { PlayerWithTasks, VipLevel, getFullName, vipConfig } from "@/services/pl
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, ArrowUpDown, Trash2, Edit, Plus, Bell, ListPlus, Phone, Users, CalendarCheck, X, Star, ShieldAlert, Mail, Send, MessageCircle, Headphones, BookOpenCheck } from "lucide-react";
-import { differenceInCalendarDays, formatDistanceToNow } from "date-fns";
-import { TaskCountBadge } from "./TaskCountBadge";
+import { ArrowLeft, ArrowRight, ArrowUpDown } from "lucide-react";
 import { CopyButton } from "./CopyButton";
-import { getBirthdayStatus, getBirthdayBadge } from "@/lib/utils";
+import { getBirthdayStatus } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type SortField = keyof PlayerWithTasks | "task_count";
@@ -30,9 +27,7 @@ interface PlayersTableProps {
 }
 
 const compactCell = "px-2 py-1.5 align-middle";
-const directoryBadgeBase = "inline-flex max-w-full items-center gap-0.5 whitespace-nowrap rounded-full border px-1 py-0 text-[10px] font-semibold leading-4 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
-const RECENT_CALL_BADGE_DAYS = 3;
-const OVERDUE_CALL_BADGE_DAYS = 30;
+const compactNativeSelect = "h-8 rounded-md border border-input bg-background px-2 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
 
 function DirectoryBadgeTooltip({ label, children }: { label: string; children: ReactElement }) {
   return (
@@ -45,43 +40,6 @@ function DirectoryBadgeTooltip({ label, children }: { label: string; children: R
   );
 }
 
-function getCallAgeLabel(lastCallAt?: string | null) {
-  if (!lastCallAt) return null;
-
-  const callDate = new Date(lastCallAt);
-  const dayDiff = differenceInCalendarDays(new Date(), callDate);
-
-  if (!Number.isFinite(callDate.getTime()) || dayDiff < 0) {
-    return null;
-  }
-
-  if (dayDiff === 0) return "today";
-  if (dayDiff <= RECENT_CALL_BADGE_DAYS) {
-    return `${dayDiff} day${dayDiff === 1 ? "" : "s"} ago`;
-  }
-  if (dayDiff > OVERDUE_CALL_BADGE_DAYS) {
-    return formatDistanceToNow(callDate, { addSuffix: true });
-  }
-
-  return null;
-}
-
-function getLastCallBadgeClass(lastCallAt?: string | null) {
-  if (!lastCallAt) {
-    return "border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300";
-  }
-
-  const callDate = new Date(lastCallAt);
-  if (!Number.isFinite(callDate.getTime())) {
-    return "border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300";
-  }
-
-  const daysSinceCall = differenceInCalendarDays(new Date(), callDate);
-  return daysSinceCall > OVERDUE_CALL_BADGE_DAYS
-    ? "border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
-    : "border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300";
-}
-
 function getClosureKind(player: PlayerWithTasks) {
   return player.account_closure_type === "break" ? "temporary" : "permanent";
 }
@@ -90,16 +48,14 @@ function getClosureLabel(player: PlayerWithTasks) {
   return getClosureKind(player) === "temporary" ? "Temporary break" : "Permanent";
 }
 
-function getClosureMarkerClass(player: PlayerWithTasks) {
-  return getClosureKind(player) === "temporary"
-    ? "border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
-    : "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300";
-}
-
 const SortableHeader = ({ children, field, sortField, sortDirection, onSort }: { children: React.ReactNode; field: SortField; sortField: SortField; sortDirection: SortDirection; onSort: (field: SortField) => void; }) => {
   const isSorted = sortField === field;
   return (
-    <TableHead onClick={() => onSort(field)} className="h-8 cursor-pointer px-2 text-xs hover:bg-muted/50">
+    <TableHead
+      aria-sort={isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+      onClick={() => onSort(field)}
+      className="h-8 cursor-pointer px-2 text-xs hover:bg-muted/50"
+    >
       <div className="flex items-center gap-1.5">
         {children}
         <ArrowUpDown className={`h-3.5 w-3.5 ${isSorted ? "" : "text-muted-foreground"}`} />
@@ -108,14 +64,14 @@ const SortableHeader = ({ children, field, sortField, sortDirection, onSort }: {
   );
 };
 
-export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollowUp, onOpenPlayer, followUpViewedAtByPlayer = {}, lastCallAtByPlayer = {}, monthlyCallCountByPlayer = {}, toFollowUpPlayerIds = [] }: PlayersTableProps) {
+export function PlayersTable({ players, onOpenPlayer, followUpViewedAtByPlayer = {}, monthlyCallCountByPlayer = {}, toFollowUpPlayerIds = [] }: PlayersTableProps) {
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [filter, setFilter] = useState("");
   const [vipFilter, setVipFilter] = useState<string>("all");
   const [casinoFilter, setCasinoFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [taskFilter, setTaskFilter] = useState<TaskFilter>("all");
+  const [taskFilter] = useState<TaskFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
@@ -145,11 +101,6 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
     setCurrentPage(1);
   };
 
-  const handleTaskFilterChange = (value: TaskFilter) => {
-    setTaskFilter(value);
-    setCurrentPage(1);
-  };
-
   const handlePageSizeChange = (value: string) => {
     setPageSize(Number(value));
     setCurrentPage(1);
@@ -167,8 +118,6 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
   }, [players]);
 
   const getAccountStatus = (player: PlayerWithTasks) => (player.account_status || "open").trim().toLowerCase();
-  const isClosedAccount = (player: PlayerWithTasks) => getAccountStatus(player) === "closed";
-
   const uniqueStatuses = useMemo(() => {
     const statuses = new Set<string>();
     players.forEach((player) => statuses.add(getAccountStatus(player)));
@@ -287,134 +236,6 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
   const pageEnd = Math.min(pageStart + pageSize, filteredAndSortedPlayers.length);
   const paginatedPlayers = filteredAndSortedPlayers.slice(pageStart, pageEnd);
 
-  const getTaskIndicators = (player: PlayerWithTasks) => {
-    const taskCount = player.tasks[0]?.count ?? 0;
-    const callCount = player.tasks[0]?.call_count ?? 0;
-    const birthdayStatus = getBirthdayStatus(player.dob);
-    const birthdayBadge = getBirthdayBadge(birthdayStatus);
-    const followUpViewedAt = isClosedAccount(player) ? null : followUpViewedAtByPlayer[player.id];
-    const lastCallAt = lastCallAtByPlayer[player.id];
-    const callAgeLabel = getCallAgeLabel(lastCallAt);
-    const monthlyCallCount = monthlyCallCountByPlayer[player.id] || 0;
-    
-    return (
-      <div className="flex max-w-[260px] flex-wrap items-center gap-1 gap-y-0.5">
-        {getAccountStatus(player) === "closed" && (
-          <DirectoryBadgeTooltip label={`${getClosureLabel(player)} closure${player.account_closure_reason ? `: ${player.account_closure_reason}` : ""}`}>
-            <div className={`${directoryBadgeBase} ${getClosureMarkerClass(player)}`}>
-              <X />
-              <span>{getClosureLabel(player)}</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {player.bonus_abuser && (
-          <DirectoryBadgeTooltip label="Marked as bonus abuser">
-            <div className={`${directoryBadgeBase} border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300`}>
-              <ShieldAlert />
-              <span>Bonus abuser</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {player.contact_email_only && (
-          <DirectoryBadgeTooltip label="Prefers exclusive email contact">
-            <div className={`${directoryBadgeBase} border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300`}>
-              <Mail />
-              <span>Email only</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {player.telegram_member && (
-          <DirectoryBadgeTooltip label="Telegram group member">
-            <div className={`${directoryBadgeBase} border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300`}>
-              <Send />
-              <span>Telegram</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {player.whatsapp_channel && (
-          <DirectoryBadgeTooltip label="WhatsApp contact channel">
-            <div className={`${directoryBadgeBase} border-green-300 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300`}>
-              <MessageCircle />
-              <span>WhatsApp</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {player.novatalks_channel && (
-          <DirectoryBadgeTooltip label="Novatalks contact channel">
-            <div className={`${directoryBadgeBase} border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300`}>
-              <Headphones />
-              <span>Novatalks</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {player.email_channel && (
-          <DirectoryBadgeTooltip label="Email contact channel">
-            <div className={`${directoryBadgeBase} border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300`}>
-              <Mail />
-              <span>Email</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {player.sent_vip_guide && (
-          <DirectoryBadgeTooltip label="VIP guide has been sent to this player">
-            <div className={`${directoryBadgeBase} border-indigo-300 bg-indigo-100 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300`}>
-              <BookOpenCheck />
-              <span>VIP guide</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {birthdayBadge && (
-          <DirectoryBadgeTooltip label={`Birthday status: ${birthdayBadge.text}`}>
-            <div className={`${directoryBadgeBase} ${birthdayBadge.className}`}>
-              <span className="text-[10px] leading-none">{birthdayBadge.emoji}</span>
-              <span className="font-semibold leading-none">{birthdayBadge.text}</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {taskCount > 0 && (
-          <DirectoryBadgeTooltip label={`${taskCount} active reminder${taskCount === 1 ? "" : "s"}`}>
-            <div className={`${directoryBadgeBase} border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300`}>
-              <Bell />
-              <span>{taskCount}</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {callCount > 0 && (
-          <DirectoryBadgeTooltip label={`${callCount} scheduled call${callCount === 1 ? "" : "s"}`}>
-            <div className={`${directoryBadgeBase} border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300`}>
-              <Phone />
-              <span>{callCount}</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {callAgeLabel && lastCallAt && (
-          <DirectoryBadgeTooltip label={`Last called ${formatDistanceToNow(new Date(lastCallAt), { addSuffix: true })}`}>
-            <div className={`${directoryBadgeBase} ${getLastCallBadgeClass(lastCallAt)}`}>
-              <Phone />
-              <span>{callAgeLabel}</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {monthlyCallCount > 2 && (
-          <DirectoryBadgeTooltip label={`${monthlyCallCount} calls logged this month`}>
-            <div className={`${directoryBadgeBase} border-fuchsia-300 bg-fuchsia-100 text-fuchsia-700 dark:border-fuchsia-800 dark:bg-fuchsia-950/40 dark:text-fuchsia-300`}>
-              <Star />
-              <span>Most contacted</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-        {followUpViewedAt && (
-          <DirectoryBadgeTooltip label={`Followed up ${formatDistanceToNow(new Date(followUpViewedAt), { addSuffix: true })}`}>
-            <div className={`${directoryBadgeBase} border-green-300 bg-green-100 text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300`}>
-              <CalendarCheck />
-              <span>Followed up</span>
-            </div>
-          </DirectoryBadgeTooltip>
-        )}
-      </div>
-    );
-  };
-
   const getRowHighlight = (player: PlayerWithTasks) => {
     const taskCount = player.tasks[0]?.count ?? 0;
     const callCount = player.tasks[0]?.call_count ?? 0;
@@ -457,39 +278,30 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
     <div className="flex h-full min-h-0 w-full flex-col text-sm">
       <div className="shrink-0 flex flex-wrap items-center gap-2 rounded-md border-2 border-border/70 bg-background/70 p-2 shadow-sm">
         <Input placeholder="Filter players..." value={filter} onChange={(e) => handleFilterChange(e.target.value)} className="h-8 max-w-[220px] text-xs" />
-        <Select value={vipFilter} onValueChange={handleVipFilterChange}>
-          <SelectTrigger className="h-8 w-[135px] text-xs"><SelectValue placeholder="Filter by VIP" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All VIP Levels</SelectItem>
+        <select value={vipFilter} onChange={(event) => handleVipFilterChange(event.target.value)} className={`${compactNativeSelect} w-[135px]`}>
+          <option value="all">All VIP Levels</option>
             {(Object.entries(vipConfig) as [string, any][]).map(([level, config]) => (
-              <SelectItem key={level} value={level}>{config.name}</SelectItem>
+              <option key={level} value={level}>{config.name}</option>
             ))}
-          </SelectContent>
-        </Select>
+        </select>
         
-        <Select value={casinoFilter} onValueChange={handleCasinoFilterChange}>
-          <SelectTrigger className="h-8 w-[135px] text-xs"><SelectValue placeholder="Filter by Casino" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Casinos</SelectItem>
+        <select value={casinoFilter} onChange={(event) => handleCasinoFilterChange(event.target.value)} className={`${compactNativeSelect} w-[135px]`}>
+          <option value="all">All Casinos</option>
             {uniqueCasinos.length > 0 ? (
               uniqueCasinos.map((casino) => (
-                <SelectItem key={casino} value={casino}>{casino}</SelectItem>
+                <option key={casino} value={casino}>{casino}</option>
               ))
             ) : (
-              <SelectItem value="none" disabled>No casinos yet</SelectItem>
+              <option value="none" disabled>No casinos yet</option>
             )}
-          </SelectContent>
-        </Select>
+        </select>
 
-        <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-          <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="Filter by Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
+        <select value={statusFilter} onChange={(event) => handleStatusFilterChange(event.target.value)} className={`${compactNativeSelect} w-[140px]`}>
+          <option value="all">All Statuses</option>
             {uniqueStatuses.map((status) => (
-              <SelectItem key={status} value={status}>{formatStatus(status)}</SelectItem>
+              <option key={status} value={status}>{formatStatus(status)}</option>
             ))}
-          </SelectContent>
-        </Select>
+        </select>
       </div>
       <div className="mt-2 min-h-0 flex-1 overflow-auto rounded-md border-2 border-border/70 shadow-sm">
         <Table className="text-xs">
@@ -501,9 +313,6 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
               <SortableHeader field="casino" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Casino</SortableHeader>
               <TableHead className="h-8 px-2 text-xs">Status</TableHead>
               <SortableHeader field="vip_level" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>VIP Level</SortableHeader>
-              <SortableHeader field="task_count" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Tasks</SortableHeader>
-              <TableHead className="h-8 px-2 text-xs">Reminders</TableHead>
-              <TableHead className="h-8 px-2 text-xs">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -568,40 +377,10 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
                       </Badge>
                     </DirectoryBadgeTooltip>
                   </TableCell>
-                  <TableCell className={compactCell}><TaskCountBadge count={player.tasks[0]?.count ?? 0} /></TableCell>
-                  <TableCell className={compactCell}>{getTaskIndicators(player)}</TableCell>
-                  <TableCell className={compactCell}>
-                    <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
-                      {onAddTask && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => onAddTask(player.id)}
-                          title="Add task for this player"
-                          className="h-7 w-7 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                        >
-                          <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        </Button>
-                      )}
-                      {onAddFollowUp && !isClosedAccount(player) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onAddFollowUp(player)}
-                          title="Add to Queue"
-                          className="h-7 w-7 hover:bg-primary/10"
-                        >
-                          <ListPlus className="h-4 w-4 text-primary" />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(player)}><Edit className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDelete(player.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))
             ) : (
-              <TableRow><TableCell colSpan={10} className="h-24 text-center">No players found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="h-24 text-center">No players found.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
@@ -615,18 +394,13 @@ export function PlayersTable({ players, onEdit, onDelete, onAddTask, onAddFollow
         </div>
         <div className="flex items-center gap-2">
           <span>Rows</span>
-          <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
-            <SelectTrigger className="h-7 w-[78px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="end">
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-              <SelectItem value="200">200</SelectItem>
-            </SelectContent>
-          </Select>
+          <select value={String(pageSize)} onChange={(event) => handlePageSizeChange(event.target.value)} className="h-7 w-[78px] rounded-md border border-input bg-background px-2 text-xs">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
           <span className="min-w-16 text-center">
             Page {safeCurrentPage} / {totalPages}
           </span>

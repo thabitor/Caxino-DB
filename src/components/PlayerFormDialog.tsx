@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { PreferencesEditor, PlayerPreferences } from "@/components/PreferencesEditor";
 import { Player, playerSchema, PlayerFormData, PlayerInsert, PlayerUpdate, vipConfig, VipLevel } from "@/services/playerService";
 import { Json } from "@/integrations/supabase/database.types";
+
+const nativeSelectClass = "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
 
 interface PlayerFormDialogProps {
   isOpen: boolean;
@@ -157,16 +158,17 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Gender</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || "other"}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="male">Male</SelectItem>
-                                    <SelectItem value="female">Female</SelectItem>
-                                    <SelectItem value="other">Other</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <select
+                                value={field.value || "other"}
+                                onChange={(event) => field.onChange(event.target.value)}
+                                className={nativeSelectClass}
+                              >
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                              </select>
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -232,16 +234,17 @@ export function PlayerFormDialog({ isOpen, onClose, onSubmit, player }: PlayerFo
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>VIP Level</FormLabel>
-                            <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value || 3)}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select VIP Level" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {(Object.keys(vipConfig) as unknown as VipLevel[]).map((level) => (
-                                      <SelectItem key={level} value={String(level)}>{level} - {vipConfig[level].name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <select
+                                value={String(field.value || 3)}
+                                onChange={(event) => field.onChange(Number(event.target.value))}
+                                className={nativeSelectClass}
+                              >
+                                {(Object.keys(vipConfig) as unknown as VipLevel[]).map((level) => (
+                                  <option key={level} value={String(level)}>{level} - {vipConfig[level].name}</option>
+                                ))}
+                              </select>
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
